@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MyHub</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- =========================
+         SIDEBAR
+    ========================== -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <div class="logo-icon">M</div>
+            <span>MyHub</span>
+        </div>
+
+        <nav class="navigation">
+
+            <button class="nav-item active">
+                <span>⌂</span>
+                <span>Accueil</span>
+            </button>
+
+            <button class="nav-item">
+                <span>🤖</span>
+                <span>JARVIS</span>
+            </button>
+
+            <button class="nav-item">
+                <span>🏰</span>
+                <span>MyDLP</span>
+            </button>
+
+            <button class="nav-item">
+                <span>🎲</span>
+                <span>Ludothèque</span>
+            </button>
+
+            <button class="nav-item">
+                <span>🎵</span>
+                <span>Musique</span>
+            </button>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+
+            <button class="nav-item">
+                <span>⚙️</span>
+                <span>Paramètres</span>
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =========================
+         CONTENU PRINCIPAL
+    ========================== -->
+
+    <main class="main">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <button class="mobile-menu" id="mobileMenu">
+                ☰
+            </button>
+
+            <div>
+                <p class="welcome-small">Bienvenue sur</p>
+                <h1>MyHub</h1>
+            </div>
+
+            <div class="topbar-right">
+
+                <div class="date" id="currentDate">
+                    --
+                </div>
+
+                <div class="time" id="currentTime">
+                    --:--
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- DASHBOARD -->
+
+        <section id="homeSection" class="dashboard page-section active-section">
+
+            <!-- JARVIS -->
+
+            <div class="widget jarvis-widget">
+    <div class="widget-header">
+        <div>
+            <span class="widget-icon">🤖</span>
+            <h2>JARVIS</h2>
+        </div>
+        <span class="status">● En ligne</span>
+    </div>
+
+    <div class="jarvis-chat" id="jarvisChat">
+        <div class="message jarvis-message">
+            <strong>JARVIS</strong>
+            <p>Bonjour ! Je suis prêt à recevoir tes commandes.</p>
+        </div>
+    </div>
+
+    <div class="jarvis-input-area">
+        <input
+            type="text"
+            id="jarvisInput"
+            placeholder="Écris une commande..."
+            autocomplete="off"
+        >
+        <button id="jarvisSend">➤</button>
+    </div>
+</div>
+
+
+            <!-- HORLOGE -->
+
+            <article class="widget clock-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">🕐</span>
+                        <h2>Heure</h2>
+                    </div>
+
+                </div>
+
+                <div class="big-clock" id="bigClock">
+                    --:--
+                </div>
+
+                <p id="fullDate">
+                    --
+                </p>
+
+            </article>
+
+
+            <!-- METEO -->
+
+            <article class="widget weather-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">🌤️</span>
+                        <h2>Météo</h2>
+                    </div>
+
+                </div>
+
+                <div class="weather-placeholder">
+
+                    <div class="weather-temperature">
+                        --°
+                    </div>
+
+                    <div>
+                        <strong>Météo</strong>
+                        <p>Widget à connecter</p>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- TACHES -->
+
+            <article class="widget tasks-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">✅</span>
+                        <h2>Tâches</h2>
+                    </div>
+
+                    <button class="widget-action">
+                        +
+                    </button>
+
+                </div>
+
+                <div class="tasks">
+
+                    <label class="task">
+                        <input type="checkbox">
+                        <span>Configurer MyHub</span>
+                    </label>
+
+                    <label class="task">
+                        <input type="checkbox">
+                        <span>Créer les widgets</span>
+                    </label>
+
+                    <label class="task">
+                        <input type="checkbox">
+                        <span>Ajouter JARVIS</span>
+                    </label>
+
+                </div>
+
+            </article>
+
+
+            <!-- PROJETS -->
+
+            <article class="widget projects-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">💻</span>
+                        <h2>Mes projets</h2>
+                    </div>
+
+                </div>
+
+                <div class="projects">
+
+                    <div class="project">
+
+                        <div class="project-info">
+                            <strong>MyDLP</strong>
+                            <span>Disneyland Paris</span>
+                        </div>
+
+                        <div class="progress">
+                            <div style="width: 82%;"></div>
+                        </div>
+
+                        <span class="percentage">82%</span>
+
+                    </div>
+
+
+                    <div class="project">
+
+                        <div class="project-info">
+                            <strong>MyLudothèque</strong>
+                            <span>Collection de jeux</span>
+                        </div>
+
+                        <div class="progress">
+                            <div style="width: 68%;"></div>
+                        </div>
+
+                        <span class="percentage">68%</span>
+
+                    </div>
+
+
+                    <div class="project">
+
+                        <div class="project-info">
+                            <strong>MyHub</strong>
+                            <span>Dashboard personnel</span>
+                        </div>
+
+                        <div class="progress">
+                            <div style="width: 15%;"></div>
+                        </div>
+
+                        <span class="percentage">15%</span>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- RACCOURCIS -->
+
+            <article class="widget shortcuts-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">🔗</span>
+                        <h2>Raccourcis</h2>
+                    </div>
+
+                    <button class="widget-action">
+                        +
+                    </button>
+
+                </div>
+
+                <div class="shortcuts">
+
+                    <a href="https://quentwax.github.io/My-DLP/index.html" class="shortcut">
+                        <span>🏰</span>
+                        <p>MyDLP</p>
+                    </a>
+
+                    <a href="https://quentwax.github.io/jeux_societe/" class="shortcut">
+                        <span>🎲</span>
+                        <p>Ludothèque</p>
+                    </a>
+
+                    <a href="https://github.com/quentwax" class="shortcut">
+                        <span>💻</span>
+                        <p>GitHub</p>
+                    </a>
+
+                    <a href="https://jcphotographie276.github.io/portfolio/" class="shortcut">
+                        <span>📸</span>
+                        <p>Portfolio</p>
+                    </a>
+
+                </div>
+
+            </article>
+
+
+            <!-- MUSIQUE -->
+
+            <article class="widget music-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">🎵</span>
+                        <h2>Musique</h2>
+                    </div>
+
+                </div>
+
+                <div class="music-placeholder">
+
+                    <div class="music-cover">
+                        ♪
+                    </div>
+
+                    <div class="music-info">
+
+                        <strong>Spotify</strong>
+
+                        <p>
+                            Aucun morceau en lecture
+                        </p>
+
+                    </div>
+
+                    <button class="play-button">
+                        ▶
+                    </button>
+
+                </div>
+
+            </article>
+
+        </section>
+
+
+<section id="jarvisSection" class="page-section">
+    <div class="page-title">
+        <h1>🤖 JARVIS</h1>
+        <p>Ton assistant personnel</p>
+    </div>
+
+    <div class="page-placeholder">
+        <span>🤖</span>
+        <h2>JARVIS</h2>
+        <p>Cette section sera bientôt plus complète.</p>
+    </div>
+</section>
+
+<section id="mydlpSection" class="page-section">
+    <div class="page-title">
+        <h1>🎢 MyDLP</h1>
+        <p>Ton espace Disneyland Paris</p>
+    </div>
+
+    <div class="page-placeholder">
+        <span>🎢</span>
+        <h2>MyDLP</h2>
+        <p>La connexion avec ton projet arrivera ici.</p>
+    </div>
+</section>
+
+<section id="ludothequeSection" class="page-section">
+    <div class="page-title">
+        <h1>🎲 Ma Ludothèque</h1>
+        <p>Ta collection de jeux</p>
+    </div>
+
+    <div class="page-placeholder">
+        <span>🎲</span>
+        <h2>Ma Ludothèque</h2>
+        <p>La connexion avec ton projet arrivera ici.</p>
+    </div>
+</section>
+
+<section id="musicSection" class="page-section">
+    <div class="page-title">
+        <h1>🎵 Musique</h1>
+        <p>Ton espace musical</p>
+    </div>
+
+    <div class="page-placeholder">
+        <span>🎵</span>
+        <h2>Spotify</h2>
+        <p>Le lecteur Spotify arrivera ici.</p>
+    </div>
+</section>
+
+<section id="settingsSection" class="page-section">
+    <div class="page-title">
+        <h1>⚙️ Paramètres</h1>
+        <p>Personnalise MyHub</p>
+    </div>
+
+    <div class="page-placeholder">
+        <span>⚙️</span>
+        <h2>Paramètres</h2>
+        <p>Les paramètres seront ajoutés ici.</p>
+    </div>
+</section>
+    </main>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
