@@ -849,3 +849,90 @@ body {
 .page-placeholder p {
     color: #777;
 }
+
+/* ==========================================
+   SPOTIFY
+========================================== */
+
+.spotify-status {
+    font-size: 12px;
+    color: #888;
+}
+
+.spotify-login,
+.spotify-player {
+    margin-top: 20px;
+}
+
+.spotify-login {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.spotify-connect-button {
+    margin-left: auto;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    background: #1db954;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.spotify-connect-button:hover {
+    opacity: 0.9;
+}
+
+.spotify-track {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.spotify-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.spotify-control {
+    border: none;
+    background: #f1f2f4;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.spotify-control:hover {
+    background: #e5e6e8;
+}
+
+.spotify-play {
+    width: 46px;
+    height: 46px;
+    background: #1db954;
+    color: white;
+}
+
+.spotify-play:hover {
+    background: #1ed760;
+}
+
+.spotify-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    font-size: 11px;
+    color: #777;
+}
+
+.spotify-progress input {
+    flex: 1;
+}

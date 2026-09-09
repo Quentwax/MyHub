@@ -338,38 +338,85 @@
 
             <article class="widget music-widget">
 
-                <div class="widget-header">
+    <div class="widget-header">
+        <div>
+            <span class="widget-icon">🎵</span>
+            <h2>Musique</h2>
+        </div>
 
-                    <div>
-                        <span class="widget-icon">🎵</span>
-                        <h2>Musique</h2>
-                    </div>
+        <span id="spotifyStatus" class="spotify-status">
+            Non connecté
+        </span>
+    </div>
 
-                </div>
+<div id="spotifyLogin" class="spotify-login" style="display: flex !important;">
 
-                <div class="music-placeholder">
+    <div class="music-cover">♪</div>
 
-                    <div class="music-cover">
-                        ♪
-                    </div>
+    <div class="music-info">
+        <strong>Spotify</strong>
+        <p>Connecte ton compte Spotify</p>
+    </div>
 
-                    <div class="music-info">
+    <button id="spotifyConnectButton" class="spotify-connect-button" type="button">
+        SE CONNECTER À SPOTIFY
+    </button>
 
-                        <strong>Spotify</strong>
+</div>
 
-                        <p>
-                            Aucun morceau en lecture
-                        </p>
+    <div id="spotifyPlayer" class="spotify-player" style="display: none;">
 
-                    </div>
+        <div class="spotify-track">
 
-                    <button class="play-button">
-                        ▶
-                    </button>
+            <div id="spotifyCover" class="music-cover">
+                ♪
+            </div>
 
-                </div>
+            <div class="music-info">
+                <strong id="spotifyTrackName">
+                    Aucun morceau
+                </strong>
 
-            </article>
+                <p id="spotifyArtist">
+                    Spotify
+                </p>
+            </div>
+
+        </div>
+
+        <div class="spotify-controls">
+
+            <button id="spotifyPrevious" class="spotify-control">
+                ⏮
+            </button>
+
+            <button id="spotifyPlay" class="spotify-control spotify-play">
+                ▶
+            </button>
+
+            <button id="spotifyNext" class="spotify-control">
+                ⏭
+            </button>
+
+        </div>
+
+        <div class="spotify-progress">
+            <span id="spotifyCurrentTime">0:00</span>
+
+            <input
+                id="spotifyProgress"
+                type="range"
+                min="0"
+                max="100"
+                value="0"
+            >
+
+            <span id="spotifyDuration">0:00</span>
+        </div>
+
+    </div>
+
+</article>
 
         </section>
 
@@ -440,8 +487,8 @@
 </section>
     </main>
 
-
-    <script src="script.js"></script>
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
