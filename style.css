@@ -160,7 +160,7 @@ body {
 .topbar-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 18px;
 }
 
 
@@ -349,6 +349,161 @@ body {
 }
 
 
+.jarvis-input-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+.jarvis-input-area input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #e1e4e7;
+    border-radius: 12px;
+    background: #f4f6f8;
+    padding: 12px 14px;
+    font-size: 14px;
+    outline: none;
+}
+
+
+.jarvis-input-area input:focus {
+    border-color: #8ea2b4;
+    box-shadow: 0 0 0 3px rgba(54, 77, 100, 0.08);
+}
+
+
+.jarvis-input-area button {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+
+#jarvisSend {
+    background: #20242a;
+    color: white;
+    font-size: 16px;
+}
+
+
+.voice-toggle {
+    background: #e9edf2;
+    color: #20242a;
+    font-size: 17px;
+}
+
+
+.voice-toggle.listening {
+    background: #ff4d4f;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(255, 77, 79, 0.14);
+    animation: pulse 1.4s infinite;
+}
+
+
+.voice-status {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #7d8791;
+    min-height: 16px;
+    opacity: 0.8;
+    transition: 0.2s ease;
+}
+
+
+.voice-status.active {
+    color: #d93636;
+    font-weight: 700;
+    opacity: 1;
+}
+
+
+.settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 24px;
+    max-width: 520px;
+}
+
+.setting-card {
+    background: white;
+    border: 1px solid #e4e7eb;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.setting-card h2 {
+    margin-bottom: 18px;
+    font-size: 20px;
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.setting-row:last-child {
+    margin-bottom: 0;
+}
+
+.setting-row label {
+    font-weight: 600;
+    color: #2b3037;
+}
+
+.setting-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.setting-control input[type="range"] {
+    width: 220px;
+    accent-color: #20242a;
+}
+
+.setting-control span {
+    min-width: 52px;
+    text-align: right;
+    font-size: 14px;
+    color: #56606b;
+}
+
+.setting-row select {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #dfe3e8;
+    background: #f6f8fa;
+    font-size: 14px;
+    color: #20242a;
+    min-width: 150px;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.06);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+
 /* ==========================================
    CLOCK
 ========================================== */
@@ -358,11 +513,31 @@ body {
 }
 
 
+.clock-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 15px 0 5px;
+}
+
+
 .big-clock {
     font-size: 42px;
     font-weight: 700;
+}
 
-    margin: 15px 0 5px;
+
+.timer-display {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f3f5f7;
+    color: #20242a;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #e2e5e8;
+    white-space: nowrap;
 }
 
 
@@ -392,6 +567,13 @@ body {
 }
 
 
+.weather-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+
 .weather-placeholder strong {
     font-size: 14px;
 }
@@ -401,7 +583,7 @@ body {
     color: #89919a;
     font-size: 12px;
 
-    margin-top: 4px;
+    margin-top: 0;
 }
 
 
@@ -436,6 +618,12 @@ body {
 .task input:checked + span {
     text-decoration: line-through;
     color: #9299a1;
+}
+
+
+.task-empty {
+    color: #8a929b;
+    font-size: 13px;
 }
 
 
@@ -720,29 +908,65 @@ body {
 .jarvis-widget {
     display: flex;
     flex-direction: column;
+
+    /* Taille fixe du widget */
+    height: 420px;
     min-height: 420px;
+    max-height: 420px;
+
+    min-width: 0;
+
+    overflow: hidden;
 }
 
 .jarvis-chat {
-    flex: 1;
+    /* La zone prend tout l'espace disponible */
+    flex: 1 1 auto;
+
+    /* IMPORTANT : empêche le contenu de faire grandir le widget */
+    min-height: 0;
+    height: 0;
+
+    /* Le scroll se fait uniquement ici */
     overflow-y: auto;
+    overflow-x: hidden;
+
     padding: 15px 5px;
+
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
+/* Barre de saisie toujours visible */
+.jarvis-input-area {
+    flex-shrink: 0;
+
+    display: flex;
+    gap: 8px;
+
+    margin-top: 10px;
+}
+
 .message {
     max-width: 80%;
+
     padding: 10px 14px;
+
     border-radius: 12px;
+
     font-size: 14px;
     line-height: 1.4;
+
+    /* Empêche un long message de casser le layout */
+    overflow-wrap: anywhere;
 }
 
 .message strong {
     display: block;
+
     font-size: 12px;
+
     margin-bottom: 4px;
 }
 
@@ -752,28 +976,30 @@ body {
 
 .jarvis-message {
     align-self: flex-start;
+
     background: #f0f2f5;
 }
 
 .user-message {
     align-self: flex-end;
+
     background: #20242a;
     color: white;
 }
 
-.jarvis-input-area {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-}
-
 .jarvis-input-area input {
     flex: 1;
+
     padding: 12px 14px;
+
     border: 1px solid #ddd;
     border-radius: 10px;
+
     outline: none;
+
     font-size: 14px;
+
+    min-width: 0;
 }
 
 .jarvis-input-area input:focus {
@@ -781,13 +1007,20 @@ body {
 }
 
 .jarvis-input-area button {
+    flex-shrink: 0;
+
     width: 45px;
+
     border: none;
     border-radius: 10px;
+
     background: #20242a;
     color: white;
+
     cursor: pointer;
+
     font-size: 18px;
+
     transition: 0.2s;
 }
 

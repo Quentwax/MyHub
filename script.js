@@ -1,4 +1,6 @@
-console.log("🔥 SCRIPT.JS EST BIEN CHARGÉ 🔥");
+/* ==========================================
+   MYHUB - SCRIPT.JS
+========================================== */
 
 
 /* ==========================================
@@ -9,231 +11,2227 @@ function updateClock() {
 
     const now = new Date();
 
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
+    const hours =
+        String(now.getHours()).padStart(2, "0");
 
-    const currentTime = document.getElementById("currentTime");
+    const minutes =
+        String(now.getMinutes()).padStart(2, "0");
+
+    const seconds =
+        String(now.getSeconds()).padStart(2, "0");
+
+
+    // Heure dans le header
+    const currentTime =
+        document.getElementById("currentTime");
 
     if (currentTime) {
-        currentTime.textContent = `${hours}:${minutes}:${seconds}`;
+
+        currentTime.textContent =
+            `${hours}:${minutes}:${seconds}`;
     }
 
-    const currentDate = document.getElementById("currentDate");
+
+    // Date dans le header
+    const currentDate =
+        document.getElementById("currentDate");
 
     if (currentDate) {
-        currentDate.textContent = now.toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric"
-        });
+
+        currentDate.textContent =
+            now.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
     }
 
-    const bigClock = document.getElementById("bigClock");
+
+    // Grande horloge du dashboard
+    const bigClock =
+        document.getElementById("bigClock");
 
     if (bigClock) {
-        bigClock.textContent = `${hours}:${minutes}:${seconds}`;
+
+        bigClock.textContent =
+            `${hours}:${minutes}:${seconds}`;
     }
 
-    const fullDate = document.getElementById("fullDate");
+
+    // Date sous la grande horloge
+    const fullDate =
+        document.getElementById("fullDate");
 
     if (fullDate) {
-        fullDate.textContent = now.toLocaleDateString("fr-FR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric"
-        });
+
+        fullDate.textContent =
+            now.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
     }
 }
 
+
 updateClock();
+
 setInterval(updateClock, 1000);
+
+
+/* ==========================================
+   MINUTEUR LOCAL
+========================================== */
+
+let activeTimerEndTime = null;
+let activeTimerInterval = null;
+
+const timerDisplay =
+    document.getElementById("timerDisplay");
+
+function clearTimer() {
+
+    if (activeTimerInterval) {
+        clearInterval(activeTimerInterval);
+        activeTimerInterval = null;
+    }
+
+    activeTimerEndTime = null;
+
+    if (timerDisplay) {
+        timerDisplay.textContent = "Aucun minuteur";
+    }
+}
+
+function formatTimerRemaining(msLeft) {
+
+    const totalSeconds =
+        Math.max(0, Math.ceil(msLeft / 1000));
+
+    const hours =
+        Math.floor(totalSeconds / 3600);
+
+    const minutes =
+        Math.floor((totalSeconds % 3600) / 60);
+
+    const seconds =
+        totalSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+    }
+
+    if (minutes > 0) {
+        return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+    }
+
+    return `${seconds}s`;
+}
+
+function renderTimer() {
+
+    if (!timerDisplay) {
+        return;
+    }
+
+    if (!activeTimerEndTime) {
+        timerDisplay.textContent = "Aucun minuteur";
+        return;
+    }
+
+    const remainingMs =
+        activeTimerEndTime - Date.now();
+
+    if (remainingMs <= 0) {
+        timerDisplay.textContent = "Minuteur terminé !";
+        clearInterval(activeTimerInterval);
+        activeTimerInterval = null;
+        activeTimerEndTime = null;
+        return;
+    }
+
+    timerDisplay.textContent =
+        `Minuteur : ${formatTimerRemaining(remainingMs)}`;
+}
+
+function startTimerFromSeconds(totalSeconds) {
+
+    if (totalSeconds <= 0) {
+        return false;
+    }
+
+    activeTimerEndTime = Date.now() + (totalSeconds * 1000);
+
+    if (activeTimerInterval) {
+        clearInterval(activeTimerInterval);
+    }
+
+    renderTimer();
+
+    activeTimerInterval =
+        setInterval(renderTimer, 1000);
+
+    return true;
+}
+
+function parseTimerCommand(commandText) {
+
+    const normalized =
+        String(commandText || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[-_]/g, " ")
+            .replace(/[?!.,;:]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+    if (!normalized) {
+        return null;
+    }
+
+    const candidates = [
+        normalized,
+        normalized.replace(/^(?:mets?|met|lance|demarre|démarre|départ|depart)\s+(?:un\s+)?(?:le\s+)?(?:minuteur|timer|chrono)\s*(?:de|a|à|pour)?\s*/, ""),
+        normalized.replace(/^(?:mets?|met|lance|demarre|démarre|départ|depart)\s+(?:un\s+)?/, ""),
+        normalized.replace(/^(?:minuteur|timer|chrono)\s*(?:de|a|à|pour)?\s*/, "")
+    ];
+
+    for (const candidate of candidates) {
+
+        const timerMatch =
+            candidate.match(/^(\d+(?:[.,]\d+)?)\s*(minute|min|minutes|m|seconde|secondes|s|heure|heures|h)?$/);
+
+        if (!timerMatch) {
+            continue;
+        }
+
+        const value =
+            Number(timerMatch[1].replace(",", "."));
+
+        const unit =
+            (timerMatch[2] || "minute").toLowerCase();
+
+        if (!Number.isFinite(value) || value <= 0) {
+            continue;
+        }
+
+        if (["heure", "heures", "h"].includes(unit)) {
+            return value * 3600;
+        }
+
+        if (["minute", "minutes", "min", "m"].includes(unit)) {
+            return value * 60;
+        }
+
+        return value;
+    }
+
+    return null;
+}
+
+renderTimer();
+
+
+/* ==========================================
+   MÉTÉO ELBEUF
+========================================== */
+
+const WEATHER_API_URL =
+    "https://api.open-meteo.com/v1/forecast?latitude=49.286&longitude=1.0&current=temperature_2m,weather_code&timezone=Europe%2FParis";
+
+const weatherCodeMap = {
+    0: "Ciel dégagé",
+    1: "Peu nuageux",
+    2: "Partiellement nuageux",
+    3: "Couvert",
+    45: "Brouillard",
+    48: "Brouillard givrant",
+    51: "Bruine légère",
+    53: "Bruine modérée",
+    55: "Bruine forte",
+    56: "Bruine verglaçante",
+    57: "Bruine verglaçante forte",
+    61: "Pluie légère",
+    63: "Pluie modérée",
+    65: "Pluie forte",
+    66: "Pluie verglaçante",
+    67: "Pluie verglaçante forte",
+    71: "Neige légère",
+    73: "Neige modérée",
+    75: "Neige forte",
+    77: "Grésil",
+    80: "Averses légères",
+    81: "Averses modérées",
+    82: "Averses fortes",
+    85: "Neige légère",
+    86: "Neige forte",
+    95: "Orage",
+    96: "Orage avec grêle",
+    99: "Orage avec grêle fort"
+};
+
+async function loadWeatherElbeuf() {
+
+    const tempElement =
+        document.getElementById("weatherTemperature");
+
+    const textElement =
+        document.getElementById("weatherDescription");
+
+    if (!tempElement || !textElement) {
+        return;
+    }
+
+    try {
+        const response =
+            await fetch(WEATHER_API_URL);
+
+        if (!response.ok) {
+            throw new Error("Météo indisponible");
+        }
+
+        const data = await response.json();
+        const temperature =
+            data?.current?.temperature_2m;
+
+        const weatherCode =
+            data?.current?.weather_code;
+
+        const label =
+            weatherCodeMap[weatherCode] || "Météo variable";
+
+        tempElement.textContent = `${Math.round(temperature)}°`;
+        textElement.textContent = label;
+
+    } catch (error) {
+        console.error("Erreur météo Elbeuf :", error);
+        tempElement.textContent = "--°";
+        textElement.textContent = "Météo indisponible";
+    }
+}
+
+loadWeatherElbeuf();
+
+
+/* ==========================================
+   CHECKLIST TÂCHES
+========================================== */
+
+const TASKS_KEY = "myhub_tasks";
+let taskList = [];
+
+const tasksListElement =
+    document.getElementById("tasksList");
+
+const addTaskButton =
+    document.getElementById("addTaskButton");
+
+function loadTasks() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(TASKS_KEY);
+
+        if (!saved) {
+            taskList = [
+                "Configurer MyHub",
+                "Créer les widgets",
+                "Ajouter JARVIS"
+            ];
+            return;
+        }
+
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed) && parsed.length) {
+            taskList = parsed.filter(item => typeof item === "string" && item.trim() !== "");
+            return;
+        }
+
+    } catch (error) {
+        console.error("Impossible de charger les tâches :", error);
+    }
+
+    taskList = [];
+}
+
+function saveTasks() {
+
+    try {
+        localStorage.setItem(TASKS_KEY, JSON.stringify(taskList));
+    } catch (error) {
+        console.error("Impossible de sauver les tâches :", error);
+    }
+}
+
+function renderTasks() {
+
+    if (!tasksListElement) {
+        return;
+    }
+
+    tasksListElement.innerHTML = "";
+
+    if (taskList.length === 0) {
+
+        const emptyState =
+            document.createElement("p");
+
+        emptyState.className = "task-empty";
+        emptyState.textContent = "Aucune tâche pour le moment.";
+        tasksListElement.appendChild(emptyState);
+        return;
+    }
+
+    taskList.forEach(taskText => {
+
+        const label = document.createElement("label");
+        label.className = "task";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+
+        const span = document.createElement("span");
+        span.textContent = taskText;
+
+        checkbox.addEventListener("change", () => {
+
+            if (checkbox.checked) {
+                taskList = taskList.filter(item => item !== taskText);
+                saveTasks();
+                renderTasks();
+            }
+        });
+
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        tasksListElement.appendChild(label);
+    });
+}
+
+function addTask() {
+
+    const value =
+        window.prompt("Ajouter une tâche :", "");
+
+    if (value === null) {
+        return;
+    }
+
+    const cleaned = value.trim();
+
+    if (!cleaned) {
+        return;
+    }
+
+    taskList.push(cleaned);
+    saveTasks();
+    renderTasks();
+}
+
+loadTasks();
+renderTasks();
+
+if (addTaskButton) {
+    addTaskButton.addEventListener("click", addTask);
+}
 
 
 /* ==========================================
    JARVIS
 ========================================== */
 
-const jarvisInput = document.getElementById("jarvisInput");
-const jarvisSend = document.getElementById("jarvisSend");
-const jarvisChat = document.getElementById("jarvisChat");
+const JARVIS_API_URL =
+    "https://jarvis-api.quentwax76.workers.dev/";
 
+
+const jarvisInput =
+    document.getElementById("jarvisInput");
+
+const jarvisSend =
+    document.getElementById("jarvisSend");
+
+const jarvisChat =
+    document.getElementById("jarvisChat");
+
+const voiceToggleButton =
+    document.getElementById("voiceToggleButton");
+
+const voiceStatus =
+    document.getElementById("voiceStatus");
+
+let voiceRecognition = null;
+let isVoiceListening = false;
+let continuousVoiceMode = false;
+let lastVoiceCommand = "";
+let lastProcessedVoiceText = "";
+
+const JARVIS_SETTINGS_KEY = "jarvis_voice_settings";
+
+const defaultJarvisSettings = {
+    volume: 1.0,
+    voiceProfile: "male"
+};
+
+function clampJarvisVolume(value) {
+    return Math.min(1, Math.max(0, Number(value ?? defaultJarvisSettings.volume) || 0));
+}
+
+let jarvisVoiceSettings = { ...defaultJarvisSettings };
+
+const jarvisVolumeControl = document.getElementById("jarvisVolumeControl");
+const jarvisVolumeValue = document.getElementById("jarvisVolumeValue");
+const jarvisVoicePreset = document.getElementById("jarvisVoicePreset");
+
+function loadJarvisSettings() {
+    try {
+        const saved = localStorage.getItem(JARVIS_SETTINGS_KEY);
+
+        if (!saved) {
+            return;
+        }
+
+        const parsed = JSON.parse(saved);
+
+        jarvisVoiceSettings = {
+            ...defaultJarvisSettings,
+            ...parsed,
+            volume: clampJarvisVolume(parsed.volume ?? defaultJarvisSettings.volume)
+        };
+    } catch (error) {
+        console.warn("Impossible de charger les réglages de voix Jarvis :", error);
+        jarvisVoiceSettings = { ...defaultJarvisSettings };
+    }
+}
+
+function saveJarvisSettings() {
+    try {
+        localStorage.setItem(JARVIS_SETTINGS_KEY, JSON.stringify(jarvisVoiceSettings));
+    } catch (error) {
+        console.warn("Impossible d'enregistrer les réglages de voix Jarvis :", error);
+    }
+}
+
+function renderJarvisSettingsUi() {
+    if (jarvisVolumeControl) {
+        jarvisVolumeControl.value = String(Math.round(clampJarvisVolume(jarvisVoiceSettings.volume) * 100));
+    }
+
+    if (jarvisVolumeValue) {
+        jarvisVolumeValue.textContent = `${Math.round(clampJarvisVolume(jarvisVoiceSettings.volume) * 100)}%`;
+    }
+
+    if (jarvisVoicePreset) {
+        jarvisVoicePreset.value = jarvisVoiceSettings.voiceProfile || "male";
+    }
+}
+
+function updateJarvisVoiceSettings() {
+    if (jarvisVolumeControl) {
+        jarvisVoiceSettings.volume = clampJarvisVolume(Number(jarvisVolumeControl.value) / 100);
+    }
+
+    if (jarvisVoicePreset) {
+        jarvisVoiceSettings.voiceProfile = jarvisVoicePreset.value;
+    }
+
+    renderJarvisSettingsUi();
+    saveJarvisSettings();
+}
+
+function getPreferredJarvisVoice(profile = jarvisVoiceSettings.voiceProfile || "male") {
+    const voices = window.speechSynthesis.getVoices();
+
+    if (profile === "female") {
+        return voices.find(voice => /fr/i.test(voice.lang) && /(femme|female|woman|julie|hortense|sophie|zoe|victoria|charlotte|amelie|alice|claire|marie|jennifer)/i.test(voice.name)) ||
+               voices.find(voice => /fr/i.test(voice.lang) && /(julie|hortense|zoe|sophie|charlotte|amelie|claire|alice)/i.test(voice.name)) ||
+               voices.find(voice => /fr/i.test(voice.lang));
+    }
+
+    if (profile === "neutral") {
+        return voices.find(voice => /fr/i.test(voice.lang)) || voices[0];
+    }
+
+    return voices.find(voice => /fr/i.test(voice.lang) && /(paul|eric|david|mark|michael|steven|jonathan|guy|thomas|alex|nicolas|marc|roger|benjamin|anthony|gustave|henri|charles|louis|olivier)/i.test(voice.name)) ||
+           voices.find(voice => /fr/i.test(voice.lang) && /(paul|eric|david|mark|guy|thomas|alex|nicolas|jean|marc|patrick|louis|olivier)/i.test(voice.name)) ||
+           voices.find(voice => /fr/i.test(voice.lang)) ||
+           voices[0];
+}
+
+function updateVoiceUi() {
+
+    if (voiceToggleButton) {
+        voiceToggleButton.classList.toggle("listening", isVoiceListening || continuousVoiceMode);
+        voiceToggleButton.setAttribute("aria-pressed", String(isVoiceListening || continuousVoiceMode));
+        voiceToggleButton.textContent = isVoiceListening || continuousVoiceMode ? "🔴" : "🎤";
+    }
+
+    if (voiceStatus) {
+        voiceStatus.classList.toggle("active", isVoiceListening || continuousVoiceMode);
+        voiceStatus.textContent = continuousVoiceMode
+            ? "Mode continu actif"
+            : (isVoiceListening ? "J'écoute..." : "Micro inactif");
+    }
+}
+
+function sanitizeSpeechText(text) {
+    return String(text || "")
+        .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+        .replace(/[\u2600-\u27BF]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function speakJarvisReply(text) {
+
+    const cleanText = sanitizeSpeechText(text);
+
+    if (!cleanText || !("speechSynthesis" in window)) {
+        return;
+    }
+
+    const synth = window.speechSynthesis;
+    const profile = jarvisVoiceSettings.voiceProfile || "male";
+    const volume = clampJarvisVolume(jarvisVoiceSettings.volume ?? defaultJarvisSettings.volume);
+
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = "fr-FR";
+    utterance.volume = Math.min(1, Math.max(0, volume));
+
+    if (profile === "female") {
+        utterance.rate = 0.98;
+        utterance.pitch = 1.18;
+    } else if (profile === "neutral") {
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+    } else {
+        utterance.rate = 0.8;
+        utterance.pitch = 0.72;
+    }
+
+    const preferredVoice = getPreferredJarvisVoice(profile);
+
+    if (preferredVoice) {
+        utterance.voice = preferredVoice;
+    }
+
+    synth.speak(utterance);
+}
+
+function stopVoiceRecognition() {
+
+    continuousVoiceMode = false;
+
+    if (voiceRecognition) {
+        try {
+            voiceRecognition.stop();
+        } catch (error) {
+            console.warn("Impossible d'arrêter la reconnaissance vocale :", error);
+        }
+    }
+
+    isVoiceListening = false;
+    updateVoiceUi();
+}
+
+function startVoiceRecognition() {
+
+    const SpeechRecognitionClass =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionClass) {
+        addMessage(
+            "JARVIS",
+            "La reconnaissance vocale n'est pas prise en charge dans ce navigateur. 🎙️",
+            "jarvis"
+        );
+        return;
+    }
+
+    if (isVoiceListening || continuousVoiceMode) {
+        stopVoiceRecognition();
+        return;
+    }
+
+    try {
+        continuousVoiceMode = true;
+        voiceRecognition = new SpeechRecognitionClass();
+        voiceRecognition.lang = "fr-FR";
+        voiceRecognition.continuous = true;
+        voiceRecognition.interimResults = true;
+
+        voiceRecognition.onstart = () => {
+            isVoiceListening = true;
+            updateVoiceUi();
+        };
+
+        voiceRecognition.onresult = (event) => {
+            const finalResult = event.results[event.results.length - 1];
+
+            if (!finalResult || !finalResult.isFinal) {
+                return;
+            }
+
+            const transcript = finalResult[0]?.transcript?.trim() || "";
+
+            if (!transcript) {
+                return;
+            }
+
+            const normalized = normalizeCommandText(transcript);
+
+            if (!normalized) {
+                return;
+            }
+
+            if (normalized === lastProcessedVoiceText) {
+                return;
+            }
+
+            lastProcessedVoiceText = normalized;
+
+            const stopModePatterns = [
+                /^merci\s+jarvis$/,
+                /^jarvis\s+merci$/,
+                /^merci\s+jarvis\s*[,;.!]?$/,
+                /^jarvis\s+merci\s*[,;.!]?$/
+            ];
+
+            if (stopModePatterns.some(pattern => pattern.test(normalized))) {
+                addMessage("JARVIS", "Mode continu arrêté. 🎙️", "jarvis");
+                speakJarvisReply("Mode continu arrêté.");
+                lastProcessedVoiceText = "";
+                stopVoiceRecognition();
+                return;
+            }
+
+            if (/(jarvis.*mode manuel|mode manuel.*jarvis|jarvis.*manuel)/.test(normalized)) {
+                addMessage("JARVIS", "Mode manuel activé. 🎙️", "jarvis");
+                speakJarvisReply("Mode manuel activé.");
+                lastProcessedVoiceText = "";
+                stopVoiceRecognition();
+                return;
+            }
+
+            if (/^merci$/i.test(normalized) || /^merci\s*[,;.!]?$/i.test(normalized)) {
+                lastProcessedVoiceText = "";
+                return;
+            }
+
+            if (/\bjarvis\b/.test(normalized)) {
+                let command = normalized
+                    .replace(/^.*?\bjarvis\b\s*[, ]?/, "")
+                    .trim();
+
+                command = command
+                    .replace(/\s*(merci\s+jarvis|jarvis\s+merci|merci)\s*$/gi, "")
+                    .replace(/\s*(merci\s+jarvis|jarvis\s+merci|merci)\s+/gi, " ")
+                    .replace(/^\s*[, ]+/, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                if (!command || command === "jarvis" || /^merci$/.test(command)) {
+                    return;
+                }
+
+                if (jarvisInput) {
+                    jarvisInput.value = command;
+                    jarvisInput.focus();
+                }
+
+                lastVoiceCommand = command;
+                lastProcessedVoiceText = normalized;
+
+                window.setTimeout(() => {
+                    if (jarvisInput && jarvisInput.value.trim()) {
+                        sendCommand();
+                    }
+                }, 250);
+
+                return;
+            }
+
+            if (!continuousVoiceMode) {
+                if (jarvisInput) {
+                    jarvisInput.value = transcript;
+                    jarvisInput.focus();
+                }
+
+                stopVoiceRecognition();
+
+                window.setTimeout(() => {
+                    if (jarvisInput && jarvisInput.value.trim()) {
+                        sendCommand();
+                    }
+                }, 250);
+            }
+        };
+
+        voiceRecognition.onerror = (event) => {
+            console.warn("Erreur reconnaissance vocale :", event.error);
+
+            if (event.error === "no-speech") {
+                return;
+            }
+
+            const errorMessage =
+                event.error === "not-allowed"
+                    ? "Autorise le micro pour parler avec Jarvis. 🎙️"
+                    : "Je n'ai pas bien entendu. Réessaie. 🎙️";
+
+            addMessage("JARVIS", errorMessage, "jarvis");
+            stopVoiceRecognition();
+        };
+
+        voiceRecognition.onend = () => {
+            isVoiceListening = false;
+
+            if (continuousVoiceMode && voiceRecognition) {
+                try {
+                    voiceRecognition.start();
+                    isVoiceListening = true;
+                } catch (error) {
+                    console.warn("Restart continu impossible :", error);
+                }
+            }
+
+            updateVoiceUi();
+            if (!continuousVoiceMode) {
+                voiceRecognition = null;
+            }
+        };
+
+        voiceRecognition.start();
+
+    } catch (error) {
+        console.error("Impossible de lancer la reconnaissance vocale :", error);
+        addMessage("JARVIS", "Le micro est indisponible pour le moment. 🎙️", "jarvis");
+        stopVoiceRecognition();
+    }
+}
+
+loadJarvisSettings();
+renderJarvisSettingsUi();
+
+if (jarvisVolumeControl) {
+    jarvisVolumeControl.addEventListener("input", updateJarvisVoiceSettings);
+}
+
+if (jarvisVoicePreset) {
+    jarvisVoicePreset.addEventListener("change", updateJarvisVoiceSettings);
+}
+
+updateVoiceUi();
+
+
+/* ==========================================
+   MÉMOIRE JARVIS
+========================================== */
+
+let jarvisHistory = [];
+
+const JARVIS_HISTORY_KEY =
+    "jarvis_history";
+
+
+function loadJarvisHistory() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(
+                JARVIS_HISTORY_KEY
+            );
+
+        if (!saved) {
+            return;
+        }
+
+
+        const parsed =
+            JSON.parse(saved);
+
+
+        if (!Array.isArray(parsed)) {
+            return;
+        }
+
+
+        jarvisHistory =
+            parsed
+                .filter(message =>
+                    message &&
+                    (
+                        message.role === "user" ||
+                        message.role === "model" ||
+                        message.role === "assistant"
+                    ) &&
+                    typeof message.text === "string"
+                )
+                .map(message => ({
+
+                    role:
+                        message.role === "assistant"
+                            ? "model"
+                            : message.role,
+
+                    text:
+                        message.text
+
+                }))
+                .slice(-10);
+
+    } catch (error) {
+
+        console.error(
+            "Impossible de charger la mémoire JARVIS :",
+            error
+        );
+
+        jarvisHistory = [];
+    }
+}
+
+
+function saveJarvisHistory() {
+
+    try {
+
+        localStorage.setItem(
+            JARVIS_HISTORY_KEY,
+            JSON.stringify(
+                jarvisHistory.slice(-10)
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Impossible de sauvegarder la mémoire JARVIS :",
+            error
+        );
+    }
+}
+
+
+function addToJarvisHistory(role, text) {
+
+    jarvisHistory.push({
+
+        role: role,
+        text: text
+
+    });
+
+
+    jarvisHistory =
+        jarvisHistory.slice(-10);
+
+
+    saveJarvisHistory();
+}
+
+
+/* ==========================================
+   AFFICHAGE DES MESSAGES
+========================================== */
 
 function addMessage(sender, text, type) {
 
     if (!jarvisChat) {
-        return;
+        return null;
     }
 
-    const message = document.createElement("div");
+
+    const message =
+        document.createElement("div");
+
 
     message.classList.add("message");
 
+
     if (type === "user") {
-        message.classList.add("user-message");
+
+        message.classList.add(
+            "user-message"
+        );
+
     } else {
-        message.classList.add("jarvis-message");
+
+        message.classList.add(
+            "jarvis-message"
+        );
     }
 
-    message.innerHTML = `
-        <strong>${sender}</strong>
-        <p>${text}</p>
-    `;
+
+    const strong =
+        document.createElement("strong");
+
+
+    strong.textContent =
+        sender;
+
+
+    const paragraph =
+        document.createElement("p");
+
+
+    /*
+       Le texte de JARVIS est inséré
+       comme du texte normal.
+
+       Cela évite qu'une réponse Gemini
+       puisse injecter du HTML ou du JavaScript.
+    */
+
+    paragraph.textContent =
+        String(text);
+
+
+    message.appendChild(strong);
+
+    message.appendChild(paragraph);
 
     jarvisChat.appendChild(message);
-    jarvisChat.scrollTop = jarvisChat.scrollHeight;
+
+
+    // Descendre automatiquement vers le dernier message
+    jarvisChat.scrollTop =
+        jarvisChat.scrollHeight;
+
+
+    return message;
 }
 
 
-function processCommand(command) {
+/* ==========================================
+   NAVIGATION MYHUB
+========================================== */
 
-    const text = command.toLowerCase().trim();
+const sections = {
+
+    home:
+        "homeSection",
+
+    jarvis:
+        "jarvisSection",
+
+    mydlp:
+        "mydlpSection",
+
+    ludotheque:
+        "ludothequeSection",
+
+    music:
+        "musicSection",
+
+    settings:
+        "settingsSection"
+};
 
 
-    /* ==============================
-       BONJOUR
-    ============================== */
+function showSection(sectionId) {
 
-    if (
-        text.includes("bonjour") ||
-        text.includes("salut") ||
-        text.includes("hello")
-    ) {
-        return "Bonjour ! Ravi de te revoir. 👋";
+    const allSections =
+        document.querySelectorAll(
+            ".page-section"
+        );
+
+
+    allSections.forEach(section => {
+
+        section.classList.remove(
+            "active-section"
+        );
+
+    });
+
+
+    const targetSection =
+        document.getElementById(
+            sectionId
+        );
+
+
+    if (targetSection) {
+
+        targetSection.classList.add(
+            "active-section"
+        );
     }
 
 
-    /* ==============================
+    /*
+       Mettre également le bon bouton
+       de la sidebar en actif.
+    */
+
+    const navItems =
+        document.querySelectorAll(
+            ".nav-item"
+        );
+
+
+    navItems.forEach(item => {
+
+        item.classList.remove("active");
+
+
+        const spans =
+            item.querySelectorAll("span");
+
+
+        if (spans.length >= 2) {
+
+            const pageName =
+                spans[1]
+                    .textContent
+                    .trim();
+
+
+            const mappedSection =
+                getSectionFromName(
+                    pageName
+                );
+
+
+            if (
+                mappedSection === sectionId
+            ) {
+
+                item.classList.add("active");
+            }
+        }
+
+    });
+}
+
+
+function getSectionFromName(pageName) {
+
+    const mapping = {
+
+        "Accueil":
+            "homeSection",
+
+        "JARVIS":
+            "jarvisSection",
+
+        "MyDLP":
+            "mydlpSection",
+
+        "Ludothèque":
+            "ludothequeSection",
+
+        "Musique":
+            "musicSection",
+
+        "Paramètres":
+            "settingsSection"
+    };
+
+
+    return mapping[pageName] || null;
+}
+
+
+/* ==========================================
+   EXÉCUTION DES ACTIONS JARVIS
+========================================== */
+
+async function executeJarvisAction(result) {
+
+    if (!result) {
+
+        return (
+            "Je n'ai pas reçu de réponse exploitable. 🤖"
+        );
+    }
+
+
+    const action =
+        result.action || "none";
+
+
+    /* ======================================
+       AUCUNE ACTION
+    ====================================== */
+
+    if (action === "none") {
+
+        return (
+            result.reply ||
+            "D'accord. 🤖"
+        );
+    }
+
+
+    /* ======================================
+       OUVRIR UN SITE
+    ====================================== */
+
+    if (action === "open_website") {
+
+        const websites = {
+
+            youtube:
+                "https://www.youtube.com/",
+
+            mydlp:
+                "https://quentwax.github.io/My-DLP/index.html",
+
+            ludotheque:
+                "https://quentwax.github.io/jeux_societe/",
+
+            github:
+                "https://github.com/quentwax",
+
+            portfolio:
+                "https://jcphotographie276.github.io/portfolio/",
+
+            discord: {
+                app: "discord://",
+                web: "https://discord.com/app"
+            },
+
+            whatsapp: {
+                app: "whatsapp://",
+                web: "https://web.whatsapp.com/"
+            }
+        };
+
+
+        /*
+           IMPORTANT :
+
+           Le nouveau Worker utilise :
+
+           result.target
+
+           et non plus :
+
+           result.site
+        */
+
+        const target =
+            String(result.target || "")
+                .toLowerCase()
+                .trim();
+
+
+        if (!websites[target]) {
+
+            return (
+                "Je ne connais pas ce site. 🤔"
+            );
+        }
+
+
+        const targetUrl =
+            websites[target];
+
+        const finalUrl =
+            typeof targetUrl === "string"
+                ? targetUrl
+                : targetUrl.web;
+
+
+        if (typeof targetUrl !== "string") {
+
+            try {
+
+                window.location.href =
+                    targetUrl.app;
+
+            } catch (error) {
+
+                console.warn(
+                    "Impossible d'ouvrir l'application locale, fallback web :",
+                    error
+                );
+            }
+
+
+            setTimeout(() => {
+
+                window.open(
+                    finalUrl,
+                    "_blank"
+                );
+
+            }, 500);
+
+        } else {
+
+            window.open(
+                finalUrl,
+                "_blank"
+            );
+        }
+
+
+        return (
+            result.reply ||
+            "J'ouvre ça. 🚀"
+        );
+    }
+
+
+    /* ======================================
+       RECHERCHE YOUTUBE
+    ====================================== */
+
+    if (action === "youtube_search") {
+
+        const query =
+            String(result.query || "")
+                .trim();
+
+
+        if (!query) {
+
+            window.open(
+                "https://www.youtube.com/",
+                "_blank"
+            );
+
+
+            return (
+                "J'ouvre YouTube. ▶️"
+            );
+        }
+
+
+        const url =
+            "https://www.youtube.com/results?search_query=" +
+            encodeURIComponent(query);
+
+
+        window.open(
+            url,
+            "_blank"
+        );
+
+
+        return (
+            result.reply ||
+            `Je lance une recherche YouTube pour « ${query} ». ▶️`
+        );
+    }
+
+
+    /* ======================================
        HEURE
-    ============================== */
+    ====================================== */
 
-    if (text.includes("heure")) {
+    if (action === "get_time") {
 
-        const now = new Date();
+        const now =
+            new Date();
 
-        return `Il est actuellement ${now.toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit"
-        })}.`;
+
+        return (
+            result.reply ||
+            `Il est actuellement ${now.toLocaleTimeString(
+                "fr-FR",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            )}. ⏰`
+        );
     }
 
 
-    /* ==============================
-       MYDLP
-    ============================== */
+    /* ======================================
+       DATE
+    ====================================== */
 
-    if (
-        text.includes("mydlp") &&
-        (
-            text.includes("ouvre") ||
-            text.includes("lance") ||
-            text.includes("aller sur") ||
-            text.includes("va sur")
-        )
-    ) {
+    if (action === "get_date") {
 
-        window.open(
-            "https://quentwax.github.io/My-DLP/index.html",
-            "_blank"
+        const now =
+            new Date();
+
+
+        const date =
+            now.toLocaleDateString(
+                "fr-FR",
+                {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                }
+            );
+
+
+        return (
+            result.reply ||
+            `Nous sommes le ${date}. 📅`
+        );
+    }
+
+
+    /* ======================================
+       MINUTEUR
+    ====================================== */
+
+    if (action === "set_timer") {
+
+        const seconds =
+            Number(result.seconds || 0);
+
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+            return "Je n'ai pas pu démarrer le minuteur. ⏱️";
+        }
+
+        const started =
+            startTimerFromSeconds(seconds);
+
+        if (!started) {
+            return "Je n'ai pas pu démarrer le minuteur. ⏱️";
+        }
+
+        return (
+            result.reply ||
+            `Minuteur lancé pour ${formatTimerRemaining(seconds * 1000)}. ⏱️`
+        );
+    }
+
+
+    if (action === "clear_timer") {
+
+        clearTimer();
+
+        return (
+            result.reply ||
+            "J'ai retiré le minuteur. ⏱️"
+        );
+    }
+
+
+    /* ======================================
+       MÉTÉO
+    ====================================== */
+
+    if (action === "get_weather") {
+
+        return (
+            result.reply ||
+            "Je n'ai pas réussi à récupérer la météo. ⚠️"
+        );
+    }
+
+
+    /* ======================================
+       NAVIGATION DANS MYHUB
+    ====================================== */
+
+    if (action === "navigate_section") {
+
+        const section =
+            String(result.section || "")
+                .toLowerCase()
+                .trim();
+
+
+        if (!sections[section]) {
+
+            return (
+                "Je ne connais pas cette section. 🤔"
+            );
+        }
+
+
+        showSection(
+            sections[section]
         );
 
-        return "J'ouvre MyDLP. 🎢";
-    }
+
+        /*
+           Fermer le menu mobile si nécessaire.
+        */
+
+        const sidebar =
+            document.querySelector(
+                ".sidebar"
+            );
 
 
-    /* ==============================
-       LUDOTHÈQUE
-    ============================== */
+        if (sidebar) {
 
-    if (
-        (
-            text.includes("ludothèque") ||
-            text.includes("ludotheque")
-        ) &&
-        (
-            text.includes("ouvre") ||
-            text.includes("lance") ||
-            text.includes("aller sur") ||
-            text.includes("va sur")
-        )
-    ) {
+            sidebar.classList.remove(
+                "open"
+            );
+        }
 
-        window.open(
-            "https://quentwax.github.io/jeux_societe/",
-            "_blank"
+
+        return (
+            result.reply ||
+            "J'ouvre cette section. 🚀"
         );
-
-        return "J'ouvre ta ludothèque. 🎲";
     }
 
 
-    /* ==============================
-       GITHUB
-    ============================== */
+    /* ======================================
+       SPOTIFY
+    ====================================== */
 
-    if (
-        text.includes("github") &&
-        (
-            text.includes("ouvre") ||
-            text.includes("lance") ||
-            text.includes("aller sur") ||
-            text.includes("va sur")
-        )
-    ) {
+    if (action === "spotify_control") {
 
-        window.open(
-            "https://github.com/quentwax",
-            "_blank"
+        const command =
+            String(result.command || "")
+                .toLowerCase()
+                .trim();
+
+
+        if (command === "open") {
+
+            showSection(
+                "musicSection"
+            );
+
+
+            const sidebar =
+                document.querySelector(
+                    ".sidebar"
+                );
+
+
+            if (sidebar) {
+
+                sidebar.classList.remove(
+                    "open"
+                );
+            }
+
+
+            return (
+                result.reply ||
+                "J'ouvre le lecteur Spotify. 🎵"
+            );
+        }
+
+
+        if (!spotifyPlayer) {
+
+            return (
+                "Spotify n'est pas encore connecté à MyHub. 🎵"
+            );
+        }
+
+
+        try {
+
+            if (command === "play_pause") {
+
+                await spotifyPlayer.togglePlay();
+
+                return (
+                    result.reply ||
+                    "Je contrôle la lecture. 🎵"
+                );
+            }
+
+
+            if (command === "next") {
+
+                await spotifyPlayer.nextTrack();
+
+                return (
+                    result.reply ||
+                    "Je passe à la chanson suivante. ⏭️"
+                );
+            }
+
+
+            if (command === "previous") {
+
+                await spotifyPlayer.previousTrack();
+
+                return (
+                    result.reply ||
+                    "Je reviens à la chanson précédente. ⏮️"
+                );
+            }
+
+
+            return (
+                "Je ne connais pas cette commande Spotify. 🤔"
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Erreur commande Spotify JARVIS :",
+                error
+            );
+
+
+            return (
+                "Je n'ai pas réussi à contrôler Spotify. ⚠️"
+            );
+        }
+    }
+
+
+    /* ======================================
+       ACTIONS MYDLP
+    ====================================== */
+
+    if (action === "mydlp_action") {
+
+        const command =
+            String(result.command || "")
+                .toLowerCase()
+                .trim();
+
+
+        /*
+           Pour l'instant, les données MyDLP
+           ne sont pas directement intégrées
+           dans MyHub.
+
+           On ouvre donc MyDLP et on prépare
+           les commandes pour la prochaine étape.
+        */
+
+        if (command === "home") {
+
+            window.open(
+                "https://quentwax.github.io/My-DLP/index.html",
+                "_blank"
+            );
+
+
+            return (
+                result.reply ||
+                "J'ouvre MyDLP. 🎢"
+            );
+        }
+
+
+        if (
+            [
+                "next_stay",
+                "planning",
+                "collections",
+                "checklist",
+                "map",
+                "badges"
+            ].includes(command)
+        ) {
+
+            window.open(
+                "https://quentwax.github.io/My-DLP/index.html",
+                "_blank"
+            );
+
+
+            return (
+                result.reply ||
+                "J'ouvre MyDLP. 🎢"
+            );
+        }
+
+
+        return (
+            "Je ne connais pas encore cette commande MyDLP. 🤔"
         );
-
-        return "J'ouvre GitHub. 💻";
     }
 
 
-    /* ==============================
-       AIDE
-    ============================== */
+    /* ======================================
+       ACTIONS LUDOTHÈQUE
+    ====================================== */
 
-    if (
-        text === "aide" ||
-        text.includes("que peux-tu faire") ||
-        text.includes("que peux tu faire") ||
-        text.includes("commandes")
-    ) {
+    if (action === "ludotheque_action") {
 
-        return `
-            Je peux actuellement :
-            <br><br>
-            • Te donner l'heure 🕐<br>
-            • Ouvrir MyDLP 🎢<br>
-            • Ouvrir ta ludothèque 🎲<br>
-            • Ouvrir GitHub 💻<br>
-            • Répondre à des salutations 👋
-        `;
+        const command =
+            String(result.command || "")
+                .toLowerCase()
+                .trim();
+
+
+        if (command === "open") {
+
+            showSection(
+                "ludothequeSection"
+            );
+
+
+            const sidebar =
+                document.querySelector(
+                    ".sidebar"
+                );
+
+
+            if (sidebar) {
+
+                sidebar.classList.remove(
+                    "open"
+                );
+            }
+
+
+            return (
+                result.reply ||
+                "J'ouvre ta ludothèque. 🎲"
+            );
+        }
+
+
+        if (command === "random_game") {
+
+            showSection(
+                "ludothequeSection"
+            );
+
+
+            /*
+               Si ton bouton de jeu aléatoire
+               existe déjà dans MyHub, on essaie
+               de le déclencher automatiquement.
+
+               Plusieurs IDs sont acceptés pour
+               rester compatible avec différentes
+               versions de ton HTML.
+            */
+
+            const randomButton =
+                document.getElementById(
+                    "randomGameButton"
+                ) ||
+                document.getElementById(
+                    "randomGameBtn"
+                ) ||
+                document.getElementById(
+                    "randomGame"
+                );
+
+
+            if (randomButton) {
+
+                randomButton.click();
+            }
+
+
+            return (
+                result.reply ||
+                "Je vais te trouver un jeu au hasard. 🎲"
+            );
+        }
+
+
+        if (command === "favorites") {
+
+            showSection(
+                "ludothequeSection"
+            );
+
+
+            /*
+               On cherche plusieurs IDs possibles
+               pour le bouton favoris.
+            */
+
+            const favoritesButton =
+                document.getElementById(
+                    "favoritesButton"
+                ) ||
+                document.getElementById(
+                    "favoritesBtn"
+                ) ||
+                document.getElementById(
+                    "favoritesOnly"
+                );
+
+
+            if (favoritesButton) {
+
+                favoritesButton.click();
+            }
+
+
+            return (
+                result.reply ||
+                "J'ouvre tes jeux favoris. ❤️"
+            );
+        }
+
+
+        return (
+            "Je ne connais pas encore cette commande de ludothèque. 🤔"
+        );
     }
 
 
-    /* ==============================
-       COMMANDE INCONNUE
-    ============================== */
+    /* ======================================
+       ACTION INCONNUE
+    ====================================== */
 
-    return "Je n'ai pas encore appris cette commande. 🤔";
+    return (
+        result.reply ||
+        "Je ne sais pas encore exécuter cette action. 🤔"
+    );
 }
 
 
-function sendCommand() {
+/* ==========================================
+   ACTIONS RAPIDES LOCALES
+========================================== */
+
+function normalizeCommandText(command) {
+
+    return String(command || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[-_]/g, " ")
+        .replace(/[?!.,;:]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+
+function getWeatherReply() {
+
+    const temperatureElement = document.getElementById("weatherTemperature");
+    const descriptionElement = document.getElementById("weatherDescription");
+
+    const temperature = temperatureElement ? temperatureElement.textContent.trim() : "--°";
+    const description = descriptionElement ? descriptionElement.textContent.trim() : "météo indisponible";
+
+    if (temperature && temperature !== "--°") {
+        return `Il fait ${temperature} à Elbeuf, ${description.toLowerCase()}.`;
+    }
+
+    return "Je ne peux pas vérifier la météo pour le moment. ⚠️";
+}
+
+function getLocalFallbackReply(command) {
+
+    const normalized = normalizeCommandText(command);
+
+    if (!normalized) {
+        return null;
+    }
+
+    if (/(bonjour|salut|bonsoir|hey|coucou)/.test(normalized)) {
+        return "Bonjour ! Je suis Jarvis, prêt à t'aider.";
+    }
+
+    if (/(qui es tu|qui tu es|presente toi|présente toi|qui est jarvis)/.test(normalized)) {
+        return "Je suis Jarvis, ton assistant personnel, conçu pour t'aider sur MyHub.";
+    }
+
+    if (/(merci|thanks|thank you)/.test(normalized)) {
+        return "Avec plaisir. 😊";
+    }
+
+    if (/(quelle heure|heure qu'il est|il est quelle heure|donne l'heure|heure actuelle)/.test(normalized)) {
+        const now = new Date();
+        return `Il est actuellement ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. ⏰`;
+    }
+
+    if (/(quelle date|date d'aujourd'hui|date du jour|on est quel jour|donne la date)/.test(normalized)) {
+        const now = new Date();
+        const date = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        return `Nous sommes le ${date}. 📅`;
+    }
+
+    if (/(meteo|météo|temps|temperature|pluie|soleil|nuage|orage)/.test(normalized)) {
+        return getWeatherReply();
+    }
+
+    return null;
+}
+
+function getLocalQuickAction(command) {
+
+    const normalized =
+        normalizeCommandText(command);
+
+    if (!normalized) {
+        return null;
+    }
+
+    const websiteAliases = {
+
+        youtube: {
+            target: "youtube",
+            reply: "J'ouvre YouTube. ▶️"
+        },
+
+        mydlp: {
+            target: "mydlp",
+            reply: "J'ouvre MyDLP. 🎢"
+        },
+
+        ludotheque: {
+            target: "ludotheque",
+            reply: "J'ouvre ta ludothèque. 🎲"
+        },
+
+        github: {
+            target: "github",
+            reply: "J'ouvre GitHub. 🧠"
+        },
+
+        portfolio: {
+            target: "portfolio",
+            reply: "J'ouvre ton portfolio. 🖼️"
+        },
+
+        discord: {
+            target: "discord",
+            reply: "J'ouvre Discord. 💬"
+        },
+
+        whatsapp: {
+            target: "whatsapp",
+            reply: "J'ouvre WhatsApp. 💬"
+        }
+    };
+
+    for (const [siteName, siteData] of Object.entries(websiteAliases)) {
+
+        const directPatterns = [
+            siteName,
+            `ouvre ${siteName}`,
+            `ouvrir ${siteName}`,
+            `va sur ${siteName}`,
+            `vas sur ${siteName}`,
+            `aller sur ${siteName}`,
+            `lance ${siteName}`,
+            `go ${siteName}`,
+            `peux tu ouvrir ${siteName}`,
+            `peut tu ouvrir ${siteName}`,
+            `tu peux ouvrir ${siteName}`,
+            `peux tu ${siteName}`,
+            `peut tu ${siteName}`,
+            `tu peux ${siteName}`,
+            `ouvre le site ${siteName}`,
+            `ouvrir le site ${siteName}`,
+            `va sur le site ${siteName}`,
+            `vas sur le site ${siteName}`
+        ];
+
+        if (directPatterns.includes(normalized)) {
+            return {
+                action: "open_website",
+                target: siteData.target,
+                reply: siteData.reply
+            };
+        }
+
+        const genericOpenPattern =
+            /(?:ouvre|ouvrir|va sur|vas sur|aller sur|lance|go|peux tu ouvrir|peut tu ouvrir|tu peux ouvrir|peux tu|peut tu|tu peux)/
+            .test(normalized) &&
+            normalized.includes(siteName);
+
+        if (genericOpenPattern) {
+            return {
+                action: "open_website",
+                target: siteData.target,
+                reply: siteData.reply
+            };
+        }
+    }
+
+    const sectionAliases = {
+        accueil: "home",
+        home: "home",
+        jarvis: "jarvis",
+        mydlp: "mydlp",
+        ludotheque: "ludotheque",
+        musique: "music",
+        music: "music",
+        parametres: "settings",
+        settings: "settings"
+    };
+
+    const sectionMatch = Object.entries(sectionAliases).find(([keyword]) =>
+        normalized === keyword ||
+        normalized.includes(keyword)
+    );
+
+    if (
+        sectionMatch &&
+        /(ouvre|ouvrir|va sur|vas sur|aller sur|affiche|montre|show)/.test(normalized)
+    ) {
+        return {
+            action: "navigate_section",
+            section: sectionMatch[1],
+            reply: "J'ouvre cette section. 🚀"
+        };
+    }
+
+    if (
+        /(quelle heure|heure qu'il est|il est quelle heure|donne l'heure|heure actuelle)/.test(normalized)
+    ) {
+        return {
+            action: "get_time"
+        };
+    }
+
+    if (
+        /(quelle date|date d'aujourd'hui|date du jour|on est quel jour|donne la date)/.test(normalized)
+    ) {
+        return {
+            action: "get_date"
+        };
+    }
+
+    const clearTimerMatch =
+        /(retire|retirer|supprime|supprimer|annule|annuler|arrete|arreter|efface|effacer|stop)\s+(?:le\s+)?(?:minuteur|timer|chrono)/.test(normalized);
+
+    if (clearTimerMatch) {
+        return {
+            action: "clear_timer",
+            reply: "J'ai retiré le minuteur. ⏱️"
+        };
+    }
+
+    const modifyTimerMatch =
+        normalized.match(/(?:modifie|modifier|change|changer|mets|remets|definit|définit|set)\s+(?:le\s+)?(?:minuteur|timer|chrono)\s*(?:a|à|de|pour)?\s*(\d+(?:[.,]\d+)?)\s*(minute|min|minutes|m|seconde|secondes|s|heure|heures|h)?/);
+
+    if (modifyTimerMatch) {
+        const value =
+            Number((modifyTimerMatch[1] || "0").replace(",", "."));
+
+        const unit =
+            (modifyTimerMatch[2] || "minute").toLowerCase();
+
+        let seconds = value;
+
+        if (["heure", "heures", "h"].includes(unit)) {
+            seconds = value * 3600;
+        } else if (["minute", "minutes", "min", "m"].includes(unit)) {
+            seconds = value * 60;
+        }
+
+        if (Number.isFinite(seconds) && seconds > 0) {
+            return {
+                action: "set_timer",
+                seconds,
+                reply: `J'ai mis le minuteur à ${formatTimerRemaining(seconds * 1000)}. ⏱️`
+            };
+        }
+    }
+
+    const timerSeconds = parseTimerCommand(normalized);
+
+    if (timerSeconds !== null) {
+        return {
+            action: "set_timer",
+            seconds: timerSeconds
+        };
+    }
+
+    return null;
+}
+
+
+/* ==========================================
+   COMMUNICATION AVEC LE WORKER GEMINI
+========================================== */
+
+async function processCommand(command) {
+
+    try {
+
+        /*
+           IMPORTANT :
+
+           jarvisHistory contient uniquement
+           les messages PRÉCÉDENTS.
+
+           Le message actuel est envoyé
+           séparément dans "message".
+
+           Cela évite de l'envoyer deux fois
+           à Gemini.
+        */
+
+        const historyToSend =
+            jarvisHistory
+                .slice(-10)
+                .map(message => ({
+
+                    role:
+                        message.role === "assistant"
+                            ? "model"
+                            : message.role,
+
+                    text:
+                        message.text
+
+                }));
+
+
+        const response =
+            await fetch(
+                JARVIS_API_URL,
+                {
+
+                    method: "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            message:
+                                command,
+
+                            history:
+                                historyToSend
+
+                        })
+                }
+            );
+
+
+        /* ======================================
+           ERREUR WORKER
+        ====================================== */
+
+        if (!response.ok) {
+
+            const errorText =
+                await response.text();
+
+
+            console.error(
+                "========== JARVIS ERREUR =========="
+            );
+
+            console.error(
+                "Status :",
+                response.status
+            );
+
+            console.error(
+                "Réponse Worker :",
+                errorText
+            );
+
+            console.error(
+                "===================================="
+            );
+
+
+            let errorMessage =
+                `Mon cerveau répond avec une erreur (${response.status}). ⚠️`;
+
+
+            /*
+               Essayer d'afficher le détail du Worker
+               lorsque celui-ci renvoie du JSON.
+            */
+
+            try {
+
+                const errorData =
+                    JSON.parse(errorText);
+
+
+                if (errorData.details) {
+
+                    console.error(
+                        "Détail Gemini :",
+                        errorData.details
+                    );
+                }
+
+            } catch {
+
+                // La réponse n'était pas du JSON.
+            }
+
+
+            return {
+
+                action:
+                    "none",
+
+                reply:
+                    errorMessage
+            };
+        }
+
+
+        /* ======================================
+           LECTURE JSON
+        ====================================== */
+
+        const result =
+            await response.json();
+
+
+        console.log(
+            "Réponse JARVIS :",
+            result
+        );
+
+
+        return result;
+
+
+    } catch (error) {
+
+        console.error(
+            "Erreur communication JARVIS :",
+            error
+        );
+
+
+        return {
+
+            action:
+                "none",
+
+            reply:
+                "Une erreur est survenue pendant la communication avec mon serveur. ⚠️"
+        };
+    }
+}
+
+
+/* ==========================================
+   ENVOI D'UNE COMMANDE
+========================================== */
+
+async function sendCommand() {
 
     if (!jarvisInput) {
         return;
     }
 
-    const command = jarvisInput.value.trim();
+
+    const command =
+        jarvisInput.value.trim();
+
 
     if (command === "") {
         return;
     }
+
+
+    /* ======================================
+       AFFICHER LE MESSAGE UTILISATEUR
+    ====================================== */
 
     addMessage(
         "Vous",
@@ -241,21 +2239,257 @@ function sendCommand() {
         "user"
     );
 
+
+    /*
+       IMPORTANT :
+
+       On vide le champ et on désactive
+       le bouton avant l'appel réseau.
+    */
+
     jarvisInput.value = "";
 
-    const response = processCommand(command);
 
-    setTimeout(() => {
+    if (jarvisSend) {
+
+        jarvisSend.disabled = true;
+    }
+
+
+    const localFallbackReply = getLocalFallbackReply(command);
+
+    if (localFallbackReply) {
 
         addMessage(
             "JARVIS",
-            response,
+            localFallbackReply,
             "jarvis"
         );
 
-    }, 300);
+        speakJarvisReply(localFallbackReply);
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+        addToJarvisHistory(
+            "model",
+            localFallbackReply
+        );
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
+
+    const localQuickAction =
+        getLocalQuickAction(command);
+
+
+    if (localQuickAction) {
+
+        const reply =
+            await executeJarvisAction(
+                localQuickAction
+            );
+
+
+        addMessage(
+            "JARVIS",
+            reply,
+            "jarvis"
+        );
+
+        speakJarvisReply(reply);
+
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            reply
+        );
+
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+
+        return;
+    }
+
+
+    /* ======================================
+       MESSAGE TEMPORAIRE
+    ====================================== */
+
+    const thinkingMessage =
+        addMessage(
+            "JARVIS",
+            "Je réfléchis... 🤖",
+            "jarvis"
+        );
+
+
+    try {
+
+        /* ==================================
+           ENVOYER LA COMMANDE
+        ================================== */
+
+        let result =
+            await processCommand(
+                command
+            );
+
+
+        /* ==================================
+           SUPPRIMER "JE RÉFLÉCHIS..."
+        ================================== */
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+        }
+
+
+        const localFallbackReply = getLocalFallbackReply(command);
+
+        if (
+            result &&
+            result.action === "none" &&
+            typeof result.reply === "string" &&
+            /erreur|error|quota|indisponible|impossible/i.test(result.reply) &&
+            localFallbackReply
+        ) {
+            result = {
+                action: "none",
+                reply: localFallbackReply
+            };
+        }
+
+
+        /* ==================================
+           EXÉCUTER L'ACTION
+        ================================== */
+
+        const reply =
+            await executeJarvisAction(
+                result
+            );
+
+
+        /* ==================================
+           AFFICHER LA RÉPONSE
+        ================================== */
+
+        addMessage(
+            "JARVIS",
+            reply,
+            "jarvis"
+        );
+
+        speakJarvisReply(reply);
+
+
+        /* ==================================
+           MÉMOIRE
+
+           On ajoute les deux messages
+           APRÈS l'appel au Worker.
+
+           Ainsi Gemini reçoit uniquement
+           les messages précédents.
+        ================================== */
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            reply
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erreur pendant l'exécution de JARVIS :",
+            error
+        );
+
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+        }
+
+
+        const errorReply =
+            "Désolé, quelque chose s'est mal passé. ⚠️";
+
+
+        addMessage(
+            "JARVIS",
+            errorReply,
+            "jarvis"
+        );
+
+        speakJarvisReply(errorReply);
+
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            errorReply
+        );
+
+
+    } finally {
+
+        if (jarvisSend) {
+
+            jarvisSend.disabled = false;
+        }
+
+
+        if (jarvisInput) {
+
+            jarvisInput.focus();
+        }
+    }
 }
 
+
+/* ==========================================
+   BOUTON ENVOYER
+========================================== */
 
 if (jarvisSend) {
 
@@ -265,6 +2499,17 @@ if (jarvisSend) {
     );
 }
 
+if (voiceToggleButton) {
+    voiceToggleButton.addEventListener(
+        "click",
+        startVoiceRecognition
+    );
+}
+
+
+/* ==========================================
+   TOUCHE ENTRÉE
+========================================== */
 
 if (jarvisInput) {
 
@@ -275,102 +2520,100 @@ if (jarvisInput) {
             if (event.key === "Enter") {
 
                 event.preventDefault();
+
                 sendCommand();
-
             }
-
         }
     );
 }
 
 
 /* ==========================================
-   NAVIGATION ENTRE LES PAGES
+   NAVIGATION SIDEBAR
 ========================================== */
 
-const navItems = document.querySelectorAll(".nav-item");
-
-const sections = {
-
-    "Accueil": "homeSection",
-    "JARVIS": "jarvisSection",
-    "MyDLP": "mydlpSection",
-    "Ludothèque": "ludothequeSection",
-    "Musique": "musicSection",
-    "Paramètres": "settingsSection"
-
-};
-
-
-function showSection(sectionId) {
-
-    const allSections =
-        document.querySelectorAll(".page-section");
-
-    allSections.forEach(section => {
-
-        section.classList.remove(
-            "active-section"
-        );
-
-    });
-
-    const targetSection =
-        document.getElementById(sectionId);
-
-    if (targetSection) {
-
-        targetSection.classList.add(
-            "active-section"
-        );
-
-    }
-}
+const navItems =
+    document.querySelectorAll(
+        ".nav-item"
+    );
 
 
 const sidebar =
-    document.querySelector(".sidebar");
+    document.querySelector(
+        ".sidebar"
+    );
 
 
 navItems.forEach(item => {
 
-    item.addEventListener("click", () => {
+    item.addEventListener(
+        "click",
+        () => {
 
-        navItems.forEach(nav => {
+            /* ==============================
+               ACTIVE
+            ============================== */
 
-            nav.classList.remove("active");
+            navItems.forEach(nav => {
 
-        });
+                nav.classList.remove(
+                    "active"
+                );
+            });
 
-        item.classList.add("active");
 
-        const spans =
-            item.querySelectorAll("span");
+            item.classList.add(
+                "active"
+            );
 
-        if (spans.length < 2) {
-            return;
+
+            /* ==============================
+               RÉCUPÉRER LE NOM
+            ============================== */
+
+            const spans =
+                item.querySelectorAll(
+                    "span"
+                );
+
+
+            if (spans.length < 2) {
+                return;
+            }
+
+
+            const pageName =
+                spans[1]
+                    .textContent
+                    .trim();
+
+
+            const sectionId =
+                getSectionFromName(
+                    pageName
+                );
+
+
+            if (sectionId) {
+
+                showSection(
+                    sectionId
+                );
+            }
+
+
+            /* ==============================
+               MENU MOBILE
+            ============================== */
+
+            if (sidebar) {
+
+                sidebar.classList.remove(
+                    "open"
+                );
+            }
         }
-
-        const pageName =
-            spans[1].textContent.trim();
-
-        const sectionId =
-            sections[pageName];
-
-        if (sectionId) {
-
-            showSection(sectionId);
-
-        }
-
-        if (sidebar) {
-
-            sidebar.classList.remove("open");
-
-        }
-
-    });
-
+    );
 });
 
 
@@ -379,7 +2622,9 @@ navItems.forEach(item => {
 ========================================== */
 
 const mobileMenu =
-    document.getElementById("mobileMenu");
+    document.getElementById(
+        "mobileMenu"
+    );
 
 
 if (mobileMenu && sidebar) {
@@ -388,11 +2633,11 @@ if (mobileMenu && sidebar) {
         "click",
         () => {
 
-            sidebar.classList.toggle("open");
-
+            sidebar.classList.toggle(
+                "open"
+            );
         }
     );
-
 }
 
 
@@ -404,23 +2649,22 @@ const SPOTIFY_CLIENT_ID =
     "f921c0f743e04c6eafd0ebb1b2e79227";
 
 
-/*
-    IMPORTANT :
-
-    Cette URL doit être exactement la même
-    que celle enregistrée dans Spotify Developer.
-*/
-
 const SPOTIFY_REDIRECT_URI =
     "https://quentwax.github.io/MyHub/";
 
 
 const SPOTIFY_SCOPES = [
+
     "streaming",
+
     "user-read-email",
+
     "user-read-private",
+
     "user-read-playback-state",
+
     "user-modify-playback-state"
+
 ].join(" ");
 
 
@@ -429,54 +2673,19 @@ const SPOTIFY_SCOPES = [
 ========================================== */
 
 let spotifyPlayer = null;
+
 let spotifyDeviceId = null;
+
 let spotifyAccessToken =
-    localStorage.getItem("spotify_access_token");
+    localStorage.getItem(
+        "spotify_access_token"
+    );
 
 let spotifyCurrentState = null;
 
 
 /* ==========================================
-   ÉLÉMENTS HTML SPOTIFY
-========================================== */
-
-const spotifyLogin =
-    document.getElementById("spotifyLogin");
-
-const spotifyPlayerElement =
-    document.getElementById("spotifyPlayer");
-
-const spotifyStatus =
-    document.getElementById("spotifyStatus");
-
-const spotifyConnectButton =
-    document.getElementById("spotifyConnectButton");
-
-const spotifyPlay =
-    document.getElementById("spotifyPlay");
-
-const spotifyPrevious =
-    document.getElementById("spotifyPrevious");
-
-const spotifyNext =
-    document.getElementById("spotifyNext");
-
-const spotifyProgress =
-    document.getElementById("spotifyProgress");
-
-
-console.log(
-    "🎵 Éléments Spotify :",
-    {
-        login: spotifyLogin,
-        player: spotifyPlayerElement,
-        button: spotifyConnectButton
-    }
-);
-
-
-/* ==========================================
-   PKCE
+   GÉNÉRER UNE CHAÎNE ALÉATOIRE
 ========================================== */
 
 function generateRandomString(length) {
@@ -484,32 +2693,50 @@ function generateRandomString(length) {
     const characters =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
+
     let result = "";
 
-    for (let i = 0; i < length; i++) {
 
-        result += characters.charAt(
-            Math.floor(
-                Math.random() * characters.length
-            )
-        );
+    for (
+        let i = 0;
+        i < length;
+        i++
+    ) {
 
+        result +=
+            characters.charAt(
+                Math.floor(
+                    Math.random() *
+                    characters.length
+                )
+            );
     }
+
 
     return result;
 }
 
 
-async function generateCodeChallenge(codeVerifier) {
+/* ==========================================
+   CRÉER LE CODE CHALLENGE PKCE
+========================================== */
+
+async function generateCodeChallenge(
+    codeVerifier
+) {
 
     const data =
-        new TextEncoder().encode(codeVerifier);
+        new TextEncoder().encode(
+            codeVerifier
+        );
+
 
     const digest =
         await crypto.subtle.digest(
             "SHA-256",
             data
         );
+
 
     return btoa(
         String.fromCharCode(
@@ -528,32 +2755,23 @@ async function generateCodeChallenge(codeVerifier) {
 
 async function connectSpotify() {
 
-    console.log(
-        "🎵 Connexion Spotify..."
-    );
-
     try {
 
         const codeVerifier =
             generateRandomString(128);
+
 
         localStorage.setItem(
             "spotify_code_verifier",
             codeVerifier
         );
 
+
         const codeChallenge =
             await generateCodeChallenge(
                 codeVerifier
             );
 
-        const state =
-            generateRandomString(32);
-
-        localStorage.setItem(
-            "spotify_auth_state",
-            state
-        );
 
         const params =
             new URLSearchParams({
@@ -570,9 +2788,6 @@ async function connectSpotify() {
                 scope:
                     SPOTIFY_SCOPES,
 
-                state:
-                    state,
-
                 code_challenge_method:
                     "S256",
 
@@ -581,180 +2796,19 @@ async function connectSpotify() {
 
             });
 
-        const authorizationURL =
+
+        window.location.href =
             "https://accounts.spotify.com/authorize?" +
             params.toString();
 
-        console.log(
-            "➡️ Redirection Spotify :",
-            authorizationURL
-        );
-
-        window.location.href =
-            authorizationURL;
 
     } catch (error) {
 
         console.error(
-            "❌ Erreur connexion Spotify :",
+            "Erreur connexion Spotify :",
             error
         );
-
     }
-}
-
-
-/* ==========================================
-   RAFRAÎCHIR LE TOKEN
-========================================== */
-
-async function refreshSpotifyToken() {
-
-    const refreshToken =
-        localStorage.getItem(
-            "spotify_refresh_token"
-        );
-
-    if (!refreshToken) {
-
-        console.log(
-            "ℹ️ Aucun refresh token Spotify."
-        );
-
-        return false;
-    }
-
-    try {
-
-        console.log(
-            "🔄 Rafraîchissement du token Spotify..."
-        );
-
-        const response =
-            await fetch(
-                "https://accounts.spotify.com/api/token",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/x-www-form-urlencoded"
-                    },
-
-                    body:
-                        new URLSearchParams({
-
-                            grant_type:
-                                "refresh_token",
-
-                            refresh_token:
-                                refreshToken,
-
-                            client_id:
-                                SPOTIFY_CLIENT_ID
-
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-
-            console.error(
-                "❌ Impossible de rafraîchir le token :",
-                data
-            );
-
-            return false;
-        }
-
-        spotifyAccessToken =
-            data.access_token;
-
-        localStorage.setItem(
-            "spotify_access_token",
-            data.access_token
-        );
-
-        if (data.refresh_token) {
-
-            localStorage.setItem(
-                "spotify_refresh_token",
-                data.refresh_token
-            );
-
-        }
-
-        if (data.expires_in) {
-
-            localStorage.setItem(
-                "spotify_token_expires_at",
-                String(
-                    Date.now() +
-                    data.expires_in * 1000
-                )
-            );
-
-        }
-
-        console.log(
-            "✅ Token Spotify rafraîchi."
-        );
-
-        return true;
-
-    } catch (error) {
-
-        console.error(
-            "❌ Erreur refresh Spotify :",
-            error
-        );
-
-        return false;
-    }
-}
-
-
-/* ==========================================
-   TOKEN VALIDE
-========================================== */
-
-async function ensureSpotifyToken() {
-
-    const expiresAt =
-        Number(
-            localStorage.getItem(
-                "spotify_token_expires_at"
-            )
-        );
-
-    /*
-        On considère le token expiré
-        60 secondes avant sa vraie expiration.
-    */
-
-    if (
-        spotifyAccessToken &&
-        expiresAt &&
-        Date.now() < expiresAt - 60000
-    ) {
-
-        return true;
-    }
-
-    if (spotifyAccessToken && !expiresAt) {
-
-        /*
-            Ancien token provenant de l'ancienne version.
-            On tente d'abord de l'utiliser.
-        */
-
-        return true;
-    }
-
-    return await refreshSpotifyToken();
 }
 
 
@@ -764,33 +2818,28 @@ async function ensureSpotifyToken() {
 
 async function handleSpotifyCallback() {
 
-    console.log(
-        "🔎 Vérification du callback Spotify..."
-    );
-
     const params =
         new URLSearchParams(
             window.location.search
         );
 
+
     const code =
         params.get("code");
+
 
     const error =
         params.get("error");
 
-    const returnedState =
-        params.get("state");
 
-
-    /* ==============================
-       ERREUR
-    ============================== */
+    /* ======================================
+       REFUS
+    ====================================== */
 
     if (error) {
 
         console.error(
-            "❌ Connexion Spotify refusée :",
+            "Connexion Spotify refusée :",
             error
         );
 
@@ -798,95 +2847,54 @@ async function handleSpotifyCallback() {
     }
 
 
-    /* ==============================
+    /* ======================================
        PAS DE CODE
-    ============================== */
+    ====================================== */
 
     if (!code) {
 
-        const hasToken =
-            await ensureSpotifyToken();
-
-        if (hasToken) {
-
-            console.log(
-                "🔑 Token Spotify disponible."
-            );
+        if (spotifyAccessToken) {
 
             initializeSpotifyPlayer(
                 spotifyAccessToken
             );
-
-        } else {
-
-            console.log(
-                "ℹ️ Aucun compte Spotify connecté."
-            );
-
         }
 
         return;
     }
 
 
-    /* ==============================
-       VÉRIFICATION STATE
-    ============================== */
-
-    const savedState =
-        localStorage.getItem(
-            "spotify_auth_state"
-        );
-
-    if (
-        !savedState ||
-        returnedState !== savedState
-    ) {
-
-        console.error(
-            "❌ Erreur de sécurité : state Spotify invalide."
-        );
-
-        return;
-    }
-
-
-    /* ==============================
-       CODE VERIFIER
-    ============================== */
+    /* ======================================
+       VERIFIER
+    ====================================== */
 
     const codeVerifier =
         localStorage.getItem(
             "spotify_code_verifier"
         );
 
+
     if (!codeVerifier) {
 
         console.error(
-            "❌ Code verifier Spotify introuvable."
+            "Code verifier Spotify introuvable."
         );
 
         return;
     }
 
 
-    /* ==============================
-       TOKEN
-    ============================== */
-
     try {
-
-        console.log(
-            "🔄 Récupération du token Spotify..."
-        );
 
         const response =
             await fetch(
                 "https://accounts.spotify.com/api/token",
                 {
+
                     method: "POST",
 
                     headers: {
+
                         "Content-Type":
                             "application/x-www-form-urlencoded"
                     },
@@ -908,18 +2916,19 @@ async function handleSpotifyCallback() {
 
                             code_verifier:
                                 codeVerifier
-
                         })
                 }
             );
 
+
         const data =
             await response.json();
+
 
         if (!response.ok) {
 
             console.error(
-                "❌ Erreur Spotify :",
+                "Erreur Spotify :",
                 data
             );
 
@@ -927,22 +2936,18 @@ async function handleSpotifyCallback() {
         }
 
 
-        console.log(
-            "✅ Connexion Spotify réussie !"
-        );
-
-
-        /* ==============================
-           SAUVEGARDE TOKEN
-        ============================== */
-
-        spotifyAccessToken =
-            data.access_token;
+        /* ==================================
+           SAUVEGARDER TOKEN
+        ================================== */
 
         localStorage.setItem(
             "spotify_access_token",
             data.access_token
         );
+
+
+        spotifyAccessToken =
+            data.access_token;
 
 
         if (data.refresh_token) {
@@ -951,20 +2956,6 @@ async function handleSpotifyCallback() {
                 "spotify_refresh_token",
                 data.refresh_token
             );
-
-        }
-
-
-        if (data.expires_in) {
-
-            localStorage.setItem(
-                "spotify_token_expires_at",
-                String(
-                    Date.now() +
-                    data.expires_in * 1000
-                )
-            );
-
         }
 
 
@@ -972,64 +2963,57 @@ async function handleSpotifyCallback() {
             "spotify_code_verifier"
         );
 
-        localStorage.removeItem(
-            "spotify_auth_state"
-        );
 
-
-        /* ==============================
-           NETTOYAGE URL
-        ============================== */
+        /* ==================================
+           NETTOYER URL
+        ================================== */
 
         window.history.replaceState(
             {},
             document.title,
-            SPOTIFY_REDIRECT_URI
+            window.location.pathname
         );
 
 
-        /* ==============================
-           INITIALISATION
-        ============================== */
+        console.log(
+            "Connexion Spotify réussie !"
+        );
+
 
         initializeSpotifyPlayer(
-            spotifyAccessToken
+            data.access_token
         );
+
 
     } catch (error) {
 
         console.error(
-            "❌ Impossible de contacter Spotify :",
+            "Impossible de contacter Spotify :",
             error
         );
-
     }
 }
 
 
 /* ==========================================
-   INITIALISATION PLAYER
+   INITIALISATION LECTEUR SPOTIFY
 ========================================== */
 
-function initializeSpotifyPlayer(accessToken) {
-
-    if (!accessToken) {
-
-        console.error(
-            "❌ Aucun token Spotify."
-        );
-
-        return;
-    }
+function initializeSpotifyPlayer(
+    accessToken
+) {
 
     spotifyAccessToken =
         accessToken;
 
 
-    if (typeof Spotify === "undefined") {
+    if (
+        typeof Spotify ===
+        "undefined"
+    ) {
 
         console.error(
-            "❌ Le SDK Spotify n'est pas disponible."
+            "Le SDK Spotify n'est pas encore chargé."
         );
 
         return;
@@ -1039,16 +3023,11 @@ function initializeSpotifyPlayer(accessToken) {
     if (spotifyPlayer) {
 
         console.log(
-            "ℹ️ Player Spotify déjà initialisé."
+            "Le lecteur Spotify existe déjà."
         );
 
         return;
     }
-
-
-    console.log(
-        "🎵 Initialisation du lecteur Spotify..."
-    );
 
 
     spotifyPlayer =
@@ -1058,19 +3037,11 @@ function initializeSpotifyPlayer(accessToken) {
                 "MyHub",
 
             getOAuthToken:
-                async callback => {
+                callback => {
 
-                    const valid =
-                        await ensureSpotifyToken();
-
-                    if (valid) {
-
-                        callback(
-                            spotifyAccessToken
-                        );
-
-                    }
-
+                    callback(
+                        spotifyAccessToken
+                    );
                 },
 
             volume:
@@ -1078,201 +3049,226 @@ function initializeSpotifyPlayer(accessToken) {
         });
 
 
-    /* ==========================================
-       PLAYER PRÊT
-    ========================================== */
+    /* ======================================
+       READY
+    ====================================== */
 
     spotifyPlayer.addListener(
         "ready",
-        async ({ device_id }) => {
+        ({ device_id }) => {
 
             spotifyDeviceId =
                 device_id;
 
-            console.log(
-                "🎵 MyHub Spotify prêt !"
-            );
 
             console.log(
-                "Device ID :",
+                "MyHub Spotify prêt :",
                 device_id
             );
 
 
-            if (spotifyLogin) {
-
-                spotifyLogin.style.display =
-                    "none";
-
-            }
-
-
-            if (spotifyPlayerElement) {
-
-                spotifyPlayerElement.style.display =
-                    "block";
-
-            }
-
-
-            if (spotifyStatus) {
-
-                spotifyStatus.textContent =
-                    "Connecté";
-
-            }
-
-
-            await transferPlaybackToMyHub();
-
-            await updateSpotifyState();
-
-        }
-    );
-
-
-    /* ==========================================
-       MORCEAU CHANGÉ
-    ========================================== */
-
-    spotifyPlayer.addListener(
-        "player_state_changed",
-        state => {
-
-            if (!state) {
-
-                console.log(
-                    "ℹ️ Aucun morceau en cours."
+            const login =
+                document.getElementById(
+                    "spotifyLogin"
                 );
 
-                return;
+
+            const player =
+                document.getElementById(
+                    "spotifyPlayer"
+                );
+
+
+            const status =
+                document.getElementById(
+                    "spotifyStatus"
+                );
+
+
+            if (login) {
+
+                login.style.display =
+                    "none";
             }
 
-            spotifyCurrentState =
-                state;
 
-            updateSpotifyTrack(state);
+            if (player) {
 
-            updateSpotifyProgress(state);
+                player.style.display =
+                    "block";
+            }
 
-            updateSpotifyPlayButton(state);
 
+            if (status) {
+
+                status.textContent =
+                    "Connecté";
+            }
+
+
+            transferPlaybackToMyHub();
+
+            getSpotifyCurrentlyPlaying();
         }
     );
 
 
-    /* ==========================================
+    /* ======================================
        NOT READY
-    ========================================== */
+    ====================================== */
 
     spotifyPlayer.addListener(
         "not_ready",
         ({ device_id }) => {
 
             console.log(
-                "⚠️ Spotify déconnecté :",
+                "Spotify déconnecté :",
                 device_id
             );
-
         }
     );
 
 
-    /* ==========================================
-       ERREURS
-    ========================================== */
+    /* ======================================
+       INITIALIZATION ERROR
+    ====================================== */
 
     spotifyPlayer.addListener(
         "initialization_error",
         ({ message }) => {
 
             console.error(
-                "❌ Erreur initialisation Spotify :",
+                "Erreur d'initialisation Spotify :",
                 message
             );
-
         }
     );
 
+
+    /* ======================================
+       AUTHENTICATION ERROR
+    ====================================== */
 
     spotifyPlayer.addListener(
         "authentication_error",
         ({ message }) => {
 
             console.error(
-                "❌ Erreur authentification Spotify :",
+                "Erreur d'authentification Spotify :",
                 message
             );
-
         }
     );
 
+
+    /* ======================================
+       ACCOUNT ERROR
+    ====================================== */
 
     spotifyPlayer.addListener(
         "account_error",
         ({ message }) => {
 
             console.error(
-                "❌ Erreur compte Spotify :",
+                "Erreur de compte Spotify :",
                 message
             );
-
         }
     );
 
+
+    /* ======================================
+       PLAYBACK ERROR
+    ====================================== */
 
     spotifyPlayer.addListener(
         "playback_error",
         ({ message }) => {
 
             console.error(
-                "❌ Erreur lecture Spotify :",
+                "Erreur de lecture Spotify :",
                 message
             );
-
         }
     );
 
+
+    /* ======================================
+       AUTOPLAY
+    ====================================== */
 
     spotifyPlayer.addListener(
         "autoplay_failed",
         () => {
 
-            console.log(
-                "⚠️ Lecture automatique bloquée par le navigateur."
+            console.warn(
+                "Spotify a bloqué l'autoplay."
             );
-
         }
     );
 
 
-    /* ==========================================
-       CONNEXION
-    ========================================== */
+    /* ======================================
+       CHANGEMENT DE MORCEAU
+    ====================================== */
 
-    spotifyPlayer
-        .connect()
+    spotifyPlayer.addListener(
+        "player_state_changed",
+        state => {
+
+            if (!state) {
+                return;
+            }
+
+
+            spotifyCurrentState =
+                state;
+
+
+            updateSpotifyTrack(
+                state
+            );
+
+
+            updateSpotifyProgress(
+                state
+            );
+
+
+            updateSpotifyPlayButton(
+                state
+            );
+        }
+    );
+
+
+    /* ======================================
+       CONNECTER PLAYER
+    ====================================== */
+
+    spotifyPlayer.connect()
+
         .then(success => {
 
             console.log(
-                "🔌 Connexion du player Spotify :",
+                "Connexion du lecteur Spotify :",
                 success
             );
 
         })
+
         .catch(error => {
 
             console.error(
-                "❌ Impossible de connecter le player Spotify :",
+                "Erreur connexion lecteur Spotify :",
                 error
             );
-
         });
 }
 
 
 /* ==========================================
-   TRANSFERT VERS MYHUB
+   TRANSFÉRER LA LECTURE À MYHUB
 ========================================== */
 
 async function transferPlaybackToMyHub() {
@@ -1286,17 +3282,13 @@ async function transferPlaybackToMyHub() {
     }
 
 
-    console.log(
-        "🔄 Transfert de la lecture vers MyHub..."
-    );
-
-
     try {
 
         const response =
             await fetch(
                 "https://api.spotify.com/v1/me/player",
                 {
+
                     method: "PUT",
 
                     headers: {
@@ -1306,34 +3298,26 @@ async function transferPlaybackToMyHub() {
 
                         "Content-Type":
                             "application/json"
-
                     },
 
                     body:
                         JSON.stringify({
 
-                            device_ids: [
-                                spotifyDeviceId
-                            ],
+                            device_ids:
+                                [spotifyDeviceId],
 
-                            play: false
+                            play:
+                                false
 
                         })
                 }
             );
 
 
-        if (
-            !response.ok &&
-            response.status !== 204
-        ) {
-
-            const error =
-                await response.text();
+        if (!response.ok) {
 
             console.error(
-                "❌ Erreur transfert Spotify :",
-                error
+                "Impossible de transférer Spotify vers MyHub."
             );
 
             return;
@@ -1341,70 +3325,203 @@ async function transferPlaybackToMyHub() {
 
 
         console.log(
-            "✅ Lecture transférée vers MyHub."
+            "Lecture Spotify transférée vers MyHub."
         );
+
 
     } catch (error) {
 
         console.error(
-            "❌ Erreur transfert :",
+            "Erreur transfert Spotify :",
             error
         );
-
     }
 }
 
 
 /* ==========================================
-   ÉTAT DU PLAYER
+   MORCEAU ACTUEL
 ========================================== */
 
-async function updateSpotifyState() {
+async function getSpotifyCurrentlyPlaying() {
 
-    if (!spotifyPlayer) {
-
+    if (!spotifyAccessToken) {
         return;
     }
 
 
     try {
 
-        const state =
-            await spotifyPlayer.getCurrentState();
+        const response =
+            await fetch(
+                "https://api.spotify.com/v1/me/player",
+                {
+
+                    headers: {
+
+                        Authorization:
+                            `Bearer ${spotifyAccessToken}`
+                    }
+                }
+            );
 
 
-        if (!state) {
+        if (response.status === 204) {
 
             console.log(
-                "ℹ️ Aucun morceau dans le lecteur MyHub."
+                "Aucun morceau en cours."
             );
 
             return;
         }
 
 
-        spotifyCurrentState =
-            state;
+        if (!response.ok) {
 
-        updateSpotifyTrack(state);
+            console.error(
+                "Impossible de récupérer la lecture Spotify."
+            );
 
-        updateSpotifyProgress(state);
+            return;
+        }
 
-        updateSpotifyPlayButton(state);
+
+        const data =
+            await response.json();
+
+
+        if (
+            !data ||
+            !data.item
+        ) {
+
+            return;
+        }
+
+
+        updateSpotifyTrackFromAPI(
+            data
+        );
+
+
+        updateSpotifyProgressFromAPI(
+            data
+        );
+
 
     } catch (error) {
 
         console.error(
-            "❌ Erreur état Spotify :",
+            "Erreur récupération morceau Spotify :",
             error
         );
-
     }
 }
 
 
 /* ==========================================
-   AFFICHER LE MORCEAU
+   AFFICHAGE MORCEAU VIA API
+========================================== */
+
+function updateSpotifyTrackFromAPI(data) {
+
+    const track =
+        data.item;
+
+
+    const trackName =
+        document.getElementById(
+            "spotifyTrackName"
+        );
+
+
+    const artist =
+        document.getElementById(
+            "spotifyArtist"
+        );
+
+
+    const cover =
+        document.getElementById(
+            "spotifyCover"
+        );
+
+
+    if (
+        trackName &&
+        track
+    ) {
+
+        trackName.textContent =
+            track.name;
+    }
+
+
+    if (
+        artist &&
+        track &&
+        track.artists
+    ) {
+
+        artist.textContent =
+            track.artists
+                .map(
+                    artist => artist.name
+                )
+                .join(", ");
+    }
+
+
+    if (
+        cover &&
+        track &&
+        track.album &&
+        track.album.images &&
+        track.album.images.length > 0
+    ) {
+
+        cover.innerHTML = "";
+
+
+        const image =
+            document.createElement(
+                "img"
+            );
+
+
+        image.src =
+            track.album.images[0].url;
+
+
+        image.alt =
+            track.name;
+
+
+        image.style.width =
+            "100%";
+
+
+        image.style.height =
+            "100%";
+
+
+        image.style.objectFit =
+            "cover";
+
+
+        image.style.borderRadius =
+            "10px";
+
+
+        cover.appendChild(
+            image
+        );
+    }
+}
+
+
+/* ==========================================
+   AFFICHAGE MORCEAU VIA SDK
 ========================================== */
 
 function updateSpotifyTrack(state) {
@@ -1423,7 +3540,6 @@ function updateSpotifyTrack(state) {
 
 
     if (!track) {
-
         return;
     }
 
@@ -1433,10 +3549,12 @@ function updateSpotifyTrack(state) {
             "spotifyTrackName"
         );
 
+
     const artist =
         document.getElementById(
             "spotifyArtist"
         );
+
 
     const cover =
         document.getElementById(
@@ -1448,7 +3566,6 @@ function updateSpotifyTrack(state) {
 
         trackName.textContent =
             track.name;
-
     }
 
 
@@ -1460,7 +3577,6 @@ function updateSpotifyTrack(state) {
                     artist => artist.name
                 )
                 .join(", ");
-
     }
 
 
@@ -1475,7 +3591,9 @@ function updateSpotifyTrack(state) {
 
 
         const image =
-            document.createElement("img");
+            document.createElement(
+                "img"
+            );
 
 
         image.src =
@@ -1489,11 +3607,14 @@ function updateSpotifyTrack(state) {
         image.style.width =
             "100%";
 
+
         image.style.height =
             "100%";
 
+
         image.style.objectFit =
             "cover";
+
 
         image.style.borderRadius =
             "10px";
@@ -1502,7 +3623,6 @@ function updateSpotifyTrack(state) {
         cover.appendChild(
             image
         );
-
     }
 }
 
@@ -1511,15 +3631,22 @@ function updateSpotifyTrack(state) {
    BOUTON PLAY / PAUSE
 ========================================== */
 
-function updateSpotifyPlayButton(state) {
+function updateSpotifyPlayButton(
+    state
+) {
 
-    if (!spotifyPlay) {
+    const button =
+        document.getElementById(
+            "spotifyPlay"
+        );
 
+
+    if (!button) {
         return;
     }
 
 
-    spotifyPlay.textContent =
+    button.textContent =
         state.paused
             ? "▶"
             : "⏸";
@@ -1527,26 +3654,22 @@ function updateSpotifyPlayButton(state) {
 
 
 /* ==========================================
-   PROGRESSION
+   PROGRESSION SPOTIFY
 ========================================== */
 
-function updateSpotifyProgress(state) {
+function updateSpotifyProgress(
+    state
+) {
 
     if (!state) {
-
         return;
     }
 
 
-    if (spotifyProgress) {
-
-        spotifyProgress.max =
-            state.duration;
-
-        spotifyProgress.value =
-            state.position;
-
-    }
+    const progress =
+        document.getElementById(
+            "spotifyProgress"
+        );
 
 
     const currentTime =
@@ -1554,10 +3677,21 @@ function updateSpotifyProgress(state) {
             "spotifyCurrentTime"
         );
 
+
     const duration =
         document.getElementById(
             "spotifyDuration"
         );
+
+
+    if (progress) {
+
+        progress.max =
+            state.duration;
+
+        progress.value =
+            state.position;
+    }
 
 
     if (currentTime) {
@@ -1566,7 +3700,6 @@ function updateSpotifyProgress(state) {
             formatSpotifyTime(
                 state.position
             );
-
     }
 
 
@@ -1576,22 +3709,77 @@ function updateSpotifyProgress(state) {
             formatSpotifyTime(
                 state.duration
             );
-
     }
 }
 
 
 /* ==========================================
-   FORMAT TEMPS
+   PROGRESSION VIA API
 ========================================== */
 
-function formatSpotifyTime(milliseconds) {
+function updateSpotifyProgressFromAPI(
+    data
+) {
 
-    if (!milliseconds) {
-
-        return "0:00";
+    if (!data) {
+        return;
     }
 
+
+    const progress =
+        document.getElementById(
+            "spotifyProgress"
+        );
+
+
+    const currentTime =
+        document.getElementById(
+            "spotifyCurrentTime"
+        );
+
+
+    const duration =
+        document.getElementById(
+            "spotifyDuration"
+        );
+
+
+    if (progress) {
+
+        progress.max =
+            data.item?.duration_ms || 0;
+
+        progress.value =
+            data.progress_ms || 0;
+    }
+
+
+    if (currentTime) {
+
+        currentTime.textContent =
+            formatSpotifyTime(
+                data.progress_ms || 0
+            );
+    }
+
+
+    if (duration) {
+
+        duration.textContent =
+            formatSpotifyTime(
+                data.item?.duration_ms || 0
+            );
+    }
+}
+
+
+/* ==========================================
+   FORMAT TEMPS SPOTIFY
+========================================== */
+
+function formatSpotifyTime(
+    milliseconds
+) {
 
     const totalSeconds =
         Math.floor(
@@ -1610,19 +3798,20 @@ function formatSpotifyTime(milliseconds) {
 
 
     return (
-        minutes +
-        ":" +
-        String(seconds).padStart(
-            2,
-            "0"
-        )
+        `${minutes}:${String(seconds).padStart(2, "0")}`
     );
 }
 
 
 /* ==========================================
-   PLAY / PAUSE
+   BOUTON PLAY / PAUSE SPOTIFY
 ========================================== */
+
+const spotifyPlay =
+    document.getElementById(
+        "spotifyPlay"
+    );
+
 
 if (spotifyPlay) {
 
@@ -1633,7 +3822,7 @@ if (spotifyPlay) {
             if (!spotifyPlayer) {
 
                 console.warn(
-                    "⚠️ Player Spotify non disponible."
+                    "Spotify n'est pas connecté."
                 );
 
                 return;
@@ -1642,28 +3831,29 @@ if (spotifyPlay) {
 
             try {
 
-                await spotifyPlayer.activateElement();
-
                 await spotifyPlayer.togglePlay();
 
             } catch (error) {
 
                 console.error(
-                    "❌ Erreur Play/Pause :",
+                    "Erreur Play/Pause Spotify :",
                     error
                 );
-
             }
-
         }
     );
-
 }
 
 
 /* ==========================================
-   MORCEAU PRÉCÉDENT
+   PISTE PRÉCÉDENTE
 ========================================== */
+
+const spotifyPrevious =
+    document.getElementById(
+        "spotifyPrevious"
+    );
+
 
 if (spotifyPrevious) {
 
@@ -1672,7 +3862,6 @@ if (spotifyPrevious) {
         async () => {
 
             if (!spotifyPlayer) {
-
                 return;
             }
 
@@ -1684,21 +3873,24 @@ if (spotifyPrevious) {
             } catch (error) {
 
                 console.error(
-                    "❌ Erreur morceau précédent :",
+                    "Erreur piste précédente Spotify :",
                     error
                 );
-
             }
-
         }
     );
-
 }
 
 
 /* ==========================================
-   MORCEAU SUIVANT
+   PISTE SUIVANTE
 ========================================== */
+
+const spotifyNext =
+    document.getElementById(
+        "spotifyNext"
+    );
+
 
 if (spotifyNext) {
 
@@ -1707,7 +3899,6 @@ if (spotifyNext) {
         async () => {
 
             if (!spotifyPlayer) {
-
                 return;
             }
 
@@ -1719,21 +3910,24 @@ if (spotifyNext) {
             } catch (error) {
 
                 console.error(
-                    "❌ Erreur morceau suivant :",
+                    "Erreur piste suivante Spotify :",
                     error
                 );
-
             }
-
         }
     );
-
 }
 
 
 /* ==========================================
    BARRE DE PROGRESSION
 ========================================== */
+
+const spotifyProgress =
+    document.getElementById(
+        "spotifyProgress"
+    );
+
 
 if (spotifyProgress) {
 
@@ -1742,7 +3936,6 @@ if (spotifyProgress) {
         async () => {
 
             if (!spotifyPlayer) {
-
                 return;
             }
 
@@ -1758,15 +3951,12 @@ if (spotifyProgress) {
             } catch (error) {
 
                 console.error(
-                    "❌ Erreur déplacement dans le morceau :",
+                    "Erreur déplacement Spotify :",
                     error
                 );
-
             }
-
         }
     );
-
 }
 
 
@@ -1774,32 +3964,39 @@ if (spotifyProgress) {
    BOUTON CONNEXION SPOTIFY
 ========================================== */
 
+const spotifyConnectButton =
+    document.getElementById(
+        "spotifyConnectButton"
+    );
+
+
 if (spotifyConnectButton) {
 
     spotifyConnectButton.addEventListener(
         "click",
         connectSpotify
     );
-
-    console.log(
-        "✅ Bouton Spotify trouvé."
-    );
-
-} else {
-
-    console.warn(
-        "⚠️ Bouton spotifyConnectButton introuvable dans le HTML."
-    );
-
 }
 
 
 /* ==========================================
-   LANCEMENT SPOTIFY
+   CHARGEMENT MÉMOIRE JARVIS
+========================================== */
+
+loadJarvisHistory();
+
+
+/* ==========================================
+   CALLBACK SPOTIFY
+========================================== */
+
+handleSpotifyCallback();
+
+
+/* ==========================================
+   LOG
 ========================================== */
 
 console.log(
-    "🔥 SCRIPT MYHUB CHARGÉ"
+    "🔥 SCRIPT MYHUB V3 CHARGÉ"
 );
-
-handleSpotifyCallback();

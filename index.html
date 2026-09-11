@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <link rel="icon" href="favicon.png">
     <title>MyHub</title>
 
     <link rel="stylesheet" href="style.css">
@@ -18,7 +18,7 @@
     <aside class="sidebar">
 
         <div class="logo">
-            <div class="logo-icon">M</div>
+            <div class="logo-icon">💻</div>
             <span>MyHub</span>
         </div>
 
@@ -101,20 +101,20 @@
 
         <section id="homeSection" class="dashboard page-section active-section">
 
-            <!-- JARVIS -->
+            <!-- J.A.R.V.I.S -->
 
             <div class="widget jarvis-widget">
     <div class="widget-header">
         <div>
             <span class="widget-icon">🤖</span>
-            <h2>JARVIS</h2>
+            <h2>J.A.R.V.I.S</h2>
         </div>
         <span class="status">● En ligne</span>
     </div>
 
     <div class="jarvis-chat" id="jarvisChat">
         <div class="message jarvis-message">
-            <strong>JARVIS</strong>
+            <strong>J.A.R.V.I.S</strong>
             <p>Bonjour ! Je suis prêt à recevoir tes commandes.</p>
         </div>
     </div>
@@ -126,7 +126,19 @@
             placeholder="Écris une commande..."
             autocomplete="off"
         >
+        <button
+            id="voiceToggleButton"
+            class="voice-toggle"
+            type="button"
+            aria-label="Activer le micro"
+            title="Parler avec Jarvis"
+        >
+            🎤
+        </button>
         <button id="jarvisSend">➤</button>
+    </div>
+    <div id="voiceStatus" class="voice-status" aria-live="polite">
+        Micro inactif
     </div>
 </div>
 
@@ -144,8 +156,16 @@
 
                 </div>
 
-                <div class="big-clock" id="bigClock">
-                    --:--
+                <div class="clock-row">
+
+                    <div class="big-clock" id="bigClock">
+                        --:--
+                    </div>
+
+                    <div class="timer-display" id="timerDisplay">
+                        Aucun minuteur
+                    </div>
+
                 </div>
 
                 <p id="fullDate">
@@ -170,13 +190,13 @@
 
                 <div class="weather-placeholder">
 
-                    <div class="weather-temperature">
+                    <div class="weather-temperature" id="weatherTemperature">
                         --°
                     </div>
 
-                    <div>
-                        <strong>Météo</strong>
-                        <p>Widget à connecter</p>
+                    <div class="weather-meta">
+                        <strong>Elbeuf</strong>
+                        <p id="weatherDescription">Chargement...</p>
                     </div>
 
                 </div>
@@ -195,29 +215,13 @@
                         <h2>Tâches</h2>
                     </div>
 
-                    <button class="widget-action">
+                    <button class="widget-action" id="addTaskButton" type="button">
                         +
                     </button>
 
                 </div>
 
-                <div class="tasks">
-
-                    <label class="task">
-                        <input type="checkbox">
-                        <span>Configurer MyHub</span>
-                    </label>
-
-                    <label class="task">
-                        <input type="checkbox">
-                        <span>Créer les widgets</span>
-                    </label>
-
-                    <label class="task">
-                        <input type="checkbox">
-                        <span>Ajouter JARVIS</span>
-                    </label>
-
+                <div class="tasks" id="tasksList">
                 </div>
 
             </article>
@@ -479,15 +483,42 @@
         <p>Personnalise MyHub</p>
     </div>
 
-    <div class="page-placeholder">
-        <span>⚙️</span>
-        <h2>Paramètres</h2>
-        <p>Les paramètres seront ajoutés ici.</p>
+    <div class="settings-panel">
+        <div class="setting-card">
+            <h2>Voix de Jarvis</h2>
+
+            <div class="setting-row">
+                <label for="jarvisVolumeControl">Volume</label>
+                <div class="setting-control">
+                    <input id="jarvisVolumeControl" type="range" min="0" max="100" value="100">
+                    <span id="jarvisVolumeValue">100%</span>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label for="jarvisVoicePreset">Profil vocal</label>
+                <select id="jarvisVoicePreset">
+                    <option value="male">Masculin</option>
+                    <option value="neutral">Neutre</option>
+                    <option value="female">Féminin</option>
+                </select>
+            </div>
+        </div>
     </div>
 </section>
     </main>
 
-    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script>
+    window.onSpotifyWebPlaybackSDKReady = function () {
+        console.log("🎵 Spotify Web Playback SDK chargé !");
+        
+        if (typeof initSpotifyPlayer === "function") {
+            initSpotifyPlayer();
+        }
+    };
+</script>
+
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
 <script src="script.js"></script>
 
 </body>
