@@ -2043,7 +2043,54 @@ function getLocalQuickAction(command) {
    COMMUNICATION AVEC LE WORKER GEMINI
 ========================================== */
 
+let geminiCooldownUntil = 0;
+
+function getGeminiRetryDelayMs(rawText) {
+    if (!rawText) {
+        return 0;
+    }
+
+    try {
+        const parsed = JSON.parse(rawText);
+        const details = parsed?.details;
+
+        if (typeof details === "string") {
+            const match = details.match(/retryDelay\":\s*\"([0-9.]+)s\"/i);
+
+            if (match) {
+                return Math.ceil(Number(match[1]) * 1000);
+            }
+        }
+
+        if (parsed?.error?.details && Array.isArray(parsed.error.details)) {
+            const retryInfo = parsed.error.details.find(item =>
+                item?.["@type"] === "type.googleapis.com/google.rpc.RetryInfo"
+            );
+
+            if (retryInfo?.retryDelay) {
+                const match = String(retryInfo.retryDelay).match(/([0-9.]+)s/i);
+
+                if (match) {
+                    return Math.ceil(Number(match[1]) * 1000);
+                }
+            }
+        }
+    } catch {
+        // Le texte n'était pas du JSON valide.
+    }
+
+    return 0;
+}
+
 async function processCommand(command) {
+    if (Date.now() < geminiCooldownUntil) {
+        const fallback = getLocalFallbackReply(command) || "Le service de Jarvis est temporairement indisponible. Réessaie dans quelques secondes. 🤖";
+
+        return {
+            action: "none",
+            reply: fallback
+        };
+    }
 
     try {
 
@@ -2135,6 +2182,14 @@ async function processCommand(command) {
             let errorMessage =
                 `Mon cerveau répond avec une erreur (${response.status}). ⚠️`;
 
+            const retryDelayMs = getGeminiRetryDelayMs(errorText);
+
+            if (retryDelayMs > 0) {
+                geminiCooldownUntil = Date.now() + retryDelayMs;
+            } else if (response.status === 429 || response.status === 503) {
+                geminiCooldownUntil = Date.now() + 30000;
+            }
+
 
             /*
                Essayer d'afficher le détail du Worker
@@ -2160,6 +2215,7 @@ async function processCommand(command) {
                 // La réponse n'était pas du JSON.
             }
 
+            const fallbackReply = getLocalFallbackReply(command) || errorMessage;
 
             return {
 
@@ -2167,7 +2223,7 @@ async function processCommand(command) {
                     "none",
 
                 reply:
-                    errorMessage
+                    fallbackReply
             };
         }
 
@@ -2350,6 +2406,35 @@ async function sendCommand() {
 
 
     try {
+
+        if (Date.now() < geminiCooldownUntil) {
+            const localReply = getLocalFallbackReply(command) || "Le service de Jarvis est temporairement indisponible. Réessaie dans quelques secondes. 🤖";
+
+            addMessage(
+                "JARVIS",
+                localReply,
+                "jarvis"
+            );
+
+            speakJarvisReply(localReply);
+
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", localReply);
+
+            if (thinkingMessage) {
+                thinkingMessage.remove();
+            }
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
 
         /* ==================================
            ENVOYER LA COMMANDE
