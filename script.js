@@ -2645,6 +2645,23 @@ if (mobileMenu && sidebar) {
    SPOTIFY
 ========================================== */
 
+window.initSpotifyPlayer = function initSpotifyPlayer() {
+    if (!spotifyAccessToken) {
+        return;
+    }
+
+    if (typeof Spotify === "undefined") {
+        console.warn("Spotify SDK pas encore prêt, tentative retardée.");
+        return;
+    }
+
+    if (spotifyPlayer) {
+        return;
+    }
+
+    initializeSpotifyPlayer(spotifyAccessToken);
+};
+
 const SPOTIFY_CLIENT_ID =
     "f921c0f743e04c6eafd0ebb1b2e79227";
 
@@ -2855,6 +2872,11 @@ async function handleSpotifyCallback() {
 
         if (spotifyAccessToken) {
 
+            if (typeof Spotify === "undefined") {
+                console.warn("SDK Spotify non prêt au chargement du callback.");
+                return;
+            }
+
             initializeSpotifyPlayer(
                 spotifyAccessToken
             );
@@ -2979,6 +3001,11 @@ async function handleSpotifyCallback() {
             "Connexion Spotify réussie !"
         );
 
+
+        if (typeof Spotify === "undefined") {
+            console.warn("SDK Spotify non prêt à l’init après OAuth. Attente du callback de chargement.");
+            return;
+        }
 
         initializeSpotifyPlayer(
             data.access_token
