@@ -1113,7 +1113,8 @@ body {
     align-items: center;
     justify-content: center;
     height: 110px;
-    width: 42px;
+    width: 48px;
+    overflow: visible;
 }
 
 .spotify-volume-slider-wrap input {
@@ -1121,6 +1122,7 @@ body {
     height: 8px;
     accent-color: #1db954;
     transform: rotate(-90deg);
+    transform-origin: center;
     cursor: pointer;
 }
 

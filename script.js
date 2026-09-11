@@ -2807,7 +2807,7 @@ function setSpotifyVolume(value) {
         return;
     }
 
-    spotifyPlayer.setVolume(safeValue / 100)
+    return spotifyPlayer.setVolume(safeValue / 100)
         .catch(error => {
             console.warn("Impossible de régler le volume Spotify :", error);
         });
@@ -2817,6 +2817,22 @@ if (spotifyVolumeSlider) {
     spotifyVolumeSlider.addEventListener("input", () => {
         setSpotifyVolume(spotifyVolumeSlider.value);
     });
+}
+
+function hydrateSpotifyVolumeFromPlayer() {
+    if (!spotifyPlayer || typeof spotifyPlayer.getVolume !== "function") {
+        return;
+    }
+
+    spotifyPlayer.getVolume()
+        .then(volume => {
+            if (typeof volume === "number") {
+                syncSpotifyVolumeUi(Math.round(volume * 100));
+            }
+        })
+        .catch(error => {
+            console.warn("Impossible de lire le volume Spotify :", error);
+        });
 }
 
 syncSpotifyVolumeUi(50);
@@ -3254,7 +3270,7 @@ function initializeSpotifyPlayer(
 
 
             transferPlaybackToMyHub();
-
+            hydrateSpotifyVolumeFromPlayer();
             getSpotifyCurrentlyPlaying();
         }
     );
