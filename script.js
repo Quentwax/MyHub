@@ -2785,57 +2785,41 @@ let spotifyAccessToken =
 
 let spotifyCurrentState = null;
 
-const floatingVolumePanel = document.getElementById("floatingVolumePanel");
-const floatingVolumeToggle = document.getElementById("floatingVolumeToggle");
-const floatingVolumeSlider = document.getElementById("floatingVolumeSlider");
-const floatingVolumeValue = document.getElementById("floatingVolumeValue");
+const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
+const spotifyVolumeValue = document.getElementById("spotifyVolumeValue");
 
-function syncFloatingVolumeUi(value) {
-    if (!floatingVolumeSlider || !floatingVolumeValue) {
+function syncSpotifyVolumeUi(value) {
+    if (!spotifyVolumeSlider || !spotifyVolumeValue) {
         return;
     }
 
     const safeValue = Math.min(100, Math.max(0, Number(value) || 0));
 
-    floatingVolumeSlider.value = String(safeValue);
-    floatingVolumeValue.textContent = `${safeValue}%`;
+    spotifyVolumeSlider.value = String(safeValue);
+    spotifyVolumeValue.textContent = `${safeValue}%`;
 }
 
-function setFloatingVolume(value) {
+function setSpotifyVolume(value) {
     const safeValue = Math.min(100, Math.max(0, Number(value) || 0));
-    syncFloatingVolumeUi(safeValue);
+    syncSpotifyVolumeUi(safeValue);
 
-    if (spotifyPlayer && typeof spotifyPlayer.setVolume === "function") {
-        spotifyPlayer.setVolume(safeValue / 100);
+    if (!spotifyPlayer || typeof spotifyPlayer.setVolume !== "function") {
+        return;
     }
+
+    spotifyPlayer.setVolume(safeValue / 100)
+        .catch(error => {
+            console.warn("Impossible de régler le volume Spotify :", error);
+        });
 }
 
-if (floatingVolumeToggle && floatingVolumePanel) {
-    floatingVolumeToggle.addEventListener("click", () => {
-        floatingVolumePanel.classList.toggle("collapsed");
-
-        const collapsed = floatingVolumePanel.classList.contains("collapsed");
-        floatingVolumeToggle.textContent = collapsed ? "🔉" : "🔊";
-        floatingVolumeToggle.setAttribute(
-            "aria-label",
-            collapsed ? "Afficher le volume" : "Masquer le volume"
-        );
+if (spotifyVolumeSlider) {
+    spotifyVolumeSlider.addEventListener("input", () => {
+        setSpotifyVolume(spotifyVolumeSlider.value);
     });
 }
 
-if (floatingVolumeSlider) {
-    floatingVolumeSlider.addEventListener("input", () => {
-        setFloatingVolume(floatingVolumeSlider.value);
-    });
-}
-
-if (floatingVolumePanel) {
-    floatingVolumePanel.classList.add("collapsed");
-}
-
-if (floatingVolumeToggle) {
-    floatingVolumeToggle.textContent = "🔉";
-}
+syncSpotifyVolumeUi(50);
 
 /* ==========================================
    GÉNÉRER UNE CHAÎNE ALÉATOIRE

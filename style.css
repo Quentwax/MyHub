@@ -1087,74 +1087,40 @@ body {
    SPOTIFY
 ========================================== */
 
-.floating-volume-panel {
-    position: fixed;
-    right: 22px;
-    bottom: 22px;
-    z-index: 300;
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-}
-
-.floating-volume-toggle {
-    width: 52px;
-    height: 52px;
-    border: none;
-    border-radius: 50%;
-    background: #1db954;
-    color: white;
-    font-size: 22px;
-    cursor: pointer;
-    box-shadow: 0 8px 18px rgba(29, 185, 84, 0.35);
-}
-
-.floating-volume-toggle:hover {
-    transform: translateY(-1px);
-}
-
-.floating-volume-box {
+.spotify-volume-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    width: 72px;
-    padding: 14px 10px 12px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid #e7eaee;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    margin-left: auto;
+    padding: 12px 10px;
+    border-radius: 14px;
+    background: #f7f8f9;
+    border: 1px solid #ebedf0;
+    min-width: 84px;
 }
 
-.floating-volume-panel.collapsed .floating-volume-box {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(8px);
-}
-
-.floating-volume-label,
-.floating-volume-value {
+.spotify-volume-label,
+.spotify-volume-value {
     font-size: 11px;
     color: #4f5863;
-    font-weight: 600;
+    font-weight: 700;
 }
 
-.floating-volume-slider-wrap {
-    width: 160px;
-    height: 28px;
+.spotify-volume-slider-wrap {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: visible;
+    height: 110px;
+    width: 42px;
 }
 
-.floating-volume-slider-wrap input {
-    width: 160px;
-    height: 18px;
-    transform: rotate(-90deg);
-    transform-origin: center;
+.spotify-volume-slider-wrap input {
+    width: 110px;
+    height: 8px;
     accent-color: #1db954;
+    transform: rotate(-90deg);
     cursor: pointer;
 }
 

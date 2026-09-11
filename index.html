@@ -386,6 +386,23 @@
                 </p>
             </div>
 
+            <div class="spotify-volume-panel">
+                <span class="spotify-volume-label">Volume</span>
+
+                <div class="spotify-volume-slider-wrap">
+                    <input
+                        id="spotifyVolumeSlider"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="50"
+                        aria-label="Régler le volume Spotify"
+                    >
+                </div>
+
+                <span id="spotifyVolumeValue" class="spotify-volume-value">50%</span>
+            </div>
+
         </div>
 
         <div class="spotify-controls">
@@ -507,29 +524,6 @@
     </div>
 </section>
     </main>
-
-    <div class="floating-volume-panel" id="floatingVolumePanel">
-        <button class="floating-volume-toggle" id="floatingVolumeToggle" type="button" aria-label="Afficher le volume">
-            🔊
-        </button>
-
-        <div class="floating-volume-box" id="floatingVolumeBox">
-            <span class="floating-volume-label">Volume</span>
-
-            <div class="floating-volume-slider-wrap">
-                <input
-                    id="floatingVolumeSlider"
-                    type="range"
-                    min="0"
-                    max="100"
-                    value="50"
-                    aria-label="Régler le volume"
-                >
-            </div>
-
-            <span id="floatingVolumeValue" class="floating-volume-value">50%</span>
-        </div>
-    </div>
 
     <script>
     window.onSpotifyWebPlaybackSDKReady = function () {
