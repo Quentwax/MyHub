@@ -2785,6 +2785,57 @@ let spotifyAccessToken =
 
 let spotifyCurrentState = null;
 
+const floatingVolumePanel = document.getElementById("floatingVolumePanel");
+const floatingVolumeToggle = document.getElementById("floatingVolumeToggle");
+const floatingVolumeSlider = document.getElementById("floatingVolumeSlider");
+const floatingVolumeValue = document.getElementById("floatingVolumeValue");
+
+function syncFloatingVolumeUi(value) {
+    if (!floatingVolumeSlider || !floatingVolumeValue) {
+        return;
+    }
+
+    const safeValue = Math.min(100, Math.max(0, Number(value) || 0));
+
+    floatingVolumeSlider.value = String(safeValue);
+    floatingVolumeValue.textContent = `${safeValue}%`;
+}
+
+function setFloatingVolume(value) {
+    const safeValue = Math.min(100, Math.max(0, Number(value) || 0));
+    syncFloatingVolumeUi(safeValue);
+
+    if (spotifyPlayer && typeof spotifyPlayer.setVolume === "function") {
+        spotifyPlayer.setVolume(safeValue / 100);
+    }
+}
+
+if (floatingVolumeToggle && floatingVolumePanel) {
+    floatingVolumeToggle.addEventListener("click", () => {
+        floatingVolumePanel.classList.toggle("collapsed");
+
+        const collapsed = floatingVolumePanel.classList.contains("collapsed");
+        floatingVolumeToggle.textContent = collapsed ? "🔉" : "🔊";
+        floatingVolumeToggle.setAttribute(
+            "aria-label",
+            collapsed ? "Afficher le volume" : "Masquer le volume"
+        );
+    });
+}
+
+if (floatingVolumeSlider) {
+    floatingVolumeSlider.addEventListener("input", () => {
+        setFloatingVolume(floatingVolumeSlider.value);
+    });
+}
+
+if (floatingVolumePanel) {
+    floatingVolumePanel.classList.add("collapsed");
+}
+
+if (floatingVolumeToggle) {
+    floatingVolumeToggle.textContent = "🔉";
+}
 
 /* ==========================================
    GÉNÉRER UNE CHAÎNE ALÉATOIRE
