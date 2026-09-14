@@ -491,6 +491,38 @@ body {
     min-width: 150px;
 }
 
+.setting-control-inline {
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.setting-control-inline input[type="date"] {
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid #dfe3e8;
+    background: #f6f8fa;
+    font-size: 14px;
+    color: #20242a;
+}
+
+.secondary-button {
+    border: none;
+    background: #20242a;
+    color: white;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.setting-status {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #66707a;
+}
+
 @keyframes pulse {
     0% {
         transform: scale(1);
@@ -544,6 +576,64 @@ body {
 .clock-widget p {
     color: #858d96;
     font-size: 13px;
+}
+
+
+/* ==========================================
+   DISNEY COUNTDOWN
+========================================== */
+
+.disney-widget {
+    grid-column: span 1;
+}
+
+.disney-countdown {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 128px;
+    justify-content: center;
+}
+
+.disney-main-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.disney-emoji {
+    font-size: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #f1f3f6;
+}
+
+.disney-main-line strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.disney-main-line p {
+    color: #7b848d;
+    font-size: 12px;
+}
+
+.disney-countdown-value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    color: #20242a;
+}
+
+.disney-countdown-status {
+    color: #5f6974;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 

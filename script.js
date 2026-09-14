@@ -317,6 +317,362 @@ loadWeatherElbeuf();
 
 
 /* ==========================================
+   COMPTE À REBOURS DISNEY
+========================================== */
+
+const DISNEY_TRIP_STORAGE_KEY = "myhub_disney_target_date";
+const DEFAULT_DISNEY_TRIP_DATE = "2026-07-18";
+const disneyTripDateInput = document.getElementById("disneyTripDateInput");
+const saveDisneyTripDateButton = document.getElementById("saveDisneyTripDateButton");
+const disneyGoogleAuthButton = document.getElementById("disneyGoogleAuthButton");
+const disneyGoogleSignOutButton = document.getElementById("disneyGoogleSignOutButton");
+const disneyAuthStatus = document.getElementById("disneyAuthStatus");
+const DISNEY_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBb-2GlOsnUDzDXZ8-mgd6XIr8ny4ZkJoo",
+    authDomain: "my-disneyland-paris.firebaseapp.com",
+    databaseURL: "https://my-disneyland-paris-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "my-disneyland-paris",
+    storageBucket: "my-disneyland-paris.firebasestorage.app",
+    messagingSenderId: "787833723893",
+    appId: "1:787833723893:web:0cd3c3f0f01dd7e8c09ebc"
+};
+let disneySourceDate = getDisneyTargetDate();
+let disneySyncMode = "local";
+
+function toDateFromInputValue(value) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return null;
+    }
+
+    return parsed;
+}
+
+function getDisneyTargetDate() {
+
+    try {
+        const saved = localStorage.getItem(DISNEY_TRIP_STORAGE_KEY);
+
+        if (saved) {
+            const parsed = toDateFromInputValue(saved);
+
+            if (parsed) {
+                return parsed;
+            }
+        }
+    } catch (error) {
+        console.warn("Impossible de lire la date du séjour Disney :", error);
+    }
+
+    const fallback = toDateFromInputValue(DEFAULT_DISNEY_TRIP_DATE);
+
+    if (fallback) {
+        return fallback;
+    }
+
+    return new Date();
+}
+
+function saveDisneyTripDate() {
+    if (!disneyTripDateInput) {
+        return;
+    }
+
+    const selectedValue = disneyTripDateInput.value;
+
+    if (!selectedValue) {
+        return;
+    }
+
+    try {
+        localStorage.setItem(DISNEY_TRIP_STORAGE_KEY, selectedValue);
+        disneySourceDate = toDateFromInputValue(selectedValue) || getDisneyTargetDate();
+        disneySyncMode = "local";
+        updateDisneyCountdown();
+    } catch (error) {
+        console.warn("Impossible d'enregistrer la date du séjour Disney :", error);
+    }
+}
+
+function syncDisneyDateInput() {
+    if (!disneyTripDateInput) {
+        return;
+    }
+
+    try {
+        const saved = localStorage.getItem(DISNEY_TRIP_STORAGE_KEY);
+        const nextDate = saved || DEFAULT_DISNEY_TRIP_DATE;
+        disneyTripDateInput.value = nextDate;
+    } catch (error) {
+        disneyTripDateInput.value = DEFAULT_DISNEY_TRIP_DATE;
+    }
+}
+
+function getNextDisneyEvent(eventsObject) {
+    if (!eventsObject || typeof eventsObject !== "object") {
+        return null;
+    }
+
+    const entries = Object.entries(eventsObject)
+        .map(([eventId, event]) => {
+            if (!event || typeof event !== "object") {
+                return null;
+            }
+
+            const startValue = event.start || event.date || event.begin || event.debut;
+            if (!startValue) {
+                return null;
+            }
+
+            const parsed = toDateFromInputValue(startValue);
+
+            if (!parsed) {
+                return null;
+            }
+
+            return {
+                id: eventId,
+                start: startValue,
+                date: parsed,
+                details: event.details || "",
+                end: event.end || startValue
+            };
+        })
+        .filter(Boolean);
+
+    if (!entries.length) {
+        return null;
+    }
+
+    const now = new Date();
+    const upcoming = entries
+        .filter(item => item.date.getTime() >= new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime())
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    return upcoming[0] || null;
+}
+
+function applyDisneyDate(date, mode = "local") {
+    if (!date || Number.isNaN(date.getTime())) {
+        return;
+    }
+
+    disneySourceDate = date;
+    disneySyncMode = mode;
+
+    if (disneyTripDateInput) {
+        disneyTripDateInput.value = date.toISOString().slice(0, 10);
+    }
+
+    updateDisneyCountdown();
+}
+
+function renderDisneyAuthUi(user) {
+    if (!disneyGoogleAuthButton || !disneyGoogleSignOutButton || !disneyAuthStatus) {
+        return;
+    }
+
+    if (user) {
+        disneyGoogleAuthButton.hidden = true;
+        disneyGoogleSignOutButton.hidden = false;
+        disneyAuthStatus.textContent = `Connecté : ${user.displayName || user.email || "Compte Google"}`;
+        return;
+    }
+
+    disneyGoogleAuthButton.hidden = false;
+    disneyGoogleSignOutButton.hidden = true;
+    disneyAuthStatus.textContent = "Non connecté";
+}
+
+async function signInDisneyWithGoogle() {
+    try {
+        if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+            firebase.initializeApp(DISNEY_FIREBASE_CONFIG);
+        }
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+
+        const result = await firebase.auth().signInWithPopup(provider);
+        renderDisneyAuthUi(result.user);
+    } catch (error) {
+        console.error("Erreur connexion Google Disney :", error);
+
+        if (disneyAuthStatus) {
+            disneyAuthStatus.textContent = "Connexion refusée ou impossible.";
+        }
+    }
+}
+
+async function signOutDisneyFromGoogle() {
+    try {
+        await firebase.auth().signOut();
+        renderDisneyAuthUi(null);
+    } catch (error) {
+        console.error("Erreur déconnexion Google Disney :", error);
+    }
+}
+
+function attachDisneyFirebaseListener() {
+    if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+        try {
+            firebase.initializeApp(DISNEY_FIREBASE_CONFIG);
+        } catch (error) {
+            console.warn("Impossible d'initialiser Firebase Disney :", error);
+            return;
+        }
+    }
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    auth.onAuthStateChanged((user) => {
+        renderDisneyAuthUi(user);
+
+        if (!user) {
+            console.info("MyHub : pas d'utilisateur Firebase connecté pour le planning Disney.");
+            return;
+        }
+
+        db.ref("planning/events")
+            .on("value", (snapshot) => {
+                const events = snapshot.val() || {};
+                const nextEvent = getNextDisneyEvent(events);
+
+                if (nextEvent) {
+                    const nextDate = toDateFromInputValue(nextEvent.start) || nextEvent.date;
+                    applyDisneyDate(nextDate, "firebase");
+                    return;
+                }
+
+                applyDisneyDate(getDisneyTargetDate(), "local");
+            });
+    });
+}
+
+async function loadDlpStatsFromFirebase() {
+    if (!window.firebase || !firebase.apps || !firebase.apps.length) {
+        try {
+            firebase.initializeApp(DISNEY_FIREBASE_CONFIG);
+        } catch (error) {
+            console.warn("Impossible d'initialiser Firebase MyDLP pour Jarvis :", error);
+            return null;
+        }
+    }
+
+    const auth = firebase.auth ? firebase.auth() : null;
+    const db = firebase.database ? firebase.database() : null;
+
+    if (!auth || !db) {
+        return null;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+        console.info("MyHub : aucun utilisateur Google connecté, donc Jarvis ne peut pas lire les données MyDLP.");
+        return null;
+    }
+
+    try {
+        const snapshot = await db.ref("planning/activities").once("value");
+        const data = snapshot.val();
+
+        if (data && typeof data === "object") {
+            return data;
+        }
+
+        return null;
+    } catch (error) {
+        console.warn("Impossible de lire les données MyDLP depuis Firebase pour Jarvis :", error);
+        return null;
+    }
+}
+
+function formatDisneyCountdown(millisecondsLeft) {
+
+    const totalSeconds = Math.max(0, Math.floor(millisecondsLeft / 1000));
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) {
+        return `${days}j ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m`;
+    }
+
+    if (hours > 0) {
+        return `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+    }
+
+    return `${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+}
+
+function updateDisneyCountdown() {
+
+    const tripDateLabel = document.getElementById("disneyTripDateLabel");
+    const countdownValue = document.getElementById("disneyCountdownValue");
+    const countdownStatus = document.getElementById("disneyCountdownStatus");
+
+    if (!tripDateLabel || !countdownValue || !countdownStatus) {
+        return;
+    }
+
+    const targetDate = disneySourceDate || getDisneyTargetDate();
+    const now = new Date();
+    const remainingMs = targetDate.getTime() - now.getTime();
+
+    const dateLabel = targetDate.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+
+    tripDateLabel.textContent = `Départ le ${dateLabel}`;
+
+    if (remainingMs <= 0) {
+        countdownValue.textContent = "C’est le jour J !";
+        countdownStatus.textContent = "Disneyland Paris, on y va !";
+        return;
+    }
+
+    const daysLeft = Math.floor(remainingMs / 86400000);
+    const hoursLeft = Math.floor((remainingMs % 86400000) / 3600000);
+    const minutesLeft = Math.floor((remainingMs % 3600000) / 60000);
+
+    countdownValue.textContent = formatDisneyCountdown(remainingMs);
+    countdownStatus.textContent = `Encore ${daysLeft} jour${daysLeft > 1 ? "s" : ""} ${String(hoursLeft).padStart(2, "0")}h ${String(minutesLeft).padStart(2, "0")}m avant le départ.`;
+}
+
+syncDisneyDateInput();
+updateDisneyCountdown();
+setInterval(updateDisneyCountdown, 1000);
+
+if (saveDisneyTripDateButton) {
+    saveDisneyTripDateButton.addEventListener("click", saveDisneyTripDate);
+}
+
+if (disneyTripDateInput) {
+    disneyTripDateInput.addEventListener("change", saveDisneyTripDate);
+}
+
+if (disneyGoogleAuthButton) {
+    disneyGoogleAuthButton.addEventListener("click", signInDisneyWithGoogle);
+}
+
+if (disneyGoogleSignOutButton) {
+    disneyGoogleSignOutButton.addEventListener("click", signOutDisneyFromGoogle);
+}
+
+renderDisneyAuthUi(null);
+attachDisneyFirebaseListener();
+
+
+/* ==========================================
    CHECKLIST TÂCHES
 ========================================== */
 
@@ -1141,6 +1497,533 @@ function getSectionFromName(pageName) {
 }
 
 
+const siteCatalog = {
+    myhub: {
+        aliases: ["myhub", "my hub", "hub"],
+        url: "index.html",
+        local: true,
+        section: "homeSection",
+        label: "MyHub"
+    },
+    mydlp: {
+        aliases: ["mydlp", "my dlp", "disneyland", "disneyland paris"],
+        url: "https://quentwax.github.io/My-DLP/index.html",
+        local: false,
+        label: "MyDLP",
+        searchParam: "?q="
+    },
+    ludotheque: {
+        aliases: ["ludotheque", "ludothèque", "ma ludotheque", "ma ludothèque", "bibliotheque jeux", "bibliothèque jeux"],
+        url: "https://quentwax.github.io/jeux_societe/",
+        local: false,
+        label: "Ludothèque",
+        searchParam: "?search="
+    },
+    portfolio: {
+        aliases: ["portfolio", "mon portfolio", "photo portfolio"],
+        url: "https://jcphotographie276.github.io/portfolio/",
+        local: false,
+        label: "Portfolio"
+    }
+};
+
+let mydlpDataCache = null;
+let ludothequeDataCache = null;
+let portfolioDataCache = null;
+
+function readFirestoreField(value) {
+    if (value === null || typeof value !== "object") {
+        return value;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "stringValue")) {
+        return value.stringValue;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "integerValue")) {
+        return Number(value.integerValue);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "doubleValue")) {
+        return Number(value.doubleValue);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "booleanValue")) {
+        return Boolean(value.booleanValue);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "arrayValue")) {
+        const items = value.arrayValue?.values || [];
+        return items.map(readFirestoreField);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "mapValue")) {
+        const fields = value.mapValue?.fields || {};
+        const result = {};
+        Object.entries(fields).forEach(([key, fieldValue]) => {
+            result[key] = readFirestoreField(fieldValue);
+        });
+        return result;
+    }
+
+    return value;
+}
+
+function normalizeSiteTitleText(value) {
+    return String(value || "")
+        .trim()
+        .replace(/\s+/g, " ");
+}
+
+function normalizeMydlpText(value) {
+    return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[\-_'’]/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+const MYDLP_ATTRACTION_ALIASES = {
+    "Frozen Ever After": ["frozen ever after", "frozen", "ever after", "everafter"],
+    "Big Thunder Mountain": ["big thunder mountain", "big thunder", "btm", "thunder mountain"],
+    "Hyperspace Mountain": ["hyperspace mountain", "space mountain", "space", "hyper space mountain"],
+    "Indiana Jones et le Temple du Péril": ["indiana jones", "indiana jones et le temple du peril", "indiana jones et le temple du péril", "indiana"],
+    "Pirates of the Caribbean": ["pirates of the caribbean", "pirates", "pirates du caribbean", "pirates of caribbean"],
+    "Buzz Lightyear Laser Blast": ["buzz lightyear", "buzz lightyear laser blast", "buzz"],
+    "Dumbo the Flying Elephant": ["dumbo", "dumbo the flying elephant"],
+    "it's a small world": ["its a small world", "it's a small world", "small world", "small world attraction"],
+    "Star Tours : L'Aventure Continue": ["star tours", "star tours l aventure continue", "star tours adventure continue"],
+    "Avengers Assemble: Flight Force": ["flight force", "avengers flight force", "avengers assemble flight force", "flightforce"],
+    "Spider-Man W.E.B. Adventure": ["spider man web adventure", "web adventure", "web"],
+    "Crush's Coaster": ["crush coaster", "crushs coaster", "crush"],
+    "Peter Pan's Flight": ["peter pan", "peter pan flight", "peter pan's flight", "peter pan s flight"],
+    "Thunder Mesa Riverboat Landing": ["thunder mesa", "thunder mesa riverboat landing"],
+    "Phantom Manor": ["phantom manor", "phantom"],
+    "Mad Hatter's Tea Cups": ["mad hatter tea cups", "mad hatter", "mad hatter s tea cups"],
+    "Casey Jr. Le Petit Train du Cirque": ["casey jr", "casey jr le petit train du cirque", "casey jr le petit train du cirque"],
+    "La Cabane des Robinson": ["cabane des robinson", "la cabane des robinson", "robinson"],
+    "Les Mystères du Nautilus": ["nautilus", "les mysteres du nautilus", "les mystères du nautilus"],
+    "Le Carrousel de Lancelot": ["carrousel de lancelot", "lancelot", "le carrousel de lancelot"],
+    "Autopia": ["autopia"],
+    "Disneyland Railroad": ["disneyland railroad", "railroad", "le train"],
+    "Les Voyages de Pinocchio": ["pinocchio", "les voyages de pinocchio"],
+    "Orbitron": ["orbitron"],
+    "Le Labyrinthe d'Alice": ["labyrinthe d alice", "labyrinthe d alice", "alice", "le labyrinthe d alice"],
+    "Blanche-Neige et les Sept Nains": ["blanche neige", "blanche neige et les sept nains", "blanche neige et les 7 nains", "blanche neige et les sept nains"],
+    "Le Passage Enchanté d'Aladdin": ["le passage enchante d aladdin", "passage enchante d aladdin", "aladdin", "le passage enchanté d aladdin"],
+    "Le Pays des Contes de Fées": ["contes de fees", "contes de fées", "le pays des contes de fees", "pays des contes de fees"],
+    "The Tower of Terror": ["tower of terror", "tower terror", "tower", "la tour des terror"],
+    "Ratatouille": ["ratatouille", "ratatouille aventure"],
+    "Cars ROAD TRIP": ["cars road trip", "cars roadtrip", "cars"],
+    "Cars Quatre Roues Rallye": ["cars quatre roues", "cars quatre roues rallye", "cars quatres roues", "cars 4 roues"],
+    "Les Tapis Volants": ["les tapis volants", "tapis volants"],
+    "Raiponce Tangled Spin": ["raiponce tangles spin", "raiponce spin", "raiponce"],
+    "RC Racer": ["rc racer", "rc"],
+    "Slinky Dog Zigzag Spin": ["slinky dog zigzag spin", "slinky dog", "zigzag spin"],
+    "Toy Soldiers Parachute Drop": ["toy soldiers", "toy soldiers parachute drop", "parachute drop"]
+};
+
+function findMydlpAttractionInText(text) {
+    const normalizedText = normalizeMydlpText(text);
+
+    if (!normalizedText) {
+        return null;
+    }
+
+    const mapped = Object.entries(MYDLP_ATTRACTION_ALIASES);
+
+    for (const [canonicalName, aliases] of mapped) {
+        const variants = new Set([canonicalName, ...aliases].map(normalizeMydlpText).filter(Boolean));
+
+        for (const variant of variants) {
+            if (normalizedText.includes(variant)) {
+                return canonicalName;
+            }
+        }
+    }
+
+    for (const [canonicalName, aliases] of mapped) {
+        const trimmedText = normalizedText.replace(/\b(ja|j ai|j ai|jai|j ai|j ai)\b/g, "");
+        const candidate = normalizeMydlpText(canonicalName);
+
+        if (trimmedText.includes(candidate)) {
+            return canonicalName;
+        }
+
+        for (const alias of aliases) {
+            const normalizedAlias = normalizeMydlpText(alias);
+            if (normalizedAlias && trimmedText.includes(normalizedAlias)) {
+                return canonicalName;
+            }
+        }
+    }
+
+    return null;
+}
+
+function detectMydlpAttractionQuestion(command) {
+    const normalized = normalizeCommandText(command || "");
+
+    if (!normalized) {
+        return null;
+    }
+
+    const attractionName = findMydlpAttractionInText(normalized);
+    if (!attractionName) {
+        return null;
+    }
+
+    const questions = /(combien|fois|nombre|total|temps|jai fait|j ai fait|fait.*combien|fait.*fois|fais.*combien|fais.*fois|how many|how often|times)/i;
+    if (!questions.test(normalized)) {
+        return null;
+    }
+
+    return attractionName;
+}
+
+function countMydlpAttractionVisits(data, attractionName) {
+    if (!data || typeof data !== "object") {
+        return 0;
+    }
+
+    const targetName = normalizeMydlpText(attractionName || "");
+    if (!targetName) {
+        return 0;
+    }
+
+    let count = 0;
+
+    Object.values(data).forEach(day => {
+        if (!day || typeof day !== "object") {
+            return;
+        }
+
+        Object.values(day).forEach(entry => {
+            if (!entry) {
+                return;
+            }
+
+            const extractedText = typeof entry === "string"
+                ? entry
+                : entry.name || entry.id || entry.attraction || entry.title || entry.label || "";
+
+            const normalizedEntry = normalizeMydlpText(extractedText);
+            if (!normalizedEntry) {
+                return;
+            }
+
+            const matches = Object.entries(MYDLP_ATTRACTION_ALIASES).some(([canonicalName, aliases]) => {
+                const canonicalNormalized = normalizeMydlpText(canonicalName);
+                if (canonicalNormalized === targetName || normalizedEntry.includes(canonicalNormalized) || targetName.includes(canonicalNormalized)) {
+                    return true;
+                }
+
+                return aliases.some(alias => {
+                    const normalizedAlias = normalizeMydlpText(alias);
+                    return normalizedEntry.includes(normalizedAlias) && (normalizedAlias.length > 2 || targetName.includes(normalizedAlias));
+                });
+            });
+
+            if (matches) {
+                count += 1;
+            }
+        });
+    });
+
+    return count;
+}
+
+async function fetchJsonFromUrl(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            return null;
+        }
+        return await response.json();
+    } catch (error) {
+        console.warn("Impossible de lire la donnée distante :", url, error);
+        return null;
+    }
+}
+
+async function loadDlpStats() {
+    if (mydlpDataCache) {
+        return mydlpDataCache;
+    }
+
+    const url = "https://my-disneyland-paris-default-rtdb.europe-west1.firebasedatabase.app/planning/activities.json";
+    let data = await fetchJsonFromUrl(url);
+
+    if (!data || typeof data !== "object") {
+        data = await loadDlpStatsFromFirebase();
+    }
+
+    if (!data || typeof data !== "object") {
+        mydlpDataCache = { totalActivities: 0, frozenCount: 0, missing: true };
+        return mydlpDataCache;
+    }
+
+    let frozenCount = 0;
+    let totalActivities = 0;
+
+    Object.values(data).forEach(day => {
+        if (!day || typeof day !== "object") {
+            return;
+        }
+
+        Object.values(day).forEach(entry => {
+            totalActivities += 1;
+
+            const normalizedEntry = typeof entry === "string"
+                ? entry
+                : (entry && typeof entry === "object" ? (entry.id || entry.name || "") : "");
+
+            const text = normalizeSiteTitleText(normalizedEntry).toLowerCase();
+            if (text.includes("frozen") || text.includes("ever after")) {
+                frozenCount += 1;
+            }
+        });
+    });
+
+    mydlpDataCache = {
+        totalActivities,
+        frozenCount,
+        missing: false,
+        data
+    };
+
+    return mydlpDataCache;
+}
+
+async function loadLudothequeStats() {
+    if (ludothequeDataCache) {
+        return ludothequeDataCache;
+    }
+
+    const endpoint = "https://firestore.googleapis.com/v1/projects/jeux-societe-d11a9/databases/(default)/documents/games";
+    const data = await fetchJsonFromUrl(endpoint);
+
+    const documents = Array.isArray(data?.documents) ? data.documents : [];
+    const games = documents.map(doc => {
+        const fields = doc.fields || {};
+        const normalized = {};
+
+        Object.entries(fields).forEach(([key, value]) => {
+            normalized[key] = readFirestoreField(value);
+        });
+
+        return normalized;
+    });
+
+    ludothequeDataCache = {
+        total: games.length,
+        names: games.map(game => game.name || game.titre || "Jeu sans nom").filter(Boolean),
+        missing: games.length === 0
+    };
+
+    return ludothequeDataCache;
+}
+
+async function loadPortfolioStats() {
+    if (portfolioDataCache) {
+        return portfolioDataCache;
+    }
+
+    const endpoint = "https://firestore.googleapis.com/v1/projects/jade-photographie/databases/(default)/documents/photos";
+    const data = await fetchJsonFromUrl(endpoint);
+
+    const documents = Array.isArray(data?.documents) ? data.documents : [];
+    const photos = documents.map(doc => {
+        const fields = doc.fields || {};
+        const normalized = {};
+
+        Object.entries(fields).forEach(([key, value]) => {
+            normalized[key] = readFirestoreField(value);
+        });
+
+        return normalized;
+    });
+
+    portfolioDataCache = {
+        total: photos.length,
+        titleList: photos.map(photo => photo.title || photo.name || photo.titre || "Photo sans titre").filter(Boolean),
+        missing: photos.length === 0
+    };
+
+    return portfolioDataCache;
+}
+
+async function answerSiteFact(command) {
+    const normalized = normalizeCommandText(command || "");
+
+    if (!normalized) {
+        return null;
+    }
+
+    const attractionName = detectMydlpAttractionQuestion(normalized);
+    const asksForCount = /(combien|fois|nombre|total|temps|jai fait|j ai fait|fait.*combien|fait.*fois|how many|how often|times)/i.test(normalized);
+
+    if (attractionName && asksForCount) {
+        const stats = await loadDlpStats();
+
+        if (stats && !stats.missing) {
+            const rawData = stats.data || {};
+            const exactCount = countMydlpAttractionVisits(rawData, attractionName);
+            const count = Number.isFinite(exactCount) ? exactCount : 0;
+            const label = attractionName === "Frozen Ever After" ? "Frozen Ever After" : attractionName;
+
+            return {
+                type: "answer",
+                reply: `Tu as fait ${label} ${count} fois. 🎢`
+            };
+        }
+
+        return {
+            type: "open",
+            site: "mydlp",
+            reply: `J'ouvre MyDLP pour vérifier ${attractionName}. Je n’ai pas encore accès aux données depuis mon navigateur. 🎢`
+        };
+    }
+
+    if (/(combien de|combien d|nombre de|total).*(jeu|jeux|societe|société)/.test(normalized) || /(jeu|jeux).*(combien|total|nombre)/.test(normalized)) {
+        const stats = await loadLudothequeStats();
+
+        if (stats && !stats.missing) {
+            return {
+                type: "answer",
+                reply: `Tu as ${stats.total} jeux dans ta ludothèque. 🎲`
+            };
+        }
+
+        return {
+            type: "open",
+            site: "ludotheque",
+            reply: "J'ouvre ta ludothèque. Je n’ai pas encore accès aux données pour te donner ce total depuis mon navigateur. 🎲"
+        };
+    }
+
+    if (/(frozen|ever after|everafter)/.test(normalized) && /(combien|fois|nombre)/.test(normalized)) {
+        const stats = await loadDlpStats();
+
+        if (stats && !stats.missing) {
+            return {
+                type: "answer",
+                reply: `Tu as fait Frozen Ever After ${stats.frozenCount} fois. 🎢`
+            };
+        }
+
+        return {
+            type: "open",
+            site: "mydlp",
+            reply: "J'ouvre MyDLP. Je n’ai pas encore accès aux données de cette attraction depuis mon navigateur. 🎢"
+        };
+    }
+
+    if (/portfolio/.test(normalized) && /(combien|nombre|total|photos?)/.test(normalized)) {
+        const stats = await loadPortfolioStats();
+
+        if (stats && !stats.missing) {
+            return {
+                type: "answer",
+                reply: `Tu as ${stats.total} photos dans ton portfolio. 📸`
+            };
+        }
+
+        return {
+            type: "open",
+            site: "portfolio",
+            reply: "J'ouvre ton portfolio. Je n’ai pas encore accès aux données depuis mon navigateur. 📸"
+        };
+    }
+
+    return null;
+}
+
+function getSiteDefinitionFromCommand(command) {
+    const normalized = normalizeCommandText(command || "");
+
+    if (!normalized) {
+        return null;
+    }
+
+    const siteEntries = Object.entries(siteCatalog);
+
+    for (const [siteName, siteInfo] of siteEntries) {
+        const match = siteInfo.aliases.some(alias => normalized.includes(alias));
+
+        if (match) {
+            return {
+                siteName,
+                siteInfo
+            };
+        }
+    }
+
+    return null;
+}
+
+function buildSiteNavigationResult(command) {
+    const normalized = normalizeCommandText(command || "");
+
+    if (!normalized) {
+        return null;
+    }
+
+    const siteMatch = getSiteDefinitionFromCommand(command);
+
+    if (!siteMatch) {
+        return null;
+    }
+
+    const { siteName, siteInfo } = siteMatch;
+
+    const rawQuery = String(command || "")
+        .replace(new RegExp(siteInfo.aliases.join("|"), "gi"), "")
+        .replace(/(?:ouvre|ouvrir|va sur|vas sur|aller sur|lance|go|peux tu ouvrir|peut tu ouvrir|tu peux ouvrir|peux tu|peut tu|tu peux|montre|affiche|voir|regarde|cherche|recherche|trouve|trouver)/gi, "")
+        .replace(/(?:combien de|combien d|quand|quel|quelle|ou|où|dans|sur|pour|de|a propos de|au sujet de)/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const query = rawQuery || null;
+
+    if (siteName === "mydlp" && /frozen|ever after|everafter/.test(normalized)) {
+        return {
+            action: "site_navigation",
+            target: "mydlp",
+            query: "Frozen Ever After",
+            reply: "Je vais ouvrir MyDLP et aller voir Frozen Ever After. 🎢"
+        };
+    }
+
+    if (siteName === "ludotheque" && /(combien de|combien d|nombre de|total).*(jeu|jeux|societe|société)/.test(normalized)) {
+        return {
+            action: "site_navigation",
+            target: "ludotheque",
+            query: "total jeux",
+            reply: "Je vais ouvrir ta ludothèque pour vérifier le nombre total de jeux. 🎲"
+        };
+    }
+
+    if (siteName === "mydlp" && /(combien de|combien d|nombre de|total|fois|nombre de fois).*(frozen|ever after|everafter)/.test(normalized)) {
+        return {
+            action: "site_navigation",
+            target: "mydlp",
+            query: "Frozen Ever After",
+            reply: "Je vais ouvrir MyDLP et vérifier combien de fois tu as fait Frozen Ever After. 🎢"
+        };
+    }
+
+    return {
+        action: "site_navigation",
+        target: siteName,
+        query,
+        reply: `J'ouvre ${siteInfo.label}. 🚀`
+    };
+}
+
 /* ==========================================
    EXÉCUTION DES ACTIONS JARVIS
 ========================================== */
@@ -1172,6 +2055,33 @@ async function executeJarvisAction(result) {
     }
 
 
+    if (action === "site_navigation") {
+        const siteName = String(result.target || "").toLowerCase().trim();
+        const siteInfo = siteCatalog[siteName];
+
+        if (!siteInfo) {
+            return "Je ne connais pas ce site. 🤔";
+        }
+
+        if (siteInfo.local) {
+            if (siteInfo.section) {
+                showSection(siteInfo.section);
+            }
+            return result.reply || `J'ouvre ${siteInfo.label}. 🚀`;
+        }
+
+        let finalUrl = siteInfo.url;
+        const query = String(result.query || "").trim();
+
+        if (query && siteInfo.searchParam) {
+            finalUrl = `${siteInfo.url}${siteInfo.searchParam}${encodeURIComponent(query)}`;
+        }
+
+        window.open(finalUrl, "_blank");
+
+        return result.reply || `J'ouvre ${siteInfo.label}. 🚀`;
+    }
+
     /* ======================================
        OUVRIR UN SITE
     ====================================== */
@@ -1179,107 +2089,64 @@ async function executeJarvisAction(result) {
     if (action === "open_website") {
 
         const websites = {
-
-            youtube:
-                "https://www.youtube.com/",
-
-            mydlp:
-                "https://quentwax.github.io/My-DLP/index.html",
-
-            ludotheque:
-                "https://quentwax.github.io/jeux_societe/",
-
-            github:
-                "https://github.com/quentwax",
-
-            portfolio:
-                "https://jcphotographie276.github.io/portfolio/",
-
+            youtube: "https://www.youtube.com/",
+            mydlp: "https://quentwax.github.io/My-DLP/index.html",
+            ludotheque: "https://quentwax.github.io/jeux_societe/",
+            github: "https://github.com/quentwax",
+            portfolio: "https://jcphotographie276.github.io/portfolio/",
             discord: {
                 app: "discord://",
                 web: "https://discord.com/app"
             },
-
             whatsapp: {
                 app: "whatsapp://",
-                web: "https://web.whatsapp.com/"
+                web: null
+            },
+            spotify: {
+                app: "spotify://",
+                web: null
+            },
+            steam: {
+                app: "steam://rungameid/570",
+                web: null
+            },
+            rainbowsix: {
+                app: "steam://rungameid/359550",
+                web: null
+            },
+            epicgames: {
+                app: "com.epicgames.launcher://",
+                web: null
+            },
+            uwamp: {
+                app: "http://localhost/",
+                web: null
             }
         };
-
-
-        /*
-           IMPORTANT :
-
-           Le nouveau Worker utilise :
-
-           result.target
-
-           et non plus :
-
-           result.site
-        */
 
         const target =
             String(result.target || "")
                 .toLowerCase()
                 .trim();
 
-
         if (!websites[target]) {
-
-            return (
-                "Je ne connais pas ce site. 🤔"
-            );
+            return "Je ne connais pas ce site. 🤔";
         }
 
+        const targetUrl = websites[target];
 
-        const targetUrl =
-            websites[target];
-
-        const finalUrl =
-            typeof targetUrl === "string"
-                ? targetUrl
-                : targetUrl.web;
-
-
-        if (typeof targetUrl !== "string") {
-
-            try {
-
-                window.location.href =
-                    targetUrl.app;
-
-            } catch (error) {
-
-                console.warn(
-                    "Impossible d'ouvrir l'application locale, fallback web :",
-                    error
-                );
-            }
-
-
-            setTimeout(() => {
-
-                window.open(
-                    finalUrl,
-                    "_blank"
-                );
-
-            }, 500);
-
-        } else {
-
-            window.open(
-                finalUrl,
-                "_blank"
-            );
+        if (typeof targetUrl === "string") {
+            window.open(targetUrl, "_blank");
+            return result.reply || "J'ouvre ça. 🚀";
         }
 
+        try {
+            window.location.href = targetUrl.app;
+        } catch (error) {
+            console.warn("Impossible d'ouvrir l'application locale, tentative sans fallback web :", error);
+        }
 
-        return (
-            result.reply ||
-            "J'ouvre ça. 🚀"
-        );
+        return result.reply || "J'ouvre ça. 🚀";
     }
 
 
@@ -1789,14 +2656,17 @@ async function executeJarvisAction(result) {
 
 function normalizeCommandText(command) {
 
-    return String(command || "")
+    const normalized = String(command || "")
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[-_]/g, " ")
         .replace(/[?!.,;:]/g, " ")
+        .replace(/\bmy\s+dlp\b/g, "mydlp")
         .replace(/\s+/g, " ")
         .trim();
+
+    return normalized;
 }
 
 
@@ -1815,6 +2685,14 @@ function getWeatherReply() {
     return "Je ne peux pas vérifier la météo pour le moment. ⚠️";
 }
 
+function getRandomReply(options) {
+    if (!Array.isArray(options) || options.length === 0) {
+        return "Bien sûr. 🤖";
+    }
+
+    return options[Math.floor(Math.random() * options.length)];
+}
+
 function getLocalFallbackReply(command) {
 
     const normalized = normalizeCommandText(command);
@@ -1824,30 +2702,69 @@ function getLocalFallbackReply(command) {
     }
 
     if (/(bonjour|salut|bonsoir|hey|coucou)/.test(normalized)) {
-        return "Bonjour ! Je suis Jarvis, prêt à t'aider.";
+        return getRandomReply([
+            "Bonjour ! Je suis Jarvis, ravi de te revoir.",
+            "Salut ! Je suis prêt à t'aider avec plaisir.",
+            "Bonsoir. Je suis Jarvis, en ligne et à l'écoute.",
+            "Bonjour Monsieur. Que puis-je faire pour vous ?"
+        ]);
     }
 
     if (/(qui es tu|qui tu es|presente toi|présente toi|qui est jarvis)/.test(normalized)) {
-        return "Je suis Jarvis, ton assistant personnel, conçu pour t'aider sur MyHub.";
+        return getRandomReply([
+            "Je suis Jarvis, ton assistant personnel, conçu pour te simplifier la vie sur MyHub.",
+            "Je suis Jarvis, ton aide perso. Je gère ton espace MyHub et je peux t'aider à naviguer, gérer des rappels et plus encore.",
+            "Je suis Jarvis, ton assistant discret et efficace. Tu peux me demander ce que tu veux, quand tu veux."
+        ]);
     }
 
     if (/(merci|thanks|thank you)/.test(normalized)) {
-        return "Avec plaisir. 😊";
+        return getRandomReply([
+            "Avec plaisir Monsieur.",
+            "De rien. Je suis là pour ça.",
+            "Tout le plaisir est pour moi.",
+            "Pas de souci, à votre service.",
+            "Avec plaisir, Monsieur."
+        ]);
     }
 
     if (/(quelle heure|heure qu'il est|il est quelle heure|donne l'heure|heure actuelle)/.test(normalized)) {
         const now = new Date();
-        return `Il est actuellement ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. ⏰`;
+        return getRandomReply([
+            `Il est actuellement ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}. ⏰`,
+            `On est à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.`,
+            `Il est ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}.`
+        ]);
     }
 
     if (/(quelle date|date d'aujourd'hui|date du jour|on est quel jour|donne la date)/.test(normalized)) {
         const now = new Date();
         const date = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-        return `Nous sommes le ${date}. 📅`;
+        return getRandomReply([
+            `Nous sommes le ${date}. 📅`,
+            `Aujourd'hui, on est ${date}.`,
+            `La date du jour est ${date}.`
+        ]);
     }
 
     if (/(meteo|météo|temps|temperature|pluie|soleil|nuage|orage)/.test(normalized)) {
         return getWeatherReply();
+    }
+
+    if (/(comment ca va|ça va|ca va|comment tu vas|comment vas tu|vas tu bien)/.test(normalized)) {
+        return getRandomReply([
+            "Je vais très bien, merci. Et toi ?",
+            "Très bien, merci. Toujours prêt pour la suite.",
+            "Au top, comme un assistant bien en forme."
+        ]);
+    }
+
+    if (/(tu es la|tu es là|tu es present|tu es présent)/.test(normalized)) {
+        return getRandomReply([
+            "Toujours là, Monsieur. Je suis prêt à vous aider.",
+            "Oui, je suis bien là. Que puis-je faire pour vous ?",
+            "Je suis là, comme toujours."
+        ]);
     }
 
     return null;
@@ -1863,6 +2780,16 @@ function getLocalQuickAction(command) {
     }
 
     const websiteAliases = {
+
+        myhub: {
+            target: "myhub",
+            reply: "J'ouvre MyHub. 🏠"
+        },
+
+        portfolio: {
+            target: "portfolio",
+            reply: "J'ouvre ton portfolio. 🖼️"
+        },
 
         youtube: {
             target: "youtube",
@@ -1884,11 +2811,6 @@ function getLocalQuickAction(command) {
             reply: "J'ouvre GitHub. 🧠"
         },
 
-        portfolio: {
-            target: "portfolio",
-            reply: "J'ouvre ton portfolio. 🖼️"
-        },
-
         discord: {
             target: "discord",
             reply: "J'ouvre Discord. 💬"
@@ -1897,31 +2819,67 @@ function getLocalQuickAction(command) {
         whatsapp: {
             target: "whatsapp",
             reply: "J'ouvre WhatsApp. 💬"
+        },
+
+        spotify: {
+            target: "spotify",
+            reply: "J'ouvre Spotify. 🎵"
+        },
+
+        steam: {
+            target: "steam",
+            reply: "J'ouvre Steam. 🎮"
+        },
+
+        rainbowsix: {
+            target: "rainbowsix",
+            reply: "J'ouvre Rainbow Six Siege. 🔫"
+        },
+
+        epicgames: {
+            target: "epicgames",
+            reply: "J'ouvre Epic Games. 🎮"
+        },
+
+        uwamp: {
+            target: "uwamp",
+            reply: "J'ouvre UwAmp. 🖥️"
         }
     };
 
     for (const [siteName, siteData] of Object.entries(websiteAliases)) {
 
-        const directPatterns = [
+        const aliasPatterns = new Set([
             siteName,
-            `ouvre ${siteName}`,
-            `ouvrir ${siteName}`,
-            `va sur ${siteName}`,
-            `vas sur ${siteName}`,
-            `aller sur ${siteName}`,
-            `lance ${siteName}`,
-            `go ${siteName}`,
-            `peux tu ouvrir ${siteName}`,
-            `peut tu ouvrir ${siteName}`,
-            `tu peux ouvrir ${siteName}`,
-            `peux tu ${siteName}`,
-            `peut tu ${siteName}`,
-            `tu peux ${siteName}`,
-            `ouvre le site ${siteName}`,
-            `ouvrir le site ${siteName}`,
-            `va sur le site ${siteName}`,
-            `vas sur le site ${siteName}`
-        ];
+            siteName.replace(/\s+/g, ""),
+            siteName === "mydlp" ? "my dlp" : siteName,
+            siteName === "mydlp" ? "ouvre my dlp" : `ouvre ${siteName}`,
+            siteName === "mydlp" ? "ouvrir my dlp" : `ouvrir ${siteName}`,
+            siteName === "mydlp" ? "va sur my dlp" : `va sur ${siteName}`,
+            siteName === "mydlp" ? "vas sur my dlp" : `vas sur ${siteName}`,
+            siteName === "mydlp" ? "aller sur my dlp" : `aller sur ${siteName}`,
+            siteName === "mydlp" ? "lance my dlp" : `lance ${siteName}`,
+            siteName === "mydlp" ? "go my dlp" : `go ${siteName}`,
+            siteName === "mydlp" ? "peux tu ouvrir my dlp" : `peux tu ouvrir ${siteName}`,
+            siteName === "mydlp" ? "peut tu ouvrir my dlp" : `peut tu ouvrir ${siteName}`,
+            siteName === "mydlp" ? "tu peux ouvrir my dlp" : `tu peux ouvrir ${siteName}`,
+            siteName === "mydlp" ? "peux tu my dlp" : `peux tu ${siteName}`,
+            siteName === "mydlp" ? "peut tu my dlp" : `peut tu ${siteName}`,
+            siteName === "mydlp" ? "tu peux my dlp" : `tu peux ${siteName}`,
+            siteName === "mydlp" ? "ouvre le site my dlp" : `ouvre le site ${siteName}`,
+            siteName === "mydlp" ? "ouvrir le site my dlp" : `ouvrir le site ${siteName}`,
+            siteName === "mydlp" ? "va sur le site my dlp" : `va sur le site ${siteName}`,
+            siteName === "mydlp" ? "vas sur le site my dlp" : `vas sur le site ${siteName}`,
+            siteName === "rainbowsix" ? "rainbow six siege" : siteName,
+            siteName === "rainbowsix" ? "rainbow six" : siteName,
+            siteName === "rainbowsix" ? "r6" : siteName,
+            siteName === "epicgames" ? "epic games" : siteName,
+            siteName === "uwamp" ? "uw amp" : siteName,
+            siteName === "steam" ? "steam" : siteName,
+            siteName === "steam" ? "lance steam" : siteName
+        ]);
+
+        const directPatterns = Array.from(aliasPatterns);
 
         if (directPatterns.includes(normalized)) {
             return {
@@ -1931,10 +2889,23 @@ function getLocalQuickAction(command) {
             };
         }
 
+        const keywordMatches = [
+            siteName,
+            siteName.replace(/\s+/g, ""),
+            siteName === "rainbowsix" ? "rainbow six siege" : "",
+            siteName === "rainbowsix" ? "rainbow six" : "",
+            siteName === "rainbowsix" ? "r6" : "",
+            siteName === "epicgames" ? "epic games" : "",
+            siteName === "uwamp" ? "uw amp" : "",
+            siteName === "steam" ? "steam" : "",
+            siteName === "whatsapp" ? "whats app" : "",
+            siteName === "spotify" ? "spotif" : ""
+        ].filter(Boolean);
+
         const genericOpenPattern =
             /(?:ouvre|ouvrir|va sur|vas sur|aller sur|lance|go|peux tu ouvrir|peut tu ouvrir|tu peux ouvrir|peux tu|peut tu|tu peux)/
             .test(normalized) &&
-            normalized.includes(siteName);
+            keywordMatches.some(keyword => normalized.includes(keyword));
 
         if (genericOpenPattern) {
             return {
@@ -1948,14 +2919,27 @@ function getLocalQuickAction(command) {
     const sectionAliases = {
         accueil: "home",
         home: "home",
+        myhub: "home",
         jarvis: "jarvis",
         mydlp: "mydlp",
         ludotheque: "ludotheque",
         musique: "music",
         music: "music",
         parametres: "settings",
-        settings: "settings"
+        settings: "settings",
+        portfolio: "home"
     };
+
+    const routedSiteCommand = buildSiteNavigationResult(command);
+
+    if (routedSiteCommand) {
+        return {
+            action: "site_navigation",
+            target: routedSiteCommand.target,
+            query: routedSiteCommand.query,
+            reply: routedSiteCommand.reply
+        };
+    }
 
     const sectionMatch = Object.entries(sectionAliases).find(([keyword]) =>
         normalized === keyword ||
@@ -2038,12 +3022,259 @@ function getLocalQuickAction(command) {
     return null;
 }
 
+function cleanWebSearchResult(text) {
+    return String(text || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/\s+\|\s+/g, " ")
+        .replace(/\s+[-–—]\s+/g, " ")
+        .replace(/\s+\(.*?\)/g, " ")
+        .replace(/\s+\[[^\]]*\]/g, " ")
+        .replace(/\s+(?:et|ou|ainsi|donc|c'est|cela|ceci|également)\s+/gi, " ")
+        .trim();
+}
+
+function shortenSearchAnswer(text, maxLength = 220) {
+    const raw = cleanWebSearchResult(text);
+
+    if (!raw) {
+        return "";
+    }
+
+    const sentences = raw.split(/(?<=[.!?])\s+/).map(part => part.trim()).filter(Boolean);
+
+    if (sentences.length > 0) {
+        const firstSentence = sentences[0];
+
+        if (firstSentence.length <= maxLength) {
+            return firstSentence;
+        }
+    }
+
+    const trimmed = raw.slice(0, maxLength).trim();
+    const withoutTrailing = trimmed.replace(/[\s.,;:!?]+$/g, "");
+
+    if (!withoutTrailing) {
+        return raw;
+    }
+
+    return withoutTrailing.length < raw.length ? `${withoutTrailing}…` : withoutTrailing;
+}
+
+function normalizeSearchQueryForWeb(rawQuery) {
+    const text = String(rawQuery || "")
+        .trim()
+        .replace(/^(?:cherche|recherche|trouve|trouver|look up|search)\s+/i, "")
+        .replace(/^(?:quel(?:le)? est|qui est|qu'est ce que|qu est ce que|c'est quoi|c est quoi|ce que c'est|que veut dire|qu est ce que|what is|who is|who's|what's)\s+/i, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (!text) {
+        return "";
+    }
+
+    const englishFriendly = text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\bnumero\b/gi, "number")
+        .replace(/\bpokemon\b/gi, "Pokemon")
+        .replace(/\bmeteo\b/gi, "weather")
+        .replace(/\bcapitale\b/gi, "capital")
+        .replace(/\bquel\b/gi, "what")
+        .replace(/\bquelle\b/gi, "what")
+        .replace(/\bcombien\b/gi, "how much")
+        .replace(/\bc'est\b/gi, "is")
+        .replace(/\bje veux savoir\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    return englishFriendly || text;
+}
+
+async function fetchJson(url) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        return null;
+    }
+}
+
+function extractDuckDuckGoAnswer(data) {
+    const answerText = cleanWebSearchResult(data?.Answer || data?.AnswerText || "");
+    if (answerText) {
+        return answerText;
+    }
+
+    const abstractText = cleanWebSearchResult(data?.AbstractText || "");
+    if (abstractText) {
+        return abstractText;
+    }
+
+    const firstTopic = data?.RelatedTopics?.[0];
+    const firstTopicText = cleanWebSearchResult(firstTopic?.Text || firstTopic?.Result || "");
+    if (firstTopicText) {
+        return firstTopicText;
+    }
+
+    const firstResult = data?.Results?.[0];
+    const firstResultText = cleanWebSearchResult(firstResult?.Text || firstResult?.Result || "");
+    if (firstResultText) {
+        return firstResultText;
+    }
+
+    return null;
+}
+
+async function searchWikipediaSummary(query) {
+    const safe = String(query || "").trim();
+
+    if (!safe) {
+        return null;
+    }
+
+    const endpoint = `https://fr.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(safe)}&format=json&origin=*&srlimit=1`;
+    const results = await fetchJson(endpoint);
+    const title = results?.query?.search?.[0]?.title;
+
+    if (!title) {
+        return null;
+    }
+
+    const summaryEndpoint = `https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+    const summaryData = await fetchJson(summaryEndpoint);
+
+    if (!summaryData) {
+        return null;
+    }
+
+    const summaryText = cleanWebSearchResult(summaryData.extract || summaryData.description || "");
+    if (summaryText) {
+        return summaryText;
+    }
+
+    return null;
+}
+
+async function searchTheWeb(query) {
+    const original = String(query || "").trim();
+
+    if (!original) {
+        return null;
+    }
+
+    const searchCandidates = [
+        original,
+        normalizeSearchQueryForWeb(original)
+    ].filter(Boolean);
+
+    const uniqueCandidates = [...new Set(searchCandidates)];
+
+    for (const candidate of uniqueCandidates) {
+        const ddgEndpoint = `https://api.duckduckgo.com/?q=${encodeURIComponent(candidate)}&format=json&no_redirect=1&no_html=1&skip_disambig=1&kl=fr-fr`;
+        const ddgData = await fetchJson(ddgEndpoint);
+        const ddgAnswer = extractDuckDuckGoAnswer(ddgData);
+
+        if (ddgAnswer) {
+            return shortenSearchAnswer(ddgAnswer);
+        }
+
+        const fallbackQuery = candidate
+            .replace(/\bwhat\b/gi, "")
+            .replace(/\bis\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        if (fallbackQuery) {
+            const wikiAnswer = await searchWikipediaSummary(fallbackQuery);
+            if (wikiAnswer) {
+                return shortenSearchAnswer(wikiAnswer);
+            }
+        }
+    }
+
+    for (const candidate of uniqueCandidates) {
+        const fallbackQuery = candidate
+            .replace(/\bwhat\b/gi, "")
+            .replace(/\bis\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        if (fallbackQuery) {
+            const wikiAnswer = await searchWikipediaSummary(fallbackQuery);
+            if (wikiAnswer) {
+                return shortenSearchAnswer(wikiAnswer);
+            }
+        }
+    }
+
+    return null;
+}
+
+function getWebSearchQuery(command) {
+    const input = String(command || "").trim();
+
+    if (!input) {
+        return null;
+    }
+
+    const withoutIntro = input
+        .replace(/^(?:cherche|recherche|trouve|trouver|look up|search)\s+/i, "")
+        .replace(/^(?:quel(?:le)? est|qui est|qu'est ce que|qu est ce que|c'est quoi|c est quoi|ce que c'est|que veut dire)\s+/i, "")
+        .trim();
+
+    return withoutIntro || input;
+}
+
+function shouldUseLocalWebSearch(command) {
+    const normalized = normalizeCommandText(command);
+
+    if (!normalized) {
+        return false;
+    }
+
+    const searchPatterns = [
+        /(cherche|recherche|trouve|trouver|look up|search)/,
+        /(quel est|quelle est|qui est|qu'est ce que|qu est ce que|c'est quoi|c est quoi|que veut dire|combien de|combien d|combien)/
+    ];
+
+    const ignoredPatterns = [
+        /(meteo|météo|temperature|heure|date|minuteur|timer|youtube|spotify|mydlp|ludotheque|github|portfolio|discord|whatsapp|bonjour|merci|salut|ca va|comment tu vas)/
+    ];
+
+    if (ignoredPatterns.some(pattern => pattern.test(normalized))) {
+        return false;
+    }
+
+    return searchPatterns.some(pattern => pattern.test(normalized));
+}
+
 
 /* ==========================================
    COMMUNICATION AVEC LE WORKER GEMINI
 ========================================== */
 
 let geminiCooldownUntil = 0;
+let isJarvisOffline = false;
+
+function getJarvisOfflineReply(command) {
+    const localReply = getLocalFallbackReply(command);
+
+    if (localReply) {
+        return localReply;
+    }
+
+    return "Jarvis est en mode local pour le moment. Je peux quand même t'aider pour l'heure, le minuteur, la météo, l'ouverture des sites ou MyDLP. 🤖";
+}
 
 function getGeminiRetryDelayMs(rawText) {
     if (!rawText) {
@@ -2083,12 +3314,10 @@ function getGeminiRetryDelayMs(rawText) {
 }
 
 async function processCommand(command) {
-    if (Date.now() < geminiCooldownUntil) {
-        const fallback = getLocalFallbackReply(command) || "Le service de Jarvis est temporairement indisponible. Réessaie dans quelques secondes. 🤖";
-
+    if (isJarvisOffline || Date.now() < geminiCooldownUntil) {
         return {
             action: "none",
-            reply: fallback
+            reply: getJarvisOfflineReply(command)
         };
     }
 
@@ -2149,6 +3378,8 @@ async function processCommand(command) {
                 }
             );
 
+        isJarvisOffline = false;
+
 
         /* ======================================
            ERREUR WORKER
@@ -2186,10 +3417,12 @@ async function processCommand(command) {
 
             if (retryDelayMs > 0) {
                 geminiCooldownUntil = Date.now() + retryDelayMs;
-            } else if (response.status === 429 || response.status === 503) {
+            } else if ([500, 502, 503, 504, 429].includes(response.status)) {
                 geminiCooldownUntil = Date.now() + 30000;
+                isJarvisOffline = true;
             }
 
+            const offlineFallback = getJarvisOfflineReply(command) || errorMessage;
 
             /*
                Essayer d'afficher le détail du Worker
@@ -2215,15 +3448,13 @@ async function processCommand(command) {
                 // La réponse n'était pas du JSON.
             }
 
-            const fallbackReply = getLocalFallbackReply(command) || errorMessage;
-
             return {
 
                 action:
                     "none",
 
                 reply:
-                    fallbackReply
+                    offlineFallback
             };
         }
 
@@ -2241,6 +3472,7 @@ async function processCommand(command) {
             result
         );
 
+        isJarvisOffline = false;
 
         return result;
 
@@ -2252,6 +3484,8 @@ async function processCommand(command) {
             error
         );
 
+        isJarvisOffline = true;
+        geminiCooldownUntil = Date.now() + 30000;
 
         return {
 
@@ -2259,7 +3493,7 @@ async function processCommand(command) {
                 "none",
 
             reply:
-                "Une erreur est survenue pendant la communication avec mon serveur. ⚠️"
+                getJarvisOfflineReply(command)
         };
     }
 }
@@ -2312,6 +3546,91 @@ async function sendCommand() {
     }
 
 
+    const structuredDataReply = await answerSiteFact(command);
+
+    if (structuredDataReply) {
+        if (structuredDataReply.type === "answer") {
+            addMessage("JARVIS", structuredDataReply.reply, "jarvis");
+            speakJarvisReply(structuredDataReply.reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", structuredDataReply.reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
+
+        const openResult = await executeJarvisAction({
+            action: "site_navigation",
+            target: structuredDataReply.site,
+            query: "",
+            reply: structuredDataReply.reply
+        });
+
+        addMessage("JARVIS", openResult, "jarvis");
+        speakJarvisReply(openResult);
+        addToJarvisHistory("user", command);
+        addToJarvisHistory("model", openResult);
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
+    const mydlpDirectAnswer = await answerSiteFact(command);
+    if (mydlpDirectAnswer) {
+        if (mydlpDirectAnswer.type === "answer") {
+            addMessage("JARVIS", mydlpDirectAnswer.reply, "jarvis");
+            speakJarvisReply(mydlpDirectAnswer.reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", mydlpDirectAnswer.reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
+
+        const openResult = await executeJarvisAction({
+            action: "site_navigation",
+            target: mydlpDirectAnswer.site,
+            query: "",
+            reply: mydlpDirectAnswer.reply
+        });
+
+        addMessage("JARVIS", openResult, "jarvis");
+        speakJarvisReply(openResult);
+        addToJarvisHistory("user", command);
+        addToJarvisHistory("model", openResult);
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
     const localFallbackReply = getLocalFallbackReply(command);
 
     if (localFallbackReply) {
@@ -2344,7 +3663,6 @@ async function sendCommand() {
 
         return;
     }
-
 
     const localQuickAction =
         getLocalQuickAction(command);
@@ -2390,6 +3708,30 @@ async function sendCommand() {
 
 
         return;
+    }
+
+    if (shouldUseLocalWebSearch(command)) {
+        const webQuery = getWebSearchQuery(command);
+        const webResult = await searchTheWeb(webQuery);
+
+        if (webResult) {
+            const reply = shortenSearchAnswer(webResult, 180);
+
+            addMessage("JARVIS", reply, "jarvis");
+            speakJarvisReply(reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
     }
 
 

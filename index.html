@@ -175,6 +175,42 @@
             </article>
 
 
+            <!-- COMPTE À REBOURS DISNEY -->
+
+            <article class="widget disney-widget">
+
+                <div class="widget-header">
+
+                    <div>
+                        <span class="widget-icon">🎢</span>
+                        <h2>Prochain séjour</h2>
+                    </div>
+
+                </div>
+
+                <div class="disney-countdown">
+
+                    <div class="disney-main-line">
+                        <span class="disney-emoji">🏰</span>
+                        <div>
+                            <strong>Disneyland Paris</strong>
+                            <p id="disneyTripDateLabel">Chargement...</p>
+                        </div>
+                    </div>
+
+                    <div class="disney-countdown-value" id="disneyCountdownValue">
+                        --j --h
+                    </div>
+
+                    <p class="disney-countdown-status" id="disneyCountdownStatus">
+                        Calcul du compte à rebours...
+                    </p>
+
+                </div>
+
+            </article>
+
+
             <!-- METEO -->
 
             <article class="widget weather-widget">
@@ -521,6 +557,28 @@
                 </select>
             </div>
         </div>
+
+        <div class="setting-card">
+            <h2>Disney</h2>
+
+            <div class="setting-row">
+                <label for="disneyTripDateInput">Date du prochain séjour</label>
+                <div class="setting-control setting-control-inline">
+                    <input id="disneyTripDateInput" type="date">
+                    <button id="saveDisneyTripDateButton" class="secondary-button" type="button">Enregistrer</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label>Compte Google</label>
+                <div class="setting-control setting-control-inline">
+                    <button id="disneyGoogleAuthButton" class="secondary-button" type="button">Se connecter avec Google</button>
+                    <button id="disneyGoogleSignOutButton" class="ghost-button" type="button" hidden>Déconnexion</button>
+                </div>
+            </div>
+
+            <p id="disneyAuthStatus" class="setting-status">Non connecté</p>
+        </div>
     </div>
 </section>
     </main>
@@ -536,6 +594,9 @@
 </script>
 
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 
 </body>
