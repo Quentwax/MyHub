@@ -673,11 +673,27 @@ attachDisneyFirebaseListener();
 
 
 /* ==========================================
-   CHECKLIST TÂCHES
+   STOCKAGE PARTAGÉ (LOCAL + CLOUD OPTIONNEL)
 ========================================== */
 
-const TASKS_KEY = "myhub_tasks";
+const SHARED_STORE_KEY = "myhub_shared_store_v1";
+const SHARED_DB_NAME = "myhub_shared_db";
+const SHARED_DB_VERSION = 1;
+const SHARED_DB_STORE = "state";
+const REMOTE_DB_URL = (
+    (typeof window !== "undefined" && window.MYHUB_DB_URL)
+        ? window.MYHUB_DB_URL
+        : ""
+).trim();
+
+const DEFAULT_TASKS = [
+    "Configurer MyHub",
+    "Créer les widgets",
+    "Ajouter JARVIS"
+];
+
 let taskList = [];
+let memoText = "";
 
 const tasksListElement =
     document.getElementById("tasksList");
@@ -685,43 +701,272 @@ const tasksListElement =
 const addTaskButton =
     document.getElementById("addTaskButton");
 
-function loadTasks() {
+const memoInput =
+    document.getElementById("memoInput");
+
+const memoStatus =
+    document.getElementById("memoStatus");
+
+function normalizeTaskList(items) {
+
+    if (!Array.isArray(items)) {
+        return [];
+    }
+
+    return items
+        .filter(item => typeof item === "string")
+        .map(item => item.trim())
+        .filter(item => item !== "");
+}
+
+function getDefaultState() {
+    return {
+        tasks: [...DEFAULT_TASKS],
+        memo: ""
+    };
+}
+
+function readLocalStorageState() {
 
     try {
 
         const saved =
-            localStorage.getItem(TASKS_KEY);
+            localStorage.getItem(SHARED_STORE_KEY);
 
         if (!saved) {
-            taskList = [
-                "Configurer MyHub",
-                "Créer les widgets",
-                "Ajouter JARVIS"
-            ];
-            return;
+            return getDefaultState();
         }
 
         const parsed = JSON.parse(saved);
 
-        if (Array.isArray(parsed) && parsed.length) {
-            taskList = parsed.filter(item => typeof item === "string" && item.trim() !== "");
+        if (!parsed || typeof parsed !== "object") {
+            return getDefaultState();
+        }
+
+        return {
+            tasks: normalizeTaskList(parsed.tasks),
+            memo: typeof parsed.memo === "string" ? parsed.memo : ""
+        };
+
+    } catch (error) {
+        console.error("Impossible de charger le stockage local partagé :", error);
+        return getDefaultState();
+    }
+}
+
+function writeLocalStorageState(state) {
+
+    try {
+
+        localStorage.setItem(
+            SHARED_STORE_KEY,
+            JSON.stringify({
+                tasks: state.tasks,
+                memo: state.memo
+            })
+        );
+
+    } catch (error) {
+        console.error("Impossible de sauvegarder le stockage local partagé :", error);
+    }
+}
+
+function openSharedDatabase() {
+
+    return new Promise((resolve, reject) => {
+
+        if (!("indexedDB" in window)) {
+            resolve(null);
             return;
         }
 
-    } catch (error) {
-        console.error("Impossible de charger les tâches :", error);
-    }
+        const request = window.indexedDB.open(SHARED_DB_NAME, SHARED_DB_VERSION);
 
-    taskList = [];
+        request.onupgradeneeded = () => {
+
+            const db = request.result;
+
+            if (!db.objectStoreNames.contains(SHARED_DB_STORE)) {
+                db.createObjectStore(SHARED_DB_STORE, { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = () => {
+            resolve(request.result);
+        };
+
+        request.onerror = () => {
+            reject(request.error || new Error("IndexedDB unavailable"));
+        };
+    });
 }
 
-function saveTasks() {
+function readDbState() {
+
+    return new Promise(async resolve => {
+
+        try {
+
+            const db = await openSharedDatabase();
+
+            if (!db) {
+                resolve(readLocalStorageState());
+                return;
+            }
+
+            const transaction = db.transaction(SHARED_DB_STORE, "readonly");
+            const store = transaction.objectStore(SHARED_DB_STORE);
+            const request = store.get("myhub_shared_state");
+
+            request.onsuccess = () => {
+                const payload = request.result && request.result.payload
+                    ? request.result.payload
+                    : null;
+
+                resolve(payload || readLocalStorageState());
+            };
+
+            request.onerror = () => {
+                resolve(readLocalStorageState());
+            };
+
+        } catch (error) {
+            console.warn("IndexedDB indisponible, fallback sur localStorage.", error);
+            resolve(readLocalStorageState());
+        }
+    });
+}
+
+function writeDbState(state) {
+
+    return new Promise(async resolve => {
+
+        try {
+
+            const db = await openSharedDatabase();
+
+            if (!db) {
+                writeLocalStorageState(state);
+                resolve();
+                return;
+            }
+
+            const transaction = db.transaction(SHARED_DB_STORE, "readwrite");
+            const store = transaction.objectStore(SHARED_DB_STORE);
+            store.put({
+                id: "myhub_shared_state",
+                payload: state
+            });
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => {
+                writeLocalStorageState(state);
+                resolve();
+            };
+
+        } catch (error) {
+            console.warn("Impossible d’écrire dans IndexedDB, fallback localStorage.", error);
+            writeLocalStorageState(state);
+            resolve();
+        }
+    });
+}
+
+async function readRemoteState() {
+
+    if (!REMOTE_DB_URL) {
+        return null;
+    }
 
     try {
-        localStorage.setItem(TASKS_KEY, JSON.stringify(taskList));
+
+        const response = await fetch(REMOTE_DB_URL, {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = await response.json();
+
+        if (payload && typeof payload === "object" && "payload" in payload) {
+            return payload.payload;
+        }
+
+        return payload;
+
     } catch (error) {
-        console.error("Impossible de sauver les tâches :", error);
+        console.warn("Synchronisation cloud indisponible, stockage local conservé.", error);
+        return null;
     }
+}
+
+async function saveRemoteState() {
+
+    if (!REMOTE_DB_URL) {
+        return;
+    }
+
+    try {
+
+        await fetch(REMOTE_DB_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                id: "myhub_shared_state",
+                payload: {
+                    tasks: taskList,
+                    memo: memoText
+                }
+            })
+        });
+
+    } catch (error) {
+        console.warn("Impossible de synchroniser le stockage cloud.", error);
+    }
+}
+
+async function persistSharedState() {
+
+    const state = {
+        tasks: taskList,
+        memo: memoText
+    };
+
+    await writeDbState(state);
+    await saveRemoteState();
+}
+
+async function loadSharedState() {
+
+    const localState = await readDbState();
+    const remoteState = await readRemoteState();
+
+    const remoteTasks = normalizeTaskList(remoteState && remoteState.tasks);
+    const localTasks = normalizeTaskList(localState.tasks);
+
+    const hasRemoteData = remoteTasks.length > 0 || (
+        remoteState && typeof remoteState.memo === "string" && remoteState.memo.trim() !== ""
+    );
+
+    taskList = hasRemoteData ? remoteTasks : localTasks.length > 0 ? localTasks : [...DEFAULT_TASKS];
+    memoText = hasRemoteData
+        ? (remoteState && typeof remoteState.memo === "string" ? remoteState.memo : localState.memo)
+        : localState.memo;
+
+    renderTasks();
+    renderMemo();
+
+    await writeDbState({
+        tasks: taskList,
+        memo: memoText
+    });
 }
 
 function renderTasks() {
@@ -758,7 +1003,7 @@ function renderTasks() {
 
             if (checkbox.checked) {
                 taskList = taskList.filter(item => item !== taskText);
-                saveTasks();
+                persistSharedState();
                 renderTasks();
             }
         });
@@ -767,6 +1012,21 @@ function renderTasks() {
         label.appendChild(span);
         tasksListElement.appendChild(label);
     });
+}
+
+function renderMemo() {
+
+    if (!memoInput) {
+        return;
+    }
+
+    memoInput.value = memoText;
+
+    if (memoStatus) {
+        memoStatus.textContent = REMOTE_DB_URL
+            ? "Sauvegarde locale + synchronisation cloud"
+            : "Sauvegarde locale";
+    }
 }
 
 function addTask() {
@@ -785,17 +1045,26 @@ function addTask() {
     }
 
     taskList.push(cleaned);
-    saveTasks();
+    persistSharedState();
     renderTasks();
 }
 
-loadTasks();
-renderTasks();
+if (memoInput) {
+    memoInput.addEventListener("input", () => {
+        memoText = memoInput.value;
+        persistSharedState();
+
+        if (memoStatus) {
+            memoStatus.textContent = "Sauvegardé";
+        }
+    });
+}
 
 if (addTaskButton) {
     addTaskButton.addEventListener("click", addTask);
 }
 
+loadSharedState();
 
 /* ==========================================
    JARVIS

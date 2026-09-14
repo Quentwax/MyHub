@@ -718,6 +718,46 @@ body {
 
 
 /* ==========================================
+   MEMO
+========================================== */
+
+.memo-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+
+.memo-input {
+    width: 100%;
+    min-height: 148px;
+    resize: vertical;
+
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    color: #e2e8f0;
+    padding: 12px 14px;
+    font: inherit;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+
+
+.memo-input:focus {
+    outline: 2px solid rgba(96, 165, 250, 0.45);
+    border-color: rgba(96, 165, 250, 0.75);
+}
+
+
+.memo-status {
+    color: #8a929b;
+    font-size: 11px;
+    min-height: 14px;
+}
+
+
+/* ==========================================
    PROJECTS
 ========================================== */
 
