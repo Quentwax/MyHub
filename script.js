@@ -2630,8 +2630,13 @@ async function executeJarvisAction(result) {
         if (command === "open") {
 
             showSection(
-                "musicSection"
+                "homeSection"
             );
+
+            document.querySelector(".music-widget")?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
 
 
             const sidebar =
@@ -2672,6 +2677,47 @@ async function executeJarvisAction(result) {
                 return (
                     result.reply ||
                     "Je contrôle la lecture. 🎵"
+                );
+            }
+
+            if (command === "play") {
+                if (result.query) {
+                    const started = await playSpotifySearchResult(result.query);
+
+                    return started
+                        ? (result.reply || `Je lance ${result.query}. 🎵`)
+                        : "Je n'ai pas trouvé ce morceau sur Spotify. 🔎";
+                }
+
+                await spotifyPlayer.resume();
+
+                return (
+                    result.reply ||
+                    "Je relance la lecture. ▶️"
+                );
+            }
+
+            if (command === "pause") {
+                await spotifyPlayer.pause();
+
+                return (
+                    result.reply ||
+                    "Je mets Spotify en pause. ⏸️"
+                );
+            }
+
+            if (command === "volume") {
+                const volume = Math.min(100, Math.max(0, Number(result.volume)));
+
+                if (!Number.isFinite(volume)) {
+                    return "Indique-moi un volume entre 0 et 100 %. 🔊";
+                }
+
+                await setSpotifyVolume(volume);
+
+                return (
+                    result.reply ||
+                    `Volume Spotify réglé à ${Math.round(volume)} %. 🔊`
                 );
             }
 
@@ -3039,6 +3085,83 @@ function getLocalFallbackReply(command) {
     return null;
 }
 
+function getLocalSpotifyAction(command) {
+    const normalized = normalizeCommandText(command);
+
+    if (!/(spotify|musique|chanson|morceau|volume|pause|lecture|joue|lis|passe)/.test(normalized)) {
+        return null;
+    }
+
+    if (["spotify", "musique", "ouvre spotify", "ouvrir spotify", "ouvre la musique", "ouvrir la musique"].includes(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "open",
+            reply: "J'ouvre le lecteur Spotify. 🎵"
+        };
+    }
+
+    const volumeMatch = normalized.match(/(?:volume|son)\s*(?:a|à|de|sur)?\s*(\d{1,3})\s*(?:%|pourcent|pour cent)?/);
+
+    if (volumeMatch) {
+        const volume = Math.min(100, Math.max(0, Number(volumeMatch[1])));
+
+        return {
+            action: "spotify_control",
+            command: "volume",
+            volume,
+            reply: `Volume Spotify réglé à ${volume} %. 🔊`
+        };
+    }
+
+    if (/(passe|passer|suivante|suivant|prochaine|prochain)/.test(normalized) && !/(ne passe pas|ne passer pas)/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "next",
+            reply: "Je passe au morceau suivant. ⏭️"
+        };
+    }
+
+    if (/(precedente|précédente|precedent|précédent|retourne|reviens)/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "previous",
+            reply: "Je reviens au morceau précédent. ⏮️"
+        };
+    }
+
+    if (/(mets|met|mettre|mettre en|pause|arrete|arrête|stoppe|stop)/.test(normalized) && /pause|stop|arrete|arrête/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "pause",
+            reply: "Je mets Spotify en pause. ⏸️"
+        };
+    }
+
+    if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
+        const query = normalized
+            .replace(/\b(?:spotify|musique|chanson|morceau|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|lecture)\b/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        return {
+            action: "spotify_control",
+            command: "play",
+            query: query || null,
+            reply: query ? `Je cherche ${query} sur Spotify. 🔎` : "Je relance la lecture. ▶️"
+        };
+    }
+
+    if (/(active|ouvre|ouvrir|lance|lancer|affiche)/.test(normalized) && /spotify|musique/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "open",
+            reply: "J'ouvre le lecteur Spotify. 🎵"
+        };
+    }
+
+    return null;
+}
+
 function getLocalQuickAction(command) {
 
     const normalized =
@@ -3046,6 +3169,12 @@ function getLocalQuickAction(command) {
 
     if (!normalized) {
         return null;
+    }
+
+    const spotifyAction = getLocalSpotifyAction(command);
+
+    if (spotifyAction) {
+        return spotifyAction;
     }
 
     const websiteAliases = {
@@ -4422,6 +4551,53 @@ function setSpotifyVolume(value) {
         .catch(error => {
             console.warn("Impossible de régler le volume Spotify :", error);
         });
+}
+
+async function playSpotifySearchResult(query) {
+    const safeQuery = String(query || "").trim();
+
+    if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
+        return false;
+    }
+
+    try {
+        const searchResponse = await fetch(
+            `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${spotifyAccessToken}`
+                }
+            }
+        );
+
+        if (!searchResponse.ok) {
+            return false;
+        }
+
+        const searchData = await searchResponse.json();
+        const trackUri = searchData?.tracks?.items?.[0]?.uri;
+
+        if (!trackUri) {
+            return false;
+        }
+
+        const playResponse = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${spotifyAccessToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ uris: [trackUri] })
+            }
+        );
+
+        return playResponse.ok;
+    } catch (error) {
+        console.warn("Impossible de lancer une recherche Spotify :", error);
+        return false;
+    }
 }
 
 if (spotifyVolumeSlider) {
