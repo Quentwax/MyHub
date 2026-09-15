@@ -2689,7 +2689,7 @@ async function executeJarvisAction(result) {
                         : "Je n'ai pas trouvé ce morceau sur Spotify. 🔎";
                 }
 
-                await spotifyPlayer.resume();
+                    await spotifyPlayer.resume();
 
                 return (
                     result.reply ||
@@ -3139,7 +3139,7 @@ function getLocalSpotifyAction(command) {
 
     if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|lecture)\b/g, " ")
+            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|la|le|les|un|une|ce|cette)\b/g, " ")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -4561,7 +4561,7 @@ async function playSpotifySearchResult(query) {
     }
 
     try {
-        const searchResponse = await fetch(
+        let searchResponse = await fetch(
             `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`,
             {
                 headers: {
@@ -4569,6 +4569,17 @@ async function playSpotifySearchResult(query) {
                 }
             }
         );
+
+        if (searchResponse.status === 401 && await refreshSpotifyAccessToken()) {
+            searchResponse = await fetch(
+                `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${spotifyAccessToken}`
+                    }
+                }
+            );
+        }
 
         if (!searchResponse.ok) {
             return false;
@@ -4581,7 +4592,7 @@ async function playSpotifySearchResult(query) {
             return false;
         }
 
-        const playResponse = await fetch(
+        let playResponse = await fetch(
             `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
             {
                 method: "PUT",
@@ -4593,9 +4604,67 @@ async function playSpotifySearchResult(query) {
             }
         );
 
+        if (playResponse.status === 401 && await refreshSpotifyAccessToken()) {
+            playResponse = await fetch(
+                `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${spotifyAccessToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ uris: [trackUri] })
+                }
+            );
+        }
+
         return playResponse.ok;
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
+        return false;
+    }
+}
+
+async function refreshSpotifyAccessToken() {
+    const refreshToken = localStorage.getItem("spotify_refresh_token");
+
+    if (!refreshToken) {
+        return false;
+    }
+
+    try {
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+                client_id: SPOTIFY_CLIENT_ID,
+                grant_type: "refresh_token",
+                refresh_token: refreshToken
+            })
+        });
+
+        if (!response.ok) {
+            return false;
+        }
+
+        const data = await response.json();
+
+        if (!data.access_token) {
+            return false;
+        }
+
+        spotifyAccessToken = data.access_token;
+        localStorage.setItem("spotify_access_token", spotifyAccessToken);
+
+        if (data.refresh_token) {
+            localStorage.setItem("spotify_refresh_token", data.refresh_token);
+        }
+
+        return true;
+    } catch (error) {
+        console.warn("Impossible de renouveler le token Spotify :", error);
         return false;
     }
 }
