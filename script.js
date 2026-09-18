@@ -2697,6 +2697,14 @@ async function executeJarvisAction(result) {
                 );
             }
 
+            if (command === "playlist" || command === "playlist_search") {
+                const started = await playSpotifyPlaylistSearch(result.query);
+
+                return started
+                    ? (result.reply || `Je lance la playlist ${result.query}. 🎵`)
+                    : "Je n'ai pas trouvé cette playlist sur Spotify. 🔎";
+            }
+
             if (command === "pause") {
                 await spotifyPlayer.pause();
 
@@ -3088,7 +3096,7 @@ function getLocalFallbackReply(command) {
 function getLocalSpotifyAction(command) {
     const normalized = normalizeCommandText(command);
 
-    if (!/(spotify|musique|chanson|morceau|volume|pause|lecture|joue|lis|passe)/.test(normalized)) {
+    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe)/.test(normalized)) {
         return null;
     }
 
@@ -3129,6 +3137,20 @@ function getLocalSpotifyAction(command) {
         };
     }
 
+    if (/(playlist|liste de lecture)/.test(normalized)) {
+        const query = normalized
+            .replace(/\b(?:spotify|musique|cherche|recherche|trouve|une|la|le|les|playlist|playlists|liste|de|lecture|moi|ma|mes|lance|lancer|joue|jouer|lis|lire|sur)\b/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        return {
+            action: "spotify_control",
+            command: "playlist",
+            query: query || "mes playlists",
+            reply: query ? `Je cherche la playlist ${query} sur Spotify. 🔎` : "Je cherche tes playlists Spotify. 🔎"
+        };
+    }
+
     if (/(mets|met|mettre|mettre en|pause|arrete|arrête|stoppe|stop)/.test(normalized) && /pause|stop|arrete|arrête/.test(normalized)) {
         return {
             action: "spotify_control",
@@ -3139,7 +3161,7 @@ function getLocalSpotifyAction(command) {
 
     if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|la|le|les|un|une|ce|cette)\b/g, " ")
+            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -4505,7 +4527,11 @@ const SPOTIFY_SCOPES = [
 
     "user-read-playback-state",
 
-    "user-modify-playback-state"
+    "user-modify-playback-state",
+
+    "playlist-read-private",
+
+    "playlist-read-collaborative"
 
 ].join(" ");
 
@@ -4553,6 +4579,27 @@ function setSpotifyVolume(value) {
         });
 }
 
+async function spotifyApiFetch(endpoint, options = {}) {
+    const makeRequest = () => fetch(
+        `https://api.spotify.com/v1${endpoint}`,
+        {
+            ...options,
+            headers: {
+                Authorization: `Bearer ${spotifyAccessToken}`,
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    let response = await makeRequest();
+
+    if (response.status === 401 && await refreshSpotifyAccessToken()) {
+        response = await makeRequest();
+    }
+
+    return response;
+}
+
 async function playSpotifySearchResult(query) {
     const safeQuery = String(query || "").trim();
 
@@ -4561,66 +4608,116 @@ async function playSpotifySearchResult(query) {
     }
 
     try {
-        let searchResponse = await fetch(
-            `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${spotifyAccessToken}`
-                }
-            }
+        const searchResponse = await spotifyApiFetch(
+            `/search?type=track&limit=5&q=${encodeURIComponent(safeQuery)}`
         );
-
-        if (searchResponse.status === 401 && await refreshSpotifyAccessToken()) {
-            searchResponse = await fetch(
-                `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${spotifyAccessToken}`
-                    }
-                }
-            );
-        }
 
         if (!searchResponse.ok) {
             return false;
         }
 
         const searchData = await searchResponse.json();
-        const trackUri = searchData?.tracks?.items?.[0]?.uri;
+        const trackUris = (searchData?.tracks?.items || [])
+            .map(track => track.uri)
+            .filter(Boolean);
 
-        if (!trackUri) {
+        if (trackUris.length === 0) {
             return false;
         }
 
-        let playResponse = await fetch(
-            `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+        const playResponse = await spotifyApiFetch(
+            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
             {
                 method: "PUT",
                 headers: {
-                    Authorization: `Bearer ${spotifyAccessToken}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ uris: [trackUri] })
+                body: JSON.stringify({ uris: trackUris })
             }
         );
-
-        if (playResponse.status === 401 && await refreshSpotifyAccessToken()) {
-            playResponse = await fetch(
-                `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${spotifyAccessToken}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ uris: [trackUri] })
-                }
-            );
-        }
 
         return playResponse.ok;
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
+        return false;
+    }
+}
+
+async function getSpotifyPlaylists(query) {
+    const safeQuery = String(query || "").trim();
+    const userPlaylists = [];
+    let nextUrl = "/me/playlists?limit=50";
+
+    while (nextUrl && userPlaylists.length < 100) {
+        const endpoint = nextUrl.replace("https://api.spotify.com/v1", "");
+        const response = await spotifyApiFetch(endpoint);
+
+        if (!response.ok) {
+            break;
+        }
+
+        const data = await response.json();
+        userPlaylists.push(...(data.items || []));
+        nextUrl = data.next;
+    }
+
+    if (["mes playlists", "ma playlist", "mes playlist"].includes(safeQuery)) {
+        return userPlaylists;
+    }
+
+    const response = await spotifyApiFetch(
+        `/search?type=playlist&limit=10&q=${encodeURIComponent(safeQuery)}`
+    );
+
+    if (!response.ok) {
+        return userPlaylists.filter(item =>
+            item.name?.toLowerCase().includes(safeQuery.toLowerCase())
+        );
+    }
+
+    const data = await response.json();
+    const publicPlaylists = data?.playlists?.items?.filter(Boolean) || [];
+    const matchingUserPlaylists = userPlaylists.filter(item =>
+        item.name?.toLowerCase().includes(safeQuery.toLowerCase())
+    );
+    const knownUris = new Set(matchingUserPlaylists.map(item => item.uri));
+
+    return [
+        ...matchingUserPlaylists,
+        ...publicPlaylists.filter(item => !knownUris.has(item.uri))
+    ];
+}
+
+async function playSpotifyPlaylistSearch(query) {
+    if (!spotifyAccessToken || !spotifyDeviceId) {
+        return false;
+    }
+
+    try {
+        const playlists = await getSpotifyPlaylists(query);
+        const wanted = String(query || "").trim().toLowerCase();
+        const playlist = playlists.find(item =>
+            item.name?.toLowerCase() === wanted
+        ) || playlists[0];
+
+        if (!playlist?.uri) {
+            return false;
+        }
+
+        const response = await spotifyApiFetch(
+            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ context_uri: playlist.uri })
+            }
+        );
+
+        return response.ok;
+    } catch (error) {
+        console.warn("Impossible de lancer une playlist Spotify :", error);
         return false;
     }
 }
