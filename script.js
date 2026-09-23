@@ -3751,7 +3751,7 @@ function getLocalSpotifyAction(command) {
 
     if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
+            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|du|de|ce|cette|moi)\b/g, " ")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -5156,6 +5156,8 @@ const spotifyQueuedTrackIds = new Set();
 const spotifyQueuedTrackFingerprints = new Set();
 let spotifyRecommendationRequest = null;
 let spotifyLastRecommendationTrackId = null;
+let spotifyActiveQueueQuery = null;
+let spotifySearchQueueRequest = null;
 const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
@@ -5336,6 +5338,7 @@ async function playSpotifyTheme(theme) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyActiveQueueQuery = null;
 
         for (const track of selectedTracks.slice(1)) {
             const queueResponse = await spotifyApiFetch(
@@ -5419,6 +5422,68 @@ async function queueSpotifyRecommendations(trackId) {
     return spotifyRecommendationRequest;
 }
 
+async function queueSpotifySearchTracks(query, amount = 10) {
+    const safeQuery = String(query || "").trim();
+
+    if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
+        return;
+    }
+
+    if (spotifySearchQueueRequest) {
+        return spotifySearchQueueRequest;
+    }
+
+    spotifySearchQueueRequest = (async () => {
+        try {
+            const offset = Math.floor(Math.random() * 3) * 50;
+            const response = await spotifyApiFetch(
+                `/search?type=track&limit=50&offset=${offset}&q=${encodeURIComponent(safeQuery)}`
+            );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            let candidates = (data?.tracks?.items || []).filter(track => {
+                const fingerprint = getSpotifyTrackFingerprint(track);
+
+                return track?.id && track?.uri &&
+                    !spotifyQueuedTrackIds.has(track.id) &&
+                    fingerprint &&
+                    !spotifyQueuedTrackFingerprints.has(fingerprint);
+            });
+
+            if (candidates.length === 0) {
+                spotifyQueuedTrackIds.clear();
+                spotifyQueuedTrackFingerprints.clear();
+                candidates = (data?.tracks?.items || []).filter(track => track?.id && track?.uri);
+            }
+
+            for (const track of shuffleSpotifyTracks(candidates).slice(0, amount)) {
+                const queueResponse = await spotifyApiFetch(
+                    `/me/player/queue?uri=${encodeURIComponent(track.uri)}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
+                    { method: "POST" }
+                );
+
+                if (!queueResponse.ok) {
+                    console.warn("Spotify n'a pas pu ajouter le morceau recherché à la file :", queueResponse.status);
+                    break;
+                }
+
+                spotifyQueuedTrackIds.add(track.id);
+                spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+            }
+        } catch (error) {
+            console.warn("Impossible de remplir la file de recherche Spotify :", error);
+        } finally {
+            spotifySearchQueueRequest = null;
+        }
+    })();
+
+    return spotifySearchQueueRequest;
+}
+
 async function playSpotifySearchResult(query) {
     const safeQuery = String(query || "").trim();
 
@@ -5428,7 +5493,7 @@ async function playSpotifySearchResult(query) {
 
     try {
         const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
+            `/search?type=track&limit=50&q=${encodeURIComponent(safeQuery)}`
         );
 
         if (!searchResponse.ok) {
@@ -5436,7 +5501,8 @@ async function playSpotifySearchResult(query) {
         }
 
         const searchData = await searchResponse.json();
-        const track = searchData?.tracks?.items?.[0];
+        const tracks = (searchData?.tracks?.items || []).filter(track => track?.id && track?.uri);
+        const track = shuffleSpotifyTracks(tracks)[0];
         const trackUris = track?.uri ? [track.uri] : [];
 
         if (trackUris.length === 0) {
@@ -5461,9 +5527,10 @@ async function playSpotifySearchResult(query) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyActiveQueueQuery = safeQuery;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
-        await queueSpotifyRecommendations(track.id);
+        await queueSpotifySearchTracks(safeQuery, 10);
 
         return true;
     } catch (error) {
@@ -6177,7 +6244,12 @@ function initializeSpotifyPlayer(
                 spotifyQueuedTrackFingerprints.add(
                     getSpotifyTrackFingerprint(currentTrack)
                 );
-                queueSpotifyRecommendations(currentTrack.id);
+
+                if (spotifyActiveQueueQuery) {
+                    queueSpotifySearchTracks(spotifyActiveQueueQuery, 10);
+                } else {
+                    queueSpotifyRecommendations(currentTrack.id);
+                }
             }
 
 
