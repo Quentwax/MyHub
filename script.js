@@ -3310,13 +3310,6 @@ async function executeJarvisAction(result) {
 
             if (command === "next") {
 
-                if (await playNextSpotifyFallbackTrack()) {
-                    return (
-                        result.reply ||
-                        "Je passe au morceau suivant. ⏭️"
-                    );
-                }
-
                 await spotifyPlayer.nextTrack();
 
                 return (
@@ -3334,18 +3327,6 @@ async function executeJarvisAction(result) {
                     result.reply ||
                     "Je reviens à la chanson précédente. ⏮️"
                 );
-            }
-
-            if (command === "shuffle") {
-                const enabled = result.enabled !== false;
-                const response = await spotifyApiFetch(
-                    `/me/player/shuffle?state=${enabled}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
-                    { method: "PUT" }
-                );
-
-                return response.ok
-                    ? (result.reply || "Mode aléatoire modifié. 🔀")
-                    : "Je n'ai pas réussi à modifier le mode aléatoire Spotify. ⚠️";
             }
 
 
@@ -3691,173 +3672,102 @@ function getLocalFallbackReply(command) {
 }
 
 function getLocalSpotifyAction(command) {
-    const raw = String(command || "").trim();
-    const text = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalized = normalizeCommandText(command);
 
-    if (!text) return null;
+    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe|veux|voudrais|aimerais|disney|pixar|marvel|star wars)/.test(normalized)) {
+        return null;
+    }
 
-    // --------------------------------------------------
-    // CONTEXTE SPOTIFY
-    // --------------------------------------------------
-    const spotifyContext =
-        /\bspotify\b/.test(text) ||
-        /\bplaylist\b/.test(text) ||
-        /\bmusique\b/.test(text) ||
-        /\bchanson\b/.test(text) ||
-        /\bmorceau\b/.test(text) ||
-        /\becoute\b/.test(text) ||
-        /\blis\b/.test(text) ||
-        /\bjoue\b/.test(text) ||
-        /\blance\b/.test(text) ||
-        /\bpasse\b/.test(text) ||
-        /\bmet\b/.test(text) ||
-        /\bvolume\b/.test(text);
-
-    if (!spotifyContext) return null;
-
-    // --------------------------------------------------
-    // OUVRIR SPOTIFY
-    // --------------------------------------------------
-    if (
-        /\bouvre spotify\b/.test(text) ||
-        /\blance spotify\b/.test(text) ||
-        /\bouvre la musique\b/.test(text)
-    ) {
+    if (["spotify", "musique", "ouvre spotify", "ouvrir spotify", "ouvre la musique", "ouvrir la musique"].includes(normalized)) {
         return {
-            action: "open_website",
-            target: "spotify"
+            action: "spotify_control",
+            command: "open",
+            reply: "J'ouvre le lecteur Spotify. 🎵"
         };
     }
 
-    // --------------------------------------------------
-    // VOLUME
-    // --------------------------------------------------
-    const volumeMatch = text.match(
-        /\b(?:volume|mets le volume|met le volume|monte le volume|baisse le volume)\D{0,10}(\d{1,3})\b/
-    );
+    const volumeMatch = normalized.match(/(?:volume|son)\s*(?:a|à|de|sur)?\s*(\d{1,3})\s*(?:%|pourcent|pour cent)?/);
 
     if (volumeMatch) {
-        let volume = Math.max(0, Math.min(100, Number(volumeMatch[1])));
+        const volume = Math.min(100, Math.max(0, Number(volumeMatch[1])));
 
         return {
             action: "spotify_control",
             command: "volume",
-            value: volume
+            volume,
+            reply: `Volume Spotify réglé à ${volume} %. 🔊`
         };
     }
 
-    // --------------------------------------------------
-    // PAUSE / STOP
-    // --------------------------------------------------
-    if (
-        /\b(?:mets en pause|met en pause|pause|arrete la musique|stop la musique|stop)\b/.test(text)
-    ) {
+    if (/(passe|passer|suivante|suivant|prochaine|prochain)/.test(normalized) && !/(ne passe pas|ne passer pas)/.test(normalized)) {
         return {
             action: "spotify_control",
-            command: "pause"
+            command: "next",
+            reply: "Je passe au morceau suivant. ⏭️"
         };
     }
 
-    // --------------------------------------------------
-    // MORCEAU SUIVANT
-    // --------------------------------------------------
-    if (
-        /\b(?:morceau suivant|chanson suivante|musique suivante|passe au suivant|suivant|next)\b/.test(text)
-    ) {
+    if (/(precedente|précédente|precedent|précédent|retourne|reviens)/.test(normalized)) {
         return {
             action: "spotify_control",
-            command: "next"
+            command: "previous",
+            reply: "Je reviens au morceau précédent. ⏮️"
         };
     }
 
-    // --------------------------------------------------
-    // MORCEAU PRECEDENT
-    // --------------------------------------------------
-    if (
-        /\b(?:morceau precedent|chanson precedente|musique precedente|passe au precedent|precedent|previous)\b/.test(text)
-    ) {
-        return {
-            action: "spotify_control",
-            command: "previous"
-        };
-    }
-
-    // --------------------------------------------------
-    // SHUFFLE
-    // --------------------------------------------------
-    if (
-        /\b(?:active|active le|mets|met) (?:le )?(?:mode )?aleatoire\b/.test(text) ||
-        /\b(?:shuffle|aleatoire)\b/.test(text)
-    ) {
-        return {
-            action: "spotify_control",
-            command: "shuffle"
-        };
-    }
-
-    // --------------------------------------------------
-    // PLAYLIST
-    // --------------------------------------------------
-    const playlistMatch = text.match(
-        /\b(?:mets|met|lance|joue|ouvre|lis)(?: moi)?(?: la)? playlist (.+)$/i
-    );
-
-    if (playlistMatch) {
-        return {
-            action: "spotify_control",
-            command: "playlist_search",
-            query: playlistMatch[1].trim()
-        };
-    }
-
-    // --------------------------------------------------
-    // THEMES
-    // --------------------------------------------------
-    if (/\b(?:musique|chansons?|morceaux?) (?:de )?(disney|pixar|marvel|star wars)\b/.test(text)) {
-        const themeMatch = text.match(
-            /\b(?:musique|chansons?|morceaux?) (?:de )?(disney|pixar|marvel|star wars)\b/
-        );
+    if (/(playlist|liste de lecture)/.test(normalized)) {
+        const query = normalized
+            .replace(/\b(?:spotify|musique|cherche|recherche|trouve|une|la|le|les|playlist|playlists|liste|de|lecture|moi|ma|mes|lance|lancer|joue|jouer|lis|lire|sur)\b/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
 
         return {
             action: "spotify_control",
-            command: "playlist_search",
-            query: themeMatch[1]
+            command: "playlist",
+            query: query || "mes playlists",
+            reply: query ? `Je cherche la playlist ${query} sur Spotify. 🔎` : "Je cherche tes playlists Spotify. 🔎"
         };
     }
 
-    // --------------------------------------------------
-    // REPRENDRE LA LECTURE
-    // --------------------------------------------------
-    if (
-        /\b(?:reprends|reprend|relance|continue|mets de la musique|met de la musique|lance la musique)\b/.test(text)
-    ) {
+    if (/(disney|pixar|marvel|star wars)/.test(normalized) &&
+        /(joue|jouer|mets|met|mettre|lance|lancer|musique|chanson|morceau|titre|écoute|ecoute|veux|voudrais|aimerais)/.test(normalized)) {
+        const theme = normalized.match(/disney|pixar|marvel|star wars/)?.[0] || "disney";
+
         return {
             action: "spotify_control",
-            command: "play"
+            command: "theme",
+            query: theme,
+            reply: `Je lance une sélection aléatoire ${theme} sur Spotify. 🎲`
         };
     }
 
-    // --------------------------------------------------
-    // JOUER UNE CHANSON PRECISE
-    // --------------------------------------------------
-    let query = raw
-        .replace(/^(?:spotify\s*)?/i, "")
-        .replace(/^(?:joue|jouer|lance|lancer|lis|lire|mets|met)\s+/i, "")
-        .replace(/^(?:la\s+)?(?:chanson|musique|morceau)\s+/i, "")
-        .trim();
+    if (/(mets|met|mettre|mettre en|pause|arrete|arrête|stoppe|stop)/.test(normalized) && /pause|stop|arrete|arrête/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "pause",
+            reply: "Je mets Spotify en pause. ⏸️"
+        };
+    }
 
-    // Retire les formulations inutiles restantes
-    query = query
-        .replace(/^de la\s+/i, "")
-        .replace(/^du\s+/i, "")
-        .replace(/^de l['’]\s*/i, "")
-        .trim();
+    if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
+        const query = normalized
+            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
 
-    if (query && query.length >= 2) {
         return {
             action: "spotify_control",
             command: "play",
-            query: query
+            query: query || null,
+            reply: query ? `Je cherche ${query} sur Spotify. 🔎` : "Je relance la lecture. ▶️"
+        };
+    }
+
+    if (/(active|ouvre|ouvrir|lance|lancer|affiche)/.test(normalized) && /spotify|musique/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "open",
+            reply: "J'ouvre le lecteur Spotify. 🎵"
         };
     }
 
@@ -4613,94 +4523,410 @@ async function processCommand(command) {
 ========================================== */
 
 async function sendCommand() {
-    const command = jarvisInput.value.trim();
 
-    if (!command) return;
-
-    addMessage(command, "user");
-    jarvisInput.value = "";
-
-    if (jarvisSendButton) {
-        jarvisSendButton.disabled = true;
+    if (!jarvisInput) {
+        return;
     }
 
-    try {
-        // ==================================================
-        // PRIORITE 1 : COMMANDES LOCALES
-        // ==================================================
-        // Les commandes simples comme Spotify, navigation,
-        // agenda, MyDLP, etc. doivent être traitées AVANT
-        // Gemini pour éviter qu'une réponse IA les détourne.
 
-        const localAction = getLocalQuickAction(command);
+    const command =
+        jarvisInput.value.trim();
 
-        if (localAction) {
-            await executeJarvisAction(localAction);
+
+    if (command === "") {
+        return;
+    }
+
+
+    /* ======================================
+       AFFICHER LE MESSAGE UTILISATEUR
+    ====================================== */
+
+    addMessage(
+        "Vous",
+        command,
+        "user"
+    );
+
+
+    /*
+       IMPORTANT :
+
+       On vide le champ et on désactive
+       le bouton avant l'appel réseau.
+    */
+
+    jarvisInput.value = "";
+
+
+    if (jarvisSend) {
+
+        jarvisSend.disabled = true;
+    }
+
+
+    const structuredDataReply = await answerSiteFact(command);
+
+    if (structuredDataReply) {
+        if (structuredDataReply.type === "answer") {
+            addMessage("JARVIS", structuredDataReply.reply, "jarvis");
+            speakJarvisReply(structuredDataReply.reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", structuredDataReply.reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
             return;
         }
 
-        // ==================================================
-        // PRIORITE 2 : REPONSES DIRECTES DU SITE
-        // ==================================================
+        const openResult = await executeJarvisAction({
+            action: "site_navigation",
+            target: structuredDataReply.site,
+            query: "",
+            reply: structuredDataReply.reply
+        });
 
-        const structuredDataReply = await answerSiteFact(command);
+        addMessage("JARVIS", openResult, "jarvis");
+        speakJarvisReply(openResult);
+        addToJarvisHistory("user", command);
+        addToJarvisHistory("model", openResult);
 
-        if (structuredDataReply) {
-            addMessage(structuredDataReply, "jarvis");
-            return;
-        }
-
-        // ==================================================
-        // PRIORITE 3 : FALLBACK LOCAL
-        // ==================================================
-
-        const localFallback = getLocalFallbackReply(command);
-
-        if (localFallback) {
-            addMessage(localFallback, "jarvis");
-            return;
-        }
-
-        // ==================================================
-        // PRIORITE 4 : RECHERCHE WEB LOCALE
-        // ==================================================
-
-        const webResult = await performLocalWebSearch(command);
-
-        if (webResult) {
-            addMessage(webResult, "jarvis");
-            return;
-        }
-
-        // ==================================================
-        // PRIORITE 5 : GEMINI
-        // ==================================================
-
-        try {
-            await processCommand(command);
-        } catch (error) {
-            console.error("Erreur Gemini :", error);
-
-            addMessage(
-                "Désolé, je n'arrive pas à traiter cette demande pour le moment. 🤖",
-                "jarvis"
-            );
-        }
-
-    } catch (error) {
-        console.error("Erreur sendCommand :", error);
-
-        addMessage(
-            "Une erreur est survenue pendant le traitement de ta commande. 🤖",
-            "jarvis"
-        );
-
-    } finally {
-        if (jarvisSendButton) {
-            jarvisSendButton.disabled = false;
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
         }
 
         if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
+    const mydlpDirectAnswer = await answerSiteFact(command);
+    if (mydlpDirectAnswer) {
+        if (mydlpDirectAnswer.type === "answer") {
+            addMessage("JARVIS", mydlpDirectAnswer.reply, "jarvis");
+            speakJarvisReply(mydlpDirectAnswer.reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", mydlpDirectAnswer.reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
+
+        const openResult = await executeJarvisAction({
+            action: "site_navigation",
+            target: mydlpDirectAnswer.site,
+            query: "",
+            reply: mydlpDirectAnswer.reply
+        });
+
+        addMessage("JARVIS", openResult, "jarvis");
+        speakJarvisReply(openResult);
+        addToJarvisHistory("user", command);
+        addToJarvisHistory("model", openResult);
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
+    const localFallbackReply = getLocalFallbackReply(command);
+
+    if (localFallbackReply) {
+
+        addMessage(
+            "JARVIS",
+            localFallbackReply,
+            "jarvis"
+        );
+
+        speakJarvisReply(localFallbackReply);
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+        addToJarvisHistory(
+            "model",
+            localFallbackReply
+        );
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+        return;
+    }
+
+    const localQuickAction =
+        getLocalQuickAction(command);
+
+
+    if (localQuickAction) {
+
+        const reply =
+            await executeJarvisAction(
+                localQuickAction
+            );
+
+
+        addMessage(
+            "JARVIS",
+            reply,
+            "jarvis"
+        );
+
+        speakJarvisReply(reply);
+
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            reply
+        );
+
+
+        if (jarvisSend) {
+            jarvisSend.disabled = false;
+        }
+
+
+        if (jarvisInput) {
+            jarvisInput.focus();
+        }
+
+
+        return;
+    }
+
+    if (shouldUseLocalWebSearch(command)) {
+        const webQuery = getWebSearchQuery(command);
+        const webResult = await searchTheWeb(webQuery);
+
+        if (webResult) {
+            const reply = shortenSearchAnswer(webResult, 180);
+
+            addMessage("JARVIS", reply, "jarvis");
+            speakJarvisReply(reply);
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", reply);
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
+    }
+
+
+    /* ======================================
+       MESSAGE TEMPORAIRE
+    ====================================== */
+
+    const thinkingMessage =
+        addMessage(
+            "JARVIS",
+            "Je réfléchis... 🤖",
+            "jarvis"
+        );
+
+
+    try {
+
+        if (Date.now() < geminiCooldownUntil) {
+            const localReply = getLocalFallbackReply(command) || "Le service de Jarvis est temporairement indisponible. Réessaie dans quelques secondes. 🤖";
+
+            addMessage(
+                "JARVIS",
+                localReply,
+                "jarvis"
+            );
+
+            speakJarvisReply(localReply);
+
+            addToJarvisHistory("user", command);
+            addToJarvisHistory("model", localReply);
+
+            if (thinkingMessage) {
+                thinkingMessage.remove();
+            }
+
+            if (jarvisSend) {
+                jarvisSend.disabled = false;
+            }
+
+            if (jarvisInput) {
+                jarvisInput.focus();
+            }
+
+            return;
+        }
+
+        /* ==================================
+           ENVOYER LA COMMANDE
+        ================================== */
+
+        let result =
+            await processCommand(
+                command
+            );
+
+
+        /* ==================================
+           SUPPRIMER "JE RÉFLÉCHIS..."
+        ================================== */
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+        }
+
+
+        const localFallbackReply = getLocalFallbackReply(command);
+
+        if (
+            result &&
+            result.action === "none" &&
+            typeof result.reply === "string" &&
+            /erreur|error|quota|indisponible|impossible/i.test(result.reply) &&
+            localFallbackReply
+        ) {
+            result = {
+                action: "none",
+                reply: localFallbackReply
+            };
+        }
+
+
+        /* ==================================
+           EXÉCUTER L'ACTION
+        ================================== */
+
+        const reply =
+            await executeJarvisAction(
+                result
+            );
+
+
+        /* ==================================
+           AFFICHER LA RÉPONSE
+        ================================== */
+
+        addMessage(
+            "JARVIS",
+            reply,
+            "jarvis"
+        );
+
+        speakJarvisReply(reply);
+
+
+        /* ==================================
+           MÉMOIRE
+
+           On ajoute les deux messages
+           APRÈS l'appel au Worker.
+
+           Ainsi Gemini reçoit uniquement
+           les messages précédents.
+        ================================== */
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            reply
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Erreur pendant l'exécution de JARVIS :",
+            error
+        );
+
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+        }
+
+
+        const errorReply =
+            "Désolé, quelque chose s'est mal passé. ⚠️";
+
+
+        addMessage(
+            "JARVIS",
+            errorReply,
+            "jarvis"
+        );
+
+        speakJarvisReply(errorReply);
+
+
+        addToJarvisHistory(
+            "user",
+            command
+        );
+
+
+        addToJarvisHistory(
+            "model",
+            errorReply
+        );
+
+
+    } finally {
+
+        if (jarvisSend) {
+
+            jarvisSend.disabled = false;
+        }
+
+
+        if (jarvisInput) {
+
             jarvisInput.focus();
         }
     }
@@ -4930,8 +5156,6 @@ const spotifyQueuedTrackIds = new Set();
 const spotifyQueuedTrackFingerprints = new Set();
 let spotifyRecommendationRequest = null;
 let spotifyLastRecommendationTrackId = null;
-let spotifyFallbackTracks = [];
-let spotifyFallbackAdvanceInProgress = false;
 const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
@@ -5112,8 +5336,6 @@ async function playSpotifyTheme(theme) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
-        spotifyFallbackTracks = [];
-        spotifyFallbackAdvanceInProgress = false;
 
         for (const track of selectedTracks.slice(1)) {
             const queueResponse = await spotifyApiFetch(
@@ -5202,18 +5424,15 @@ async function playSpotifySearchResult(query) {
 
     try {
         const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=50&q=${encodeURIComponent(safeQuery)}`
+            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
         );
 
         if (!searchResponse.ok) {
-            console.warn("Recherche Spotify refusée :", searchResponse.status, safeQuery);
             return false;
         }
 
         const searchData = await searchResponse.json();
-        const tracks = (searchData?.tracks?.items || [])
-            .filter(track => track?.id && track?.uri);
-        const track = tracks[0];
+        const track = searchData?.tracks?.items?.[0];
         const trackUris = track?.uri ? [track.uri] : [];
 
         if (trackUris.length === 0) {
@@ -5238,48 +5457,14 @@ async function playSpotifySearchResult(query) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
-        spotifyFallbackTracks = tracks.slice(1);
-        spotifyFallbackAdvanceInProgress = false;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+        await queueSpotifyRecommendations(track.id);
 
         return true;
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
         return false;
-    }
-}
-
-async function playNextSpotifyFallbackTrack() {
-    if (spotifyFallbackAdvanceInProgress || !spotifyFallbackTracks.length || !spotifyDeviceId) {
-        return false;
-    }
-
-    spotifyFallbackAdvanceInProgress = true;
-    const nextTrack = spotifyFallbackTracks.shift();
-
-    try {
-        const response = await spotifyApiFetch(
-            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
-            {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ uris: [nextTrack.uri] })
-            }
-        );
-
-        if (!response.ok) {
-            spotifyFallbackTracks.unshift(nextTrack);
-            return false;
-        }
-
-        return true;
-    } catch (error) {
-        spotifyFallbackTracks.unshift(nextTrack);
-        console.warn("Impossible de lancer le titre suivant Spotify :", error);
-        return false;
-    } finally {
-        spotifyFallbackAdvanceInProgress = false;
     }
 }
 
@@ -5354,11 +5539,6 @@ async function playSpotifyPlaylistSearch(query) {
                 body: JSON.stringify({ context_uri: playlist.uri })
             }
         );
-
-        if (response.ok) {
-            spotifyFallbackTracks = [];
-            spotifyFallbackAdvanceInProgress = false;
-        }
 
         return response.ok;
     } catch (error) {
@@ -5993,10 +6173,7 @@ function initializeSpotifyPlayer(
                 spotifyQueuedTrackFingerprints.add(
                     getSpotifyTrackFingerprint(currentTrack)
                 );
-            }
-
-            if (state.paused && state.duration > 0 && state.position >= state.duration - 1500) {
-                playNextSpotifyFallbackTrack();
+                queueSpotifyRecommendations(currentTrack.id);
             }
 
 
@@ -6680,11 +6857,7 @@ if (spotifyNext) {
 
             try {
 
-                const usedFallbackTrack = await playNextSpotifyFallbackTrack();
-
-                if (!usedFallbackTrack) {
-                    await spotifyPlayer.nextTrack();
-                }
+                await spotifyPlayer.nextTrack();
 
             } catch (error) {
 
