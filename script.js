@@ -5377,6 +5377,8 @@ async function queueSpotifyRecommendations(trackId) {
             );
 
             if (!response.ok) {
+                spotifyLastRecommendationTrackId = null;
+                console.warn("Spotify n'a pas fourni de recommandations :", response.status);
                 return;
             }
 
@@ -5399,6 +5401,8 @@ async function queueSpotifyRecommendations(trackId) {
                 );
 
                 if (!queueResponse.ok) {
+                    spotifyLastRecommendationTrackId = null;
+                    console.warn("Spotify n'a pas pu ajouter la recommandation à la file :", queueResponse.status);
                     break;
                 }
 
