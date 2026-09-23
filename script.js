@@ -3310,6 +3310,13 @@ async function executeJarvisAction(result) {
 
             if (command === "next") {
 
+                if (await playNextSpotifyFallbackTrack()) {
+                    return (
+                        result.reply ||
+                        "Je passe au morceau suivant. ⏭️"
+                    );
+                }
+
                 await spotifyPlayer.nextTrack();
 
                 return (
@@ -3751,7 +3758,9 @@ function getLocalSpotifyAction(command) {
 
     if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
+            .replace(/^(?:spotify\s+)?(?:musique\s+)?(?:reprends?|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets?|mettre)\s+/i, "")
+            .replace(/^(?:de la|du|de l'|de)\s+/i, "")
+            .replace(/^(?:une chanson|un morceau|un titre)\s+/i, "")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -5156,6 +5165,8 @@ const spotifyQueuedTrackIds = new Set();
 const spotifyQueuedTrackFingerprints = new Set();
 let spotifyRecommendationRequest = null;
 let spotifyLastRecommendationTrackId = null;
+let spotifyFallbackTracks = [];
+let spotifyFallbackAdvanceInProgress = false;
 const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
@@ -5415,6 +5426,39 @@ async function queueSpotifyRecommendations(trackId) {
     return spotifyRecommendationRequest;
 }
 
+async function playNextSpotifyFallbackTrack() {
+    if (spotifyFallbackAdvanceInProgress || !spotifyFallbackTracks.length || !spotifyDeviceId) {
+        return false;
+    }
+
+    spotifyFallbackAdvanceInProgress = true;
+    const nextTrack = spotifyFallbackTracks.shift();
+
+    try {
+        const response = await spotifyApiFetch(
+            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [nextTrack.uri] })
+            }
+        );
+
+        if (!response.ok) {
+            spotifyFallbackTracks.unshift(nextTrack);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        spotifyFallbackTracks.unshift(nextTrack);
+        console.warn("Impossible de lancer le morceau Spotify suivant :", error);
+        return false;
+    } finally {
+        spotifyFallbackAdvanceInProgress = false;
+    }
+}
+
 async function playSpotifySearchResult(query) {
     const safeQuery = String(query || "").trim();
 
@@ -5424,7 +5468,7 @@ async function playSpotifySearchResult(query) {
 
     try {
         const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
+            `/search?type=track&limit=50&q=${encodeURIComponent(safeQuery)}`
         );
 
         if (!searchResponse.ok) {
@@ -5432,7 +5476,9 @@ async function playSpotifySearchResult(query) {
         }
 
         const searchData = await searchResponse.json();
-        const track = searchData?.tracks?.items?.[0];
+        const tracks = (searchData?.tracks?.items || [])
+            .filter(candidate => candidate?.id && candidate?.uri);
+        const track = tracks[0];
         const trackUris = track?.uri ? [track.uri] : [];
 
         if (trackUris.length === 0) {
@@ -5457,6 +5503,8 @@ async function playSpotifySearchResult(query) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyFallbackTracks = shuffleSpotifyTracks(tracks.slice(1));
+        spotifyFallbackAdvanceInProgress = false;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
         await queueSpotifyRecommendations(track.id);
@@ -6176,6 +6224,10 @@ function initializeSpotifyPlayer(
                 queueSpotifyRecommendations(currentTrack.id);
             }
 
+            if (state.paused && state.duration > 0 && state.position >= state.duration - 1500) {
+                playNextSpotifyFallbackTrack();
+            }
+
 
             updateSpotifyTrack(
                 state
@@ -6857,7 +6909,11 @@ if (spotifyNext) {
 
             try {
 
-                await spotifyPlayer.nextTrack();
+                const usedFallbackTrack = await playNextSpotifyFallbackTrack();
+
+                if (!usedFallbackTrack) {
+                    await spotifyPlayer.nextTrack();
+                }
 
             } catch (error) {
 
