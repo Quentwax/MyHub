@@ -3310,6 +3310,13 @@ async function executeJarvisAction(result) {
 
             if (command === "next") {
 
+                if (await playNextSpotifyFallbackTrack()) {
+                    return (
+                        result.reply ||
+                        "Je passe au morceau suivant. ⏭️"
+                    );
+                }
+
                 await spotifyPlayer.nextTrack();
 
                 return (
@@ -3327,6 +3334,18 @@ async function executeJarvisAction(result) {
                     result.reply ||
                     "Je reviens à la chanson précédente. ⏮️"
                 );
+            }
+
+            if (command === "shuffle") {
+                const enabled = result.enabled !== false;
+                const response = await spotifyApiFetch(
+                    `/me/player/shuffle?state=${enabled}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
+                    { method: "PUT" }
+                );
+
+                return response.ok
+                    ? (result.reply || "Mode aléatoire modifié. 🔀")
+                    : "Je n'ai pas réussi à modifier le mode aléatoire Spotify. ⚠️";
             }
 
 
@@ -3674,7 +3693,7 @@ function getLocalFallbackReply(command) {
 function getLocalSpotifyAction(command) {
     const normalized = normalizeCommandText(command);
 
-    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe|veux|voudrais|aimerais|disney|pixar|marvel|star wars)/.test(normalized)) {
+    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe|veux|voudrais|aimerais|aleatoire|shuffle|melange|disney|pixar|marvel|star wars)/.test(normalized)) {
         return null;
     }
 
@@ -3715,6 +3734,15 @@ function getLocalSpotifyAction(command) {
         };
     }
 
+    if (/(mode aleatoire|aleatoire|shuffle|melange)/.test(normalized)) {
+        return {
+            action: "spotify_control",
+            command: "shuffle",
+            enabled: !/(desactive|désactive|arrete|arrête|off)/.test(normalized),
+            reply: "Je change le mode aléatoire Spotify. 🔀"
+        };
+    }
+
     if (/(playlist|liste de lecture)/.test(normalized)) {
         const query = normalized
             .replace(/\b(?:spotify|musique|cherche|recherche|trouve|une|la|le|les|playlist|playlists|liste|de|lecture|moi|ma|mes|lance|lancer|joue|jouer|lis|lire|sur)\b/g, " ")
@@ -3751,7 +3779,9 @@ function getLocalSpotifyAction(command) {
 
     if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
+            .replace(/^(?:spotify\s+)?(?:musique\s+)?(?:reprends?|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets?|mettre)\s+/i, "")
+            .replace(/^(?:la\s+)?(?:chanson|morceau|titre)\s+/i, "")
+            .replace(/^(?:de la|du|de l'|de)\s+/i, "")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -5156,6 +5186,8 @@ const spotifyQueuedTrackIds = new Set();
 const spotifyQueuedTrackFingerprints = new Set();
 let spotifyRecommendationRequest = null;
 let spotifyLastRecommendationTrackId = null;
+let spotifyFallbackTracks = [];
+let spotifyFallbackAdvanceInProgress = false;
 const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
@@ -5336,6 +5368,8 @@ async function playSpotifyTheme(theme) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyFallbackTracks = [];
+        spotifyFallbackAdvanceInProgress = false;
 
         for (const track of selectedTracks.slice(1)) {
             const queueResponse = await spotifyApiFetch(
@@ -5424,15 +5458,18 @@ async function playSpotifySearchResult(query) {
 
     try {
         const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
+            `/search?type=track&limit=50&q=${encodeURIComponent(safeQuery)}`
         );
 
         if (!searchResponse.ok) {
+            console.warn("Recherche Spotify refusée :", searchResponse.status, safeQuery);
             return false;
         }
 
         const searchData = await searchResponse.json();
-        const track = searchData?.tracks?.items?.[0];
+        const tracks = (searchData?.tracks?.items || [])
+            .filter(track => track?.id && track?.uri);
+        const track = tracks[0];
         const trackUris = track?.uri ? [track.uri] : [];
 
         if (trackUris.length === 0) {
@@ -5457,14 +5494,48 @@ async function playSpotifySearchResult(query) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyFallbackTracks = tracks.slice(1);
+        spotifyFallbackAdvanceInProgress = false;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
-        await queueSpotifyRecommendations(track.id);
 
         return true;
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
         return false;
+    }
+}
+
+async function playNextSpotifyFallbackTrack() {
+    if (spotifyFallbackAdvanceInProgress || !spotifyFallbackTracks.length || !spotifyDeviceId) {
+        return false;
+    }
+
+    spotifyFallbackAdvanceInProgress = true;
+    const nextTrack = spotifyFallbackTracks.shift();
+
+    try {
+        const response = await spotifyApiFetch(
+            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [nextTrack.uri] })
+            }
+        );
+
+        if (!response.ok) {
+            spotifyFallbackTracks.unshift(nextTrack);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        spotifyFallbackTracks.unshift(nextTrack);
+        console.warn("Impossible de lancer le titre suivant Spotify :", error);
+        return false;
+    } finally {
+        spotifyFallbackAdvanceInProgress = false;
     }
 }
 
@@ -5539,6 +5610,11 @@ async function playSpotifyPlaylistSearch(query) {
                 body: JSON.stringify({ context_uri: playlist.uri })
             }
         );
+
+        if (response.ok) {
+            spotifyFallbackTracks = [];
+            spotifyFallbackAdvanceInProgress = false;
+        }
 
         return response.ok;
     } catch (error) {
@@ -6173,7 +6249,10 @@ function initializeSpotifyPlayer(
                 spotifyQueuedTrackFingerprints.add(
                     getSpotifyTrackFingerprint(currentTrack)
                 );
-                queueSpotifyRecommendations(currentTrack.id);
+            }
+
+            if (state.paused && state.duration > 0 && state.position >= state.duration - 1500) {
+                playNextSpotifyFallbackTrack();
             }
 
 
@@ -6857,7 +6936,11 @@ if (spotifyNext) {
 
             try {
 
-                await spotifyPlayer.nextTrack();
+                const usedFallbackTrack = await playNextSpotifyFallbackTrack();
+
+                if (!usedFallbackTrack) {
+                    await spotifyPlayer.nextTrack();
+                }
 
             } catch (error) {
 
