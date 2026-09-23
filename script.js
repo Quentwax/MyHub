@@ -5460,23 +5460,47 @@ async function playNextSpotifyFallbackTrack() {
 }
 
 async function playSpotifySearchResult(query) {
-    const safeQuery = String(query || "").trim();
+    const safeQuery = String(query || "")
+        .replace(/^(?:de la|du|de l'|de)\s+/i, "")
+        .trim();
 
     if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
         return false;
     }
 
     try {
-        const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=50&q=${encodeURIComponent(safeQuery)}`
-        );
+        const searchQueries = [safeQuery];
+        const simplifiedQuery = safeQuery
+            .replace(/^(?:la|le|les|une|un)\s+(?:chanson|morceau|titre)\s+/i, "")
+            .replace(/\s+/g, " ")
+            .trim();
 
-        if (!searchResponse.ok) {
-            return false;
+        if (simplifiedQuery && simplifiedQuery !== safeQuery) {
+            searchQueries.push(simplifiedQuery);
         }
 
-        const searchData = await searchResponse.json();
-        const tracks = (searchData?.tracks?.items || [])
+        let tracks = [];
+
+        for (const searchQuery of searchQueries) {
+            const searchResponse = await spotifyApiFetch(
+                `/search?type=track&limit=50&q=${encodeURIComponent(searchQuery)}`
+            );
+
+            if (!searchResponse.ok) {
+                console.warn("Recherche de titre Spotify refusée :", searchResponse.status, searchQuery);
+                continue;
+            }
+
+            const searchData = await searchResponse.json();
+            tracks = (searchData?.tracks?.items || searchData?.items || [])
+                .filter(candidate => candidate?.id && candidate?.uri);
+
+            if (tracks.length > 0) {
+                break;
+            }
+        }
+
+        tracks = tracks
             .filter(candidate => candidate?.id && candidate?.uri);
         const track = tracks[0];
         const trackUris = track?.uri ? [track.uri] : [];
