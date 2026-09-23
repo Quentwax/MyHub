@@ -49,6 +49,11 @@
                 <span>Musique</span>
             </button>
 
+            <button class="nav-item">
+                <span>📅</span>
+                <span>Agenda</span>
+            </button>
+
         </nav>
 
         <div class="sidebar-bottom">
@@ -438,10 +443,107 @@
         <p>Ton assistant personnel</p>
     </div>
 
-    <div class="page-placeholder">
-        <span>🤖</span>
-        <h2>JARVIS</h2>
-        <p>Cette section sera bientôt plus complète.</p>
+    <div class="jarvis-memory-panel">
+        <div class="section-card-header">
+            <div>
+                <h2>Contexte mémorisé</h2>
+                <p>JARVIS conserve tes échanges et tes préférences sur cet appareil.</p>
+            </div>
+            <button id="clearJarvisMemoryButton" class="ghost-button" type="button">Effacer la mémoire</button>
+        </div>
+        <div id="jarvisMemoryList" class="memory-list"></div>
+    </div>
+</section>
+
+<section id="agendaSection" class="page-section">
+    <div class="page-title">
+        <h1>📅 Agenda</h1>
+        <p>Ton emploi du temps et tes devoirs à rendre</p>
+    </div>
+
+    <div class="agenda-layout">
+        <div class="agenda-calendar-panel">
+            <div class="calendar-toolbar">
+                <button id="agendaPreviousWeek" class="icon-button" type="button" aria-label="Semaine précédente">‹</button>
+                <h2 id="agendaMonthLabel"></h2>
+                <button id="agendaNextWeek" class="icon-button" type="button" aria-label="Semaine suivante">›</button>
+            </div>
+            <div class="agenda-legend" aria-label="Légende">
+                <span class="agenda-legend-course">Cours</span>
+                <span class="agenda-legend-homework">Devoirs</span>
+                <span class="agenda-legend-reminder">Rappels</span>
+            </div>
+            <div class="week-calendar-scroll">
+                <div class="week-calendar-head" id="agendaWeekHeader"></div>
+                <div id="agendaCalendar" class="week-calendar-grid"></div>
+            </div>
+        </div>
+
+        <div class="agenda-form-panel">
+            <div class="section-card-header">
+                <div>
+                    <h2>Ajouter un élément</h2>
+                    <p>Planifie tes cours et tes devoirs séparément.</p>
+                </div>
+            </div>
+            <form id="agendaForm" class="agenda-form">
+                <label for="agendaTitle">Titre</label>
+                <input id="agendaTitle" name="title" type="text" placeholder="Ex. Mathématiques" required>
+
+                <label for="agendaType">Type</label>
+                <select id="agendaType" name="type">
+                    <option value="course">Cours</option>
+                    <option value="homework">Devoir</option>
+                    <option value="reminder">Rappel</option>
+                </select>
+
+                <div class="agenda-form-row">
+                    <div>
+                        <label for="agendaDate">Date de début</label>
+                        <input id="agendaDate" name="date" type="date" required>
+                    </div>
+                    <div>
+                        <label for="agendaStartTime">Début</label>
+                        <input id="agendaStartTime" name="startTime" type="time">
+                    </div>
+                </div>
+
+                <div class="agenda-form-row">
+                    <div>
+                        <label for="agendaEndTime">Fin</label>
+                        <input id="agendaEndTime" name="endTime" type="time">
+                    </div>
+                    <div class="agenda-repeat-field">
+                        <label for="agendaRecurring">Répétition</label>
+                        <label class="agenda-checkbox-label">
+                            <input id="agendaRecurring" name="recurring" type="checkbox">
+                            Chaque semaine
+                        </label>
+                    </div>
+                </div>
+
+                <div id="agendaRecurrenceEndRow" class="agenda-form-row" hidden>
+                    <div>
+                        <label for="agendaRecurrenceEnd">Répéter jusqu'au</label>
+                        <input id="agendaRecurrenceEnd" name="recurrenceEnd" type="date">
+                    </div>
+                </div>
+
+                <label for="agendaDescription">Notes</label>
+                <textarea id="agendaDescription" name="description" rows="3" placeholder="Salle, consignes, détails..."></textarea>
+                <button class="primary-button" type="submit">Ajouter à l'agenda</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="agenda-upcoming-panel">
+        <div class="section-card-header">
+            <div>
+                <h2>À venir</h2>
+                <p>Les prochaines échéances et activités.</p>
+            </div>
+        </div>
+        <div id="agendaUpcoming" class="agenda-upcoming-list"></div>
     </div>
 </section>
 

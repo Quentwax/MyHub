@@ -1464,6 +1464,523 @@ let jarvisHistory = [];
 const JARVIS_HISTORY_KEY =
     "jarvis_history";
 
+const JARVIS_MEMORY_KEY =
+    "jarvis_long_term_memory";
+
+let jarvisLongTermMemory = [];
+
+function loadJarvisLongTermMemory() {
+    try {
+        const saved = localStorage.getItem(JARVIS_MEMORY_KEY);
+        const parsed = saved ? JSON.parse(saved) : [];
+
+        jarvisLongTermMemory = Array.isArray(parsed)
+            ? parsed.filter(item => item && typeof item.text === "string").slice(-30)
+            : [];
+    } catch (error) {
+        console.warn("Impossible de charger la mémoire longue de JARVIS :", error);
+        jarvisLongTermMemory = [];
+    }
+}
+
+function saveJarvisLongTermMemory() {
+    localStorage.setItem(JARVIS_MEMORY_KEY, JSON.stringify(jarvisLongTermMemory.slice(-30)));
+}
+
+function rememberJarvisPreference(text) {
+    const normalized = String(text || "").trim();
+
+    if (!/(j'aime|j aime|je prefere|je préfère|je n'aime pas|je n aime pas|je deteste|je déteste|mon |ma )/i.test(normalized)) {
+        return;
+    }
+
+    if (jarvisLongTermMemory.some(item => item.text.toLowerCase() === normalized.toLowerCase())) {
+        return;
+    }
+
+    jarvisLongTermMemory.push({
+        text: normalized,
+        date: new Date().toISOString()
+    });
+    saveJarvisLongTermMemory();
+    renderJarvisMemory();
+}
+
+function renderJarvisMemory() {
+    const memoryList = document.getElementById("jarvisMemoryList");
+
+    if (!memoryList) {
+        return;
+    }
+
+    memoryList.replaceChildren();
+
+    if (jarvisLongTermMemory.length === 0) {
+        memoryList.innerHTML = '<p class="memory-empty">Aucune préférence enregistrée pour le moment.</p>';
+        return;
+    }
+
+    jarvisLongTermMemory.slice().reverse().forEach(item => {
+        const entry = document.createElement("article");
+        entry.className = "memory-entry";
+        entry.innerHTML = `<strong>Préférence mémorisée</strong><p></p>`;
+        entry.querySelector("p").textContent = item.text;
+        memoryList.appendChild(entry);
+    });
+}
+
+function clearJarvisMemory() {
+    jarvisLongTermMemory = [];
+    jarvisHistory = [];
+    localStorage.removeItem(JARVIS_MEMORY_KEY);
+    localStorage.removeItem(JARVIS_HISTORY_KEY);
+    renderJarvisMemory();
+}
+
+const AGENDA_STORAGE_KEY = "myhub_agenda_items";
+let agendaItems = [];
+let agendaDisplayedWeek = getAgendaWeekStart(new Date());
+
+function getAgendaDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function getAgendaWeekStart(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - day);
+    return start;
+}
+
+function getAgendaLocalDate(dateValue) {
+    const [year, month, day] = String(dateValue).split("-").map(Number);
+    return new Date(year, month - 1, day);
+}
+
+function loadAgendaItems() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(AGENDA_STORAGE_KEY) || "[]");
+        agendaItems = Array.isArray(saved)
+            ? saved.filter(item => item?.id && item?.title && item?.date).map(item => ({
+                ...item,
+                type: item.type === "schedule" ? "course" : (item.type || "course"),
+                startTime: item.startTime || item.time || "",
+                endTime: item.endTime || "",
+                recurring: Boolean(item.recurring),
+                excludedDates: Array.isArray(item.excludedDates) ? item.excludedDates : []
+            }))
+            : [];
+    } catch (error) {
+        console.warn("Impossible de charger l'agenda :", error);
+        agendaItems = [];
+    }
+}
+
+function saveAgendaItems() {
+    localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(agendaItems));
+}
+
+function requestAgendaNotificationPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+function checkAgendaReminders() {
+    const now = new Date();
+    const firedKey = "myhub_fired_reminders";
+    let savedFired = [];
+
+    try {
+        savedFired = JSON.parse(localStorage.getItem(firedKey) || "[]");
+    } catch {
+        savedFired = [];
+    }
+
+    const fired = new Set(Array.isArray(savedFired) ? savedFired : []);
+
+    agendaItems.filter(item => item.type === "reminder").forEach(item => {
+        const reminderDate = getAgendaLocalDate(item.date);
+        const [hour, minute] = (item.startTime || "09:00").split(":").map(Number);
+        reminderDate.setHours(hour || 0, minute || 0, 0, 0);
+        const uniqueKey = `${item.id}:${item.date}:${item.startTime}`;
+
+        if (now >= reminderDate && !fired.has(uniqueKey)) {
+            fired.add(uniqueKey);
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Rappel MyHub", { body: item.title });
+            }
+        }
+    });
+
+    localStorage.setItem(firedKey, JSON.stringify([...fired].slice(-100)));
+}
+
+function formatAgendaTime(time) {
+    return time ? ` à ${time.replace(":", "h")}` : "";
+}
+
+function getAgendaSummary() {
+    const todayKey = getAgendaDateKey(new Date());
+    const entries = agendaItems
+        .flatMap(item => item.recurring ? getUpcomingRecurringOccurrences(item) : [{ item, dateKey: item.date }])
+        .filter(entry => entry.dateKey >= todayKey)
+        .sort((first, second) => `${first.dateKey}${first.item.startTime || ""}`.localeCompare(`${second.dateKey}${second.item.startTime || ""}`))
+        .slice(0, 8);
+
+    if (entries.length === 0) {
+        return "Ton agenda est vide pour les prochains jours. 📅";
+    }
+
+    return `Voici tes prochaines échéances : ${entries.map(({ item, dateKey }) =>
+        `${item.title} le ${formatAgendaDate(dateKey)}${formatAgendaTime(item.startTime)}`
+    ).join(" ; ")}.`;
+}
+
+function parseAgendaDate(command) {
+    const normalized = normalizeCommandText(command);
+    const now = new Date();
+
+    if (/apres demain/.test(normalized)) {
+        now.setDate(now.getDate() + 2);
+        return getAgendaDateKey(now);
+    }
+
+    if (/demain/.test(normalized)) {
+        now.setDate(now.getDate() + 1);
+        return getAgendaDateKey(now);
+    }
+
+    const numericDate = normalized.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+    if (numericDate) {
+        const year = numericDate[3] ? Number(numericDate[3].length === 2 ? `20${numericDate[3]}` : numericDate[3]) : now.getFullYear();
+        return getAgendaDateKey(new Date(year, Number(numericDate[2]) - 1, Number(numericDate[1])));
+    }
+
+    const weekdays = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+    const weekdayIndex = weekdays.findIndex(day => normalized.includes(day));
+    if (weekdayIndex >= 0) {
+        const result = new Date(now);
+        let daysAhead = (weekdayIndex - now.getDay() + 7) % 7;
+        if (daysAhead === 0 && /prochain|next/.test(normalized)) {
+            daysAhead = 7;
+        }
+        result.setDate(result.getDate() + daysAhead);
+        return getAgendaDateKey(result);
+    }
+
+    return getAgendaDateKey(now);
+}
+
+function parseAgendaTime(command) {
+    const match = normalizeCommandText(command).match(/\ba\s+(\d{1,2})(?:h| heure| heures)?(?:\s*(\d{2}))?\b/);
+    if (!match) {
+        return "09:00";
+    }
+
+    return `${String(Math.min(23, Number(match[1]))).padStart(2, "0")}:${String(Number(match[2] || 0)).padStart(2, "0")}`;
+}
+
+function getLocalAgendaAction(command) {
+    const normalized = normalizeCommandText(command);
+    const mentionsAgenda = /(agenda|rappel|rappelle|souviens toi|souviens-toi|devoirs?|cours|cette semaine|emploi du temps)/.test(normalized);
+
+    if (!mentionsAgenda) {
+        return null;
+    }
+
+    if (/(ouvre|ouvrir|affiche|montrer).*(agenda|emploi du temps)/.test(normalized)) {
+        return {
+            action: "agenda_control",
+            command: "open",
+            reply: "J'ouvre ton agenda. 📅"
+        };
+    }
+
+    if (/(qu est ce que j ai|qu ai je|quoi|montre|affiche|rappels?|devoirs?|cours|emploi du temps)/.test(normalized) &&
+        !/(rappelle moi|rappeler|ajoute|enregistre|cree|crée)/.test(normalized)) {
+        return {
+            action: "agenda_control",
+            command: "list",
+            reply: getAgendaSummary()
+        };
+    }
+
+    if (/(rappelle moi|rappeler|ajoute un rappel|cree un rappel|crée un rappel|souviens toi)/.test(normalized)) {
+        const title = normalized
+            .replace(/.*?(rappelle moi de|rappelle moi|rappeler de|rappeler|ajoute un rappel pour|ajoute un rappel|cree un rappel de|cree un rappel|crée un rappel de|crée un rappel|souviens toi de)\s*/, "")
+            .replace(/\b(demain|apres demain|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|prochain)\b/g, "")
+            .replace(/\ba\s+\d{1,2}(?:h| heure| heures)?(?:\s*\d{2})?\b/g, "")
+            .replace(/\s+/g, " ")
+            .trim() || "Rappel";
+
+        return {
+            action: "agenda_control",
+            command: "create_reminder",
+            title,
+            date: parseAgendaDate(command),
+            time: parseAgendaTime(command)
+        };
+    }
+
+    return null;
+}
+
+function formatAgendaDate(dateValue) {
+    return new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    }).format(getAgendaLocalDate(dateValue));
+}
+
+function getAgendaOccurrencesForWeek(item) {
+    const occurrences = [];
+    const startDate = getAgendaLocalDate(item.date);
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+        const occurrenceDate = new Date(agendaDisplayedWeek);
+        occurrenceDate.setDate(agendaDisplayedWeek.getDate() + dayIndex);
+        const dateKey = getAgendaDateKey(occurrenceDate);
+
+        if (dateKey < item.date || item.excludedDates?.includes(dateKey)) {
+            continue;
+        }
+
+        if (item.recurring) {
+            if (item.recurrenceEnd && dateKey > item.recurrenceEnd) {
+                continue;
+            }
+            if (occurrenceDate.getDay() !== startDate.getDay()) {
+                continue;
+            }
+        } else if (dateKey !== item.date) {
+            continue;
+        }
+
+        occurrences.push({ item, dateKey, date: occurrenceDate });
+    }
+
+    return occurrences;
+}
+
+function getAgendaItemsForWeek() {
+    return agendaItems.flatMap(getAgendaOccurrencesForWeek);
+}
+
+function renderAgendaCalendar() {
+    const calendar = document.getElementById("agendaCalendar");
+    const weekHeader = document.getElementById("agendaWeekHeader");
+    const monthLabel = document.getElementById("agendaMonthLabel");
+
+    if (!calendar || !weekHeader || !monthLabel) {
+        return;
+    }
+
+    const weekEnd = new Date(agendaDisplayedWeek);
+    weekEnd.setDate(weekEnd.getDate() + 4);
+    monthLabel.textContent = `${formatAgendaDate(getAgendaDateKey(agendaDisplayedWeek))} - ${formatAgendaDate(getAgendaDateKey(weekEnd))}`;
+    weekHeader.replaceChildren();
+    calendar.replaceChildren();
+    const today = new Date();
+    const todayKey = getAgendaDateKey(today);
+
+    const headerSpacer = document.createElement("span");
+    weekHeader.appendChild(headerSpacer);
+
+    for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+        const date = new Date(agendaDisplayedWeek);
+        date.setDate(date.getDate() + dayIndex);
+        const header = document.createElement("div");
+        header.className = `week-day-header${getAgendaDateKey(date) === todayKey ? " today" : ""}`;
+        header.textContent = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric" }).format(date);
+        weekHeader.appendChild(header);
+    }
+
+    const timeAxis = document.createElement("div");
+    timeAxis.className = "week-time-axis";
+    const dayColumns = [];
+    for (let hour = 8; hour <= 17; hour += 1) {
+        const time = document.createElement("span");
+        time.textContent = `${String(hour).padStart(2, "0")}:00`;
+        timeAxis.appendChild(time);
+    }
+    calendar.appendChild(timeAxis);
+
+    for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+        const date = new Date(agendaDisplayedWeek);
+        date.setDate(date.getDate() + dayIndex);
+        const dateKey = getAgendaDateKey(date);
+        const column = document.createElement("div");
+        column.className = `week-day-column${dateKey === todayKey ? " today" : ""}`;
+        for (let hour = 8; hour <= 17; hour += 1) {
+            const line = document.createElement("span");
+            line.className = "week-hour-line";
+            line.style.top = `${(hour - 8) * (100 / 9)}%`;
+            column.appendChild(line);
+        }
+        dayColumns.push(column);
+        calendar.appendChild(column);
+    }
+
+    getAgendaItemsForWeek().forEach(({ item, dateKey }) => {
+        const dateIndex = Math.round((getAgendaLocalDate(dateKey) - agendaDisplayedWeek) / 86400000);
+        const column = dayColumns[dateIndex];
+        if (!column) {
+            return;
+        }
+        const [startHour, startMinute] = (item.startTime || "08:00").split(":").map(Number);
+        const [endHour, endMinute] = (item.endTime || item.startTime || "09:00").split(":").map(Number);
+        const startTotalMinutes = startHour * 60 + (startMinute || 0);
+        const endTotalMinutes = endHour * 60 + (endMinute || 0);
+        const visibleStart = Math.max(8 * 60, startTotalMinutes);
+        const visibleEnd = Math.min(17 * 60, Math.max(startTotalMinutes + 30, endTotalMinutes));
+
+        if (visibleEnd <= visibleStart) {
+            return;
+        }
+
+        const event = document.createElement("article");
+        event.className = `week-event ${item.type}`;
+        event.style.top = `${(visibleStart - 8 * 60) / 540 * 100}%`;
+        event.style.height = `${(visibleEnd - visibleStart) / 540 * 100}%`;
+        event.innerHTML = `<strong></strong><span></span>`;
+        event.querySelector("strong").textContent = item.title;
+        event.querySelector("span").textContent = `${item.startTime || ""}${item.endTime ? ` - ${item.endTime}` : ""}`;
+        event.addEventListener("click", () => removeAgendaItem(item, dateKey));
+        column.appendChild(event);
+    });
+}
+
+function renderAgendaUpcoming() {
+    const upcoming = document.getElementById("agendaUpcoming");
+
+    if (!upcoming) {
+        return;
+    }
+
+    upcoming.replaceChildren();
+    const sortedItems = agendaItems
+        .slice()
+        .flatMap(item => item.recurring ? getUpcomingRecurringOccurrences(item) : [{ item, dateKey: item.date }])
+        .sort((first, second) => `${first.dateKey}${first.item.startTime || ""}`.localeCompare(`${second.dateKey}${second.item.startTime || ""}`))
+        .filter(entry => entry.dateKey >= getAgendaDateKey(new Date()))
+        .slice(0, 12);
+
+    if (sortedItems.length === 0) {
+        upcoming.innerHTML = '<p class="agenda-empty">Rien de prévu pour le moment.</p>';
+        return;
+    }
+
+    sortedItems.forEach(({ item, dateKey }) => {
+        const element = document.createElement("article");
+        element.className = `agenda-item ${item.type}`;
+        element.innerHTML = `<div class="agenda-item-meta"></div><strong></strong><p></p><button class="agenda-item-delete" type="button" aria-label="Gérer la suppression">×</button>`;
+        element.querySelector(".agenda-item-meta").textContent = `${formatAgendaDate(dateKey)}${item.startTime ? ` à ${item.startTime}` : ""}${item.recurring ? " · chaque semaine" : ""}`;
+        element.querySelector("strong").textContent = item.title;
+        element.querySelector("p").textContent = item.description || (
+            item.type === "homework" ? "Devoir à rendre" :
+            item.type === "reminder" ? "Rappel" : "Cours"
+        );
+        element.querySelector(".agenda-item-delete").addEventListener("click", () => removeAgendaItem(item, dateKey));
+        upcoming.appendChild(element);
+    });
+}
+
+function getUpcomingRecurringOccurrences(item) {
+    const occurrences = [];
+    const start = new Date();
+    for (let offset = 0; offset < 60 && occurrences.length < 12; offset += 1) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + offset);
+        const dateKey = getAgendaDateKey(date);
+        if (dateKey >= item.date && (!item.recurrenceEnd || dateKey <= item.recurrenceEnd) && date.getDay() === getAgendaLocalDate(item.date).getDay() && !item.excludedDates?.includes(dateKey)) {
+            occurrences.push({ item, dateKey });
+        }
+    }
+    return occurrences;
+}
+
+function removeAgendaItem(item, occurrenceDate) {
+    if (!item.recurring) {
+        if (window.confirm("Supprimer ce cours ou devoir ?")) {
+            agendaItems = agendaItems.filter(candidate => candidate.id !== item.id);
+        }
+    } else if (window.confirm("Supprimer toute la série hebdomadaire ?\n\nChoisis Annuler pour supprimer seulement cette occurrence.")) {
+        agendaItems = agendaItems.filter(candidate => candidate.id !== item.id);
+    } else if (window.confirm("Supprimer seulement cette occurrence ?")) {
+        item.excludedDates = [...new Set([...(item.excludedDates || []), occurrenceDate])];
+    }
+    saveAgendaItems();
+    renderAgendaCalendar();
+    renderAgendaUpcoming();
+}
+
+function initializeAgenda() {
+    loadAgendaItems();
+    renderAgendaCalendar();
+    renderAgendaUpcoming();
+
+    const form = document.getElementById("agendaForm");
+    const dateInput = document.getElementById("agendaDate");
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+
+    form?.addEventListener("submit", event => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        agendaItems.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            title: String(formData.get("title") || "").trim(),
+            type: String(formData.get("type") || "course"),
+            date: String(formData.get("date") || ""),
+            startTime: String(formData.get("startTime") || ""),
+            endTime: String(formData.get("endTime") || ""),
+            recurring: formData.get("recurring") === "on",
+            recurrenceEnd: String(formData.get("recurrenceEnd") || ""),
+            excludedDates: [],
+            description: String(formData.get("description") || "").trim()
+        });
+        if (formData.get("type") === "reminder") {
+            requestAgendaNotificationPermission();
+        }
+        saveAgendaItems();
+        form.reset();
+        dateInput.value = new Date().toISOString().slice(0, 10);
+        renderAgendaCalendar();
+        renderAgendaUpcoming();
+    });
+
+    document.getElementById("agendaPreviousWeek")?.addEventListener("click", () => {
+        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() - 7);
+        renderAgendaCalendar();
+    });
+    document.getElementById("agendaNextWeek")?.addEventListener("click", () => {
+        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() + 7);
+        renderAgendaCalendar();
+    });
+    document.getElementById("agendaRecurring")?.addEventListener("change", event => {
+        document.getElementById("agendaRecurrenceEndRow").hidden = !event.target.checked;
+    });
+    document.getElementById("agendaType")?.addEventListener("change", event => {
+        const recurring = document.getElementById("agendaRecurring");
+        const recurrenceEndRow = document.getElementById("agendaRecurrenceEndRow");
+        const isCourse = event.target.value === "course";
+        recurring.disabled = !isCourse;
+        if (!isCourse) {
+            recurring.checked = false;
+            recurrenceEndRow.hidden = true;
+        }
+    });
+    checkAgendaReminders();
+    window.setInterval(checkAgendaReminders, 30000);
+}
+
 
 function loadJarvisHistory() {
 
@@ -1510,7 +2027,7 @@ function loadJarvisHistory() {
                         message.text
 
                 }))
-                .slice(-10);
+                .slice(-30);
 
     } catch (error) {
 
@@ -1531,7 +2048,7 @@ function saveJarvisHistory() {
         localStorage.setItem(
             JARVIS_HISTORY_KEY,
             JSON.stringify(
-                jarvisHistory.slice(-10)
+                jarvisHistory.slice(-30)
             )
         );
 
@@ -1547,6 +2064,10 @@ function saveJarvisHistory() {
 
 function addToJarvisHistory(role, text) {
 
+    if (role === "user") {
+        rememberJarvisPreference(text);
+    }
+
     jarvisHistory.push({
 
         role: role,
@@ -1556,11 +2077,19 @@ function addToJarvisHistory(role, text) {
 
 
     jarvisHistory =
-        jarvisHistory.slice(-10);
+        jarvisHistory.slice(-30);
 
 
     saveJarvisHistory();
 }
+
+loadJarvisLongTermMemory();
+renderJarvisMemory();
+
+document.getElementById("clearJarvisMemoryButton")?.addEventListener(
+    "click",
+    clearJarvisMemory
+);
 
 
 /* ==========================================
@@ -1655,6 +2184,9 @@ const sections = {
 
     music:
         "musicSection",
+
+    agenda:
+        "agendaSection",
 
     settings:
         "settingsSection"
@@ -1756,6 +2288,9 @@ function getSectionFromName(pageName) {
 
         "Musique":
             "musicSection",
+
+        "Agenda":
+            "agendaSection",
 
         "Paramètres":
             "settingsSection"
@@ -2323,6 +2858,41 @@ async function executeJarvisAction(result) {
         );
     }
 
+    if (action === "agenda_control") {
+        showSection("agendaSection");
+
+        if (result.command === "open") {
+            return result.reply || "J'ouvre ton agenda. 📅";
+        }
+
+        if (result.command === "list") {
+            renderAgendaUpcoming();
+            return result.reply || getAgendaSummary();
+        }
+
+        if (result.command === "create_reminder") {
+            const reminder = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                title: String(result.title || "Rappel").trim(),
+                type: "reminder",
+                date: String(result.date || getAgendaDateKey(new Date())),
+                startTime: String(result.time || "09:00"),
+                endTime: "",
+                recurring: false,
+                recurrenceEnd: "",
+                excludedDates: [],
+                description: "Créé par JARVIS"
+            };
+
+            agendaItems.push(reminder);
+            saveAgendaItems();
+            renderAgendaCalendar();
+            renderAgendaUpcoming();
+            requestAgendaNotificationPermission();
+            return `C'est noté : rappel « ${reminder.title} » le ${formatAgendaDate(reminder.date)}${formatAgendaTime(reminder.startTime)}. 🔔`;
+        }
+    }
+
 
     if (action === "site_navigation") {
         const siteName = String(result.target || "").toLowerCase().trim();
@@ -2695,6 +3265,14 @@ async function executeJarvisAction(result) {
                     result.reply ||
                     "Je relance la lecture. ▶️"
                 );
+            }
+
+            if (command === "theme") {
+                const started = await playSpotifyTheme(result.query);
+
+                return started
+                    ? (result.reply || `Je lance une sélection aléatoire ${result.query}. 🎵`)
+                    : `Je n'ai pas trouvé assez de musique ${result.query} sur Spotify. 🔎`;
             }
 
             if (command === "playlist" || command === "playlist_search") {
@@ -3096,7 +3674,7 @@ function getLocalFallbackReply(command) {
 function getLocalSpotifyAction(command) {
     const normalized = normalizeCommandText(command);
 
-    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe)/.test(normalized)) {
+    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe|veux|voudrais|aimerais|disney|pixar|marvel|star wars)/.test(normalized)) {
         return null;
     }
 
@@ -3151,6 +3729,18 @@ function getLocalSpotifyAction(command) {
         };
     }
 
+    if (/(disney|pixar|marvel|star wars)/.test(normalized) &&
+        /(joue|jouer|mets|met|mettre|lance|lancer|musique|chanson|morceau|titre|écoute|ecoute|veux|voudrais|aimerais)/.test(normalized)) {
+        const theme = normalized.match(/disney|pixar|marvel|star wars/)?.[0] || "disney";
+
+        return {
+            action: "spotify_control",
+            command: "theme",
+            query: theme,
+            reply: `Je lance une sélection aléatoire ${theme} sur Spotify. 🎲`
+        };
+    }
+
     if (/(mets|met|mettre|mettre en|pause|arrete|arrête|stoppe|stop)/.test(normalized) && /pause|stop|arrete|arrête/.test(normalized)) {
         return {
             action: "spotify_control",
@@ -3191,6 +3781,12 @@ function getLocalQuickAction(command) {
 
     if (!normalized) {
         return null;
+    }
+
+    const agendaAction = getLocalAgendaAction(command);
+
+    if (agendaAction) {
+        return agendaAction;
     }
 
     const spotifyAction = getLocalSpotifyAction(command);
@@ -3758,7 +4354,7 @@ async function processCommand(command) {
 
         const historyToSend =
             jarvisHistory
-                .slice(-10)
+                .slice(-30)
                 .map(message => ({
 
                     role:
@@ -3792,7 +4388,10 @@ async function processCommand(command) {
                                 command,
 
                             history:
-                                historyToSend
+                                historyToSend,
+
+                            memory:
+                                jarvisLongTermMemory.slice(-30)
 
                         })
                 }
@@ -4529,6 +5128,8 @@ const SPOTIFY_SCOPES = [
 
     "user-modify-playback-state",
 
+    "user-library-read",
+
     "playlist-read-private",
 
     "playlist-read-collaborative"
@@ -4550,6 +5151,12 @@ let spotifyAccessToken =
     );
 
 let spotifyCurrentState = null;
+
+const spotifyQueuedTrackIds = new Set();
+const spotifyQueuedTrackFingerprints = new Set();
+let spotifyRecommendationRequest = null;
+let spotifyLastRecommendationTrackId = null;
+const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
 const spotifyVolumeValue = document.getElementById("spotifyVolumeValue");
@@ -4600,6 +5207,214 @@ async function spotifyApiFetch(endpoint, options = {}) {
     return response;
 }
 
+function getSpotifyTrackFingerprint(track) {
+    return String(track?.name || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+        .replace(/\b(feat|featuring|ft|live|remaster(?:ed)?|remix|edit|version|acoustic|karaoke|radio)\b/g, " ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function getSpotifyRandomHistory(theme) {
+    try {
+        const history = JSON.parse(localStorage.getItem(spotifyRandomHistoryKey) || "{}");
+        return new Set(history[theme] || []);
+    } catch {
+        return new Set();
+    }
+}
+
+function saveSpotifyRandomHistory(theme, history) {
+    try {
+        const savedHistory = JSON.parse(localStorage.getItem(spotifyRandomHistoryKey) || "{}");
+        savedHistory[theme] = [...history];
+        localStorage.setItem(spotifyRandomHistoryKey, JSON.stringify(savedHistory));
+    } catch (error) {
+        console.warn("Impossible de mémoriser l'historique Spotify :", error);
+    }
+}
+
+function shuffleSpotifyTracks(tracks) {
+    const shuffled = [...tracks];
+
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+    }
+
+    return shuffled;
+}
+
+async function getSpotifyLikedTracks() {
+    const tracks = [];
+    let endpoint = "/me/tracks?limit=50";
+
+    while (endpoint && tracks.length < 200) {
+        const response = await spotifyApiFetch(endpoint);
+
+        if (!response.ok) {
+            return tracks;
+        }
+
+        const data = await response.json();
+        tracks.push(...(data.items || []).map(item => item.track).filter(Boolean));
+        endpoint = data.next?.replace("https://api.spotify.com/v1", "") || null;
+    }
+
+    return tracks;
+}
+
+async function playSpotifyTheme(theme) {
+    const safeTheme = String(theme || "").trim().toLowerCase();
+
+    if (!safeTheme || !spotifyAccessToken || !spotifyDeviceId) {
+        return false;
+    }
+
+    try {
+        const [searchResponse, likedTracks] = await Promise.all([
+            spotifyApiFetch(`/search?type=track&limit=50&q=${encodeURIComponent(safeTheme)}`),
+            getSpotifyLikedTracks()
+        ]);
+        const searchData = searchResponse.ok ? await searchResponse.json() : null;
+        const searchTracks = searchData?.tracks?.items || [];
+        const matchingLikedTracks = likedTracks.filter(track => {
+            const text = [track.name, track.album?.name, ...(track.artists || []).map(artist => artist.name)]
+                .join(" ")
+                .toLowerCase();
+
+            return text.includes(safeTheme);
+        });
+        const candidates = [...matchingLikedTracks, ...searchTracks];
+        const uniqueTracks = [...new Map(candidates
+            .filter(track => track?.id && track?.uri)
+            .map(track => [track.id, track])).values()];
+        const byFingerprint = new Map();
+
+        uniqueTracks.forEach(track => {
+            const fingerprint = getSpotifyTrackFingerprint(track);
+
+            if (fingerprint && !byFingerprint.has(fingerprint)) {
+                byFingerprint.set(fingerprint, track);
+            }
+        });
+
+        let availableTracks = [...byFingerprint.values()];
+        let history = getSpotifyRandomHistory(safeTheme);
+        let freshTracks = availableTracks.filter(track => !history.has(track.id));
+
+        if (freshTracks.length === 0) {
+            history = new Set();
+            freshTracks = availableTracks;
+        }
+
+        const selectedTracks = shuffleSpotifyTracks(freshTracks).slice(0, 6);
+        const selectedTrack = selectedTracks[0];
+
+        if (!selectedTrack) {
+            return false;
+        }
+
+        const playResponse = await spotifyApiFetch(
+            `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
+            {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [selectedTrack.uri] })
+            }
+        );
+
+        if (!playResponse.ok) {
+            return false;
+        }
+
+        history.add(selectedTrack.id);
+        saveSpotifyRandomHistory(safeTheme, history);
+        spotifyQueuedTrackIds.clear();
+        spotifyQueuedTrackFingerprints.clear();
+        spotifyLastRecommendationTrackId = null;
+
+        for (const track of selectedTracks.slice(1)) {
+            const queueResponse = await spotifyApiFetch(
+                `/me/player/queue?uri=${encodeURIComponent(track.uri)}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
+                { method: "POST" }
+            );
+
+            if (!queueResponse.ok) {
+                break;
+            }
+
+            history.add(track.id);
+            spotifyQueuedTrackIds.add(track.id);
+            spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+        }
+
+        saveSpotifyRandomHistory(safeTheme, history);
+        return true;
+    } catch (error) {
+        console.warn("Impossible de lancer une sélection Spotify aléatoire :", error);
+        return false;
+    }
+}
+
+async function queueSpotifyRecommendations(trackId) {
+    if (!trackId || !spotifyAccessToken || !spotifyDeviceId || spotifyLastRecommendationTrackId === trackId) {
+        return;
+    }
+
+    if (spotifyRecommendationRequest) {
+        return spotifyRecommendationRequest.then(() => queueSpotifyRecommendations(trackId));
+    }
+
+    spotifyLastRecommendationTrackId = trackId;
+    spotifyRecommendationRequest = (async () => {
+        try {
+            const response = await spotifyApiFetch(
+                `/recommendations?limit=10&seed_tracks=${encodeURIComponent(trackId)}`
+            );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            const recommendations = (data?.tracks || [])
+                .filter(track => {
+                    const fingerprint = getSpotifyTrackFingerprint(track);
+
+                    return track?.id &&
+                        !spotifyQueuedTrackIds.has(track.id) &&
+                        fingerprint &&
+                        !spotifyQueuedTrackFingerprints.has(fingerprint);
+                })
+                .slice(0, 5);
+
+            for (const track of recommendations) {
+                const queueResponse = await spotifyApiFetch(
+                    `/me/player/queue?uri=${encodeURIComponent(track.uri)}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
+                    { method: "POST" }
+                );
+
+                if (!queueResponse.ok) {
+                    break;
+                }
+
+                spotifyQueuedTrackIds.add(track.id);
+                spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+            }
+        } catch (error) {
+            console.warn("Impossible de remplir la file Spotify :", error);
+        } finally {
+            spotifyRecommendationRequest = null;
+        }
+    })();
+
+    return spotifyRecommendationRequest;
+}
+
 async function playSpotifySearchResult(query) {
     const safeQuery = String(query || "").trim();
 
@@ -4609,7 +5424,7 @@ async function playSpotifySearchResult(query) {
 
     try {
         const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=5&q=${encodeURIComponent(safeQuery)}`
+            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
         );
 
         if (!searchResponse.ok) {
@@ -4617,9 +5432,8 @@ async function playSpotifySearchResult(query) {
         }
 
         const searchData = await searchResponse.json();
-        const trackUris = (searchData?.tracks?.items || [])
-            .map(track => track.uri)
-            .filter(Boolean);
+        const track = searchData?.tracks?.items?.[0];
+        const trackUris = track?.uri ? [track.uri] : [];
 
         if (trackUris.length === 0) {
             return false;
@@ -4636,7 +5450,18 @@ async function playSpotifySearchResult(query) {
             }
         );
 
-        return playResponse.ok;
+        if (!playResponse.ok) {
+            return false;
+        }
+
+        spotifyQueuedTrackIds.clear();
+        spotifyQueuedTrackFingerprints.clear();
+        spotifyLastRecommendationTrackId = null;
+        spotifyQueuedTrackIds.add(track.id);
+        spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+        await queueSpotifyRecommendations(track.id);
+
+        return true;
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
         return false;
@@ -5339,6 +6164,17 @@ function initializeSpotifyPlayer(
 
             spotifyCurrentState =
                 state;
+
+            const currentTrack =
+                state.track_window?.current_track;
+
+            if (currentTrack?.id) {
+                spotifyQueuedTrackIds.add(currentTrack.id);
+                spotifyQueuedTrackFingerprints.add(
+                    getSpotifyTrackFingerprint(currentTrack)
+                );
+                queueSpotifyRecommendations(currentTrack.id);
+            }
 
 
             updateSpotifyTrack(
@@ -6100,6 +6936,7 @@ if (spotifyConnectButton) {
 ========================================== */
 
 loadJarvisHistory();
+initializeAgenda();
 
 
 /* ==========================================
