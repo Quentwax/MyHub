@@ -5502,8 +5502,9 @@ async function playSpotifySearchResult(query) {
 
         const searchData = await searchResponse.json();
         const tracks = (searchData?.tracks?.items || []).filter(track => track?.id && track?.uri);
-        const track = shuffleSpotifyTracks(tracks)[0];
-        const trackUris = track?.uri ? [track.uri] : [];
+        const selectedTracks = shuffleSpotifyTracks(tracks).slice(0, 20);
+        const track = selectedTracks[0];
+        const trackUris = selectedTracks.map(selectedTrack => selectedTrack.uri);
 
         if (trackUris.length === 0) {
             return false;
@@ -5528,8 +5529,10 @@ async function playSpotifySearchResult(query) {
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
         spotifyActiveQueueQuery = safeQuery;
-        spotifyQueuedTrackIds.add(track.id);
-        spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+        selectedTracks.forEach(selectedTrack => {
+            spotifyQueuedTrackIds.add(selectedTrack.id);
+            spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(selectedTrack));
+        });
         await queueSpotifySearchTracks(safeQuery, 10);
 
         return true;
@@ -5610,6 +5613,10 @@ async function playSpotifyPlaylistSearch(query) {
                 body: JSON.stringify({ context_uri: playlist.uri })
             }
         );
+
+        if (response.ok) {
+            spotifyActiveQueueQuery = null;
+        }
 
         return response.ok;
     } catch (error) {
