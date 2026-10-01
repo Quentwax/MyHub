@@ -41,12 +41,12 @@
 
             <button class="nav-item">
                 <span>🎲</span>
-                <span>Ludothèque</span>
+                <span>Dessin</span>
             </button>
 
             <button class="nav-item">
-                <span>🎵</span>
-                <span>Musique</span>
+                <span>👋</span>
+                <span>Contrôle</span>
             </button>
 
             <button class="nav-item">
@@ -146,6 +146,7 @@
         Micro inactif
     </div>
 </div>
+
 
 
             <!-- HORLOGE -->
@@ -315,7 +316,7 @@
 
                     <a href="https://quentwax.github.io/jeux_societe/" class="shortcut">
                         <span>🎲</span>
-                        <p>Ludothèque</p>
+                        <p>Dessin</p>
                     </a>
 
                     <a href="https://github.com/quentwax" class="shortcut">
@@ -561,30 +562,346 @@
 </section>
 
 <section id="ludothequeSection" class="page-section">
+
     <div class="page-title">
-        <h1>🎲 Ma Ludothèque</h1>
-        <p>Ta collection de jeux</p>
+        <h1>🎨 Zone de dessin</h1>
+        <p>Dessine librement dans MyHub</p>
     </div>
 
-    <div class="page-placeholder">
-        <span>🎲</span>
-        <h2>Ma Ludothèque</h2>
-        <p>La connexion avec ton projet arrivera ici.</p>
+    <div class="drawing-workspace">
+
+        <canvas id="drawingCanvas"></canvas>
+
+        <!-- PALETTE FLOTTANTE -->
+
+        <div id="drawingPalette" class="drawing-palette">
+
+            <div class="drawing-palette-handle">
+                ✋
+            </div>
+
+            <div class="drawing-colors">
+
+                <button
+                    class="drawing-color active"
+                    data-color="#000000"
+                    style="background:#000000;"
+                    title="Noir">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#ffffff"
+                    style="background:#ffffff;"
+                    title="Blanc">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#ff3b30"
+                    style="background:#ff3b30;"
+                    title="Rouge">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#ff9500"
+                    style="background:#ff9500;"
+                    title="Orange">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#ffcc00"
+                    style="background:#ffcc00;"
+                    title="Jaune">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#34c759"
+                    style="background:#34c759;"
+                    title="Vert">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#007aff"
+                    style="background:#007aff;"
+                    title="Bleu">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#5856d6"
+                    style="background:#5856d6;"
+                    title="Violet">
+                </button>
+
+                <button
+                    class="drawing-color"
+                    data-color="#ff2d55"
+                    style="background:#ff2d55;"
+                    title="Rose">
+                </button>
+
+            </div>
+
+            <div class="drawing-tools">
+
+                <button
+                    id="drawingBrush"
+                    class="drawing-tool active"
+                    title="Pinceau">
+                    🖌️
+                </button>
+
+                <button
+                    id="drawingEraser"
+                    class="drawing-tool"
+                    title="Gomme">
+                    🧹
+                </button>
+
+                <button
+                    id="drawingUndo"
+                    class="drawing-tool"
+                    title="Annuler">
+                    ↩️
+                </button>
+
+                <button
+                    id="drawingClear"
+                    class="drawing-tool"
+                    title="Tout effacer">
+                    🗑️
+                </button>
+
+                <button
+                    id="drawingSave"
+                    class="drawing-tool"
+                    title="Sauvegarder">
+                    💾
+                </button>
+
+            </div>
+
+            <div class="drawing-size">
+
+                <span>Épaisseur</span>
+
+                <input
+                    id="drawingSize"
+                    type="range"
+                    min="1"
+                    max="50"
+                    value="5"
+                >
+
+            </div>
+
+        </div>
+
     </div>
+
 </section>
+
 
 <section id="musicSection" class="page-section">
+
     <div class="page-title">
-        <h1>🎵 Musique</h1>
-        <p>Ton espace musical</p>
+
+        <h1>👋 Contrôle</h1>
+
+        <p>
+            Contrôle de MyHub par gestes
+        </p>
+
     </div>
 
-    <div class="page-placeholder">
-        <span>🎵</span>
-        <h2>Spotify</h2>
-        <p>Le lecteur Spotify arrivera ici.</p>
+
+    <!-- CONTRÔLE GESTUEL -->
+
+    <article class="widget gesture-widget">
+
+        <div class="widget-header">
+
+            <div>
+
+                <span class="widget-icon">
+                    ✋
+                </span>
+
+                <h2>
+                    Contrôle gestuel
+                </h2>
+
+            </div>
+
+            <span
+                id="gestureStatus"
+                class="status"
+            >
+                ● Inactif
+            </span>
+
+        </div>
+
+
+        <div class="gesture-panel">
+
+
+            <!-- CAMÉRA -->
+
+            <div class="gesture-camera">
+
+                <video
+                    id="gestureCamera"
+                    autoplay
+                    playsinline
+                    muted
+                ></video>
+
+                <canvas
+                    id="gestureCanvas"
+                ></canvas>
+
+                <div
+                    id="gestureCameraStatus"
+                    class="gesture-camera-status"
+                >
+                    Contrôle gestuel désactivé
+                </div>
+
+            </div>
+
+            <div id="gestureVolumeIndicator" class="gesture-volume-indicator">
+    <span class="gesture-volume-icon">🔊</span>
+    <div class="gesture-volume-content">
+        <strong>Volume</strong>
+        <div class="gesture-volume-bar">
+            <div id="gestureVolumeFill"></div>
+        </div>
+        <span id="gestureVolumeValue">50 %</span>
     </div>
+</div>
+
+
+            <!-- CHOIX DE LA CAMÉRA -->
+
+            <div class="gesture-camera-selector">
+
+                <label
+                    for="gestureCameraSelect"
+                >
+                    📷 Caméra
+                </label>
+
+                <select
+                    id="gestureCameraSelect"
+                >
+
+                    <option value="">
+                        Caméra par défaut
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- ACTIVATION -->
+
+            <div class="gesture-controls">
+
+                <button
+                    id="gestureToggleButton"
+                    class="gesture-toggle-button"
+                    type="button"
+                >
+                    ✋ Activer le contrôle gestuel
+                </button>
+
+            </div>
+
+
+            <!-- INFORMATIONS -->
+
+            <div class="gesture-info">
+
+
+                <div class="gesture-info-item">
+
+                    <span>
+                        ☝️
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Déplacement
+                        </strong>
+
+                        <small>
+                            Index
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <div class="gesture-info-item">
+
+                    <span>
+                        👌
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Sélection
+                        </strong>
+
+                        <small>
+                            Pouce + index
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <div class="gesture-info-item">
+
+                    <span>
+                        ✋
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Mode normal
+                        </strong>
+
+                        <small>
+                            Main ouverte
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+    </article>
+
 </section>
+
 
 <section id="settingsSection" class="page-section">
     <div class="page-title">

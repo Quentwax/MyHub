@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>JARVIS - Gesture Workspace</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ==========================================
+         FOND JARVIS
+    ========================================== -->
+
+    <div class="background-grid"></div>
+    <div class="background-glow"></div>
+
+
+    <!-- ==========================================
+         BARRE SUPÉRIEURE
+    ========================================== -->
+
+    <header class="topbar">
+
+        <div class="brand">
+            <div class="brand-circle">J</div>
+
+            <div>
+                <div class="brand-title">JARVIS</div>
+                <div class="brand-subtitle">
+                    GESTURE WORKSPACE
+                </div>
+            </div>
+        </div>
+
+
+        <div class="system-status">
+
+            <span class="status-dot"></span>
+
+            <span id="systemStatus">
+                SYSTEM ONLINE
+            </span>
+
+        </div>
+
+    </header>
+
+
+    <!-- ==========================================
+         WORKSPACE
+    ========================================== -->
+
+    <main id="workspace">
+
+
+        <!-- ======================================
+             FENÊTRE HORLOGE
+        ======================================= -->
+
+        <section
+            class="window"
+            id="clockWindow"
+            data-window="clock"
+            style="left: 6%; top: 14%;"
+        >
+
+            <div class="window-header">
+
+                <div class="window-title">
+
+                    <span class="window-icon">
+                        ◷
+                    </span>
+
+                    HORLOGE
+
+                </div>
+
+                <button class="window-close">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="window-content clock-content">
+
+                <div
+                    id="clock"
+                    class="big-clock"
+                >
+                    00:00:00
+                </div>
+
+                <div
+                    id="date"
+                    class="date"
+                >
+                    Chargement...
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ======================================
+             FENÊTRE GESTES
+        ======================================= -->
+
+        <section
+            class="window"
+            id="gestureWindow"
+            data-window="gesture"
+            style="left: 37%; top: 18%;"
+        >
+
+            <div class="window-header">
+
+                <div class="window-title">
+
+                    <span class="window-icon">
+                        ✋
+                    </span>
+
+                    GESTURE CONTROL
+
+                </div>
+
+                <button class="window-close">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="window-content">
+
+                <div
+                    id="gesture"
+                    class="gesture-status"
+                >
+                    Aucune main détectée
+                </div>
+
+
+                <div class="gesture-line">
+
+                    <span>INDEX</span>
+
+                    <div class="indicator"></div>
+
+                </div>
+
+
+                <div class="gesture-line">
+
+                    <span>PINCH</span>
+
+                    <div
+                        id="pinchIndicator"
+                        class="indicator"
+                    ></div>
+
+                </div>
+
+
+                <div class="gesture-line">
+
+                    <span>TRACKING</span>
+
+                    <div
+                        id="trackingIndicator"
+                        class="indicator"
+                    ></div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ======================================
+             FENÊTRE SYSTÈME
+        ======================================= -->
+
+        <section
+            class="window"
+            id="systemWindow"
+            data-window="system"
+            style="right: 6%; top: 14%;"
+        >
+
+            <div class="window-header">
+
+                <div class="window-title">
+
+                    <span class="window-icon">
+                        ◉
+                    </span>
+
+                    SYSTÈME
+
+                </div>
+
+                <button class="window-close">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="window-content">
+
+                <div class="system-row">
+
+                    <span>VISION</span>
+
+                    <strong id="visionStatus">
+                        READY
+                    </strong>
+
+                </div>
+
+
+                <div class="system-row">
+
+                    <span>CAMERA</span>
+
+                    <strong id="cameraStatus">
+                        SEARCHING
+                    </strong>
+
+                </div>
+
+
+                <div class="system-row">
+
+                    <span>HANDS</span>
+
+                    <strong id="handsStatus">
+                        0
+                    </strong>
+
+                </div>
+
+
+                <div class="system-row">
+
+                    <span>MODE</span>
+
+                    <strong>
+                        GESTURE
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ======================================
+             FENÊTRE CAMÉRA
+        ======================================= -->
+
+        <section
+            class="window camera-window"
+            id="cameraWindow"
+            data-window="camera"
+            style="left: 8%; top: 55%;"
+        >
+
+            <div class="window-header">
+
+                <div class="window-title">
+
+                    <span class="window-icon">
+                        ◉
+                    </span>
+
+                    VISION FEED
+
+                </div>
+
+                <button class="window-close">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="window-content camera-content">
+
+                <div class="camera-container">
+
+                    <div class="camera-selector">
+
+                        <label for="cameraSelect">
+                            CAMÉRA
+                        </label>
+
+                        <select id="cameraSelect">
+
+                            <option value="">
+                                Recherche...
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <video
+                        id="camera"
+                        autoplay
+                        playsinline
+                    ></video>
+
+
+                    <canvas id="canvas"></canvas>
+
+
+                    <div id="status">
+                        Initialisation...
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ======================================
+             FENÊTRE COMMANDES
+        ======================================= -->
+
+        <section
+            class="window command-window"
+            id="commandWindow"
+            data-window="commands"
+            style="right: 8%; top: 55%;"
+        >
+
+            <div class="window-header">
+
+                <div class="window-title">
+
+                    <span class="window-icon">
+                        >
+                    </span>
+
+                    COMMANDES
+
+                </div>
+
+                <button class="window-close">
+                    ×
+                </button>
+
+            </div>
+
+
+            <div class="window-content">
+
+                <div class="command">
+
+                    <span class="command-gesture">
+                        ☝️
+                    </span>
+
+                    <div>
+                        <strong>DÉPLACEMENT</strong>
+                        <small>Déplacer l'index</small>
+                    </div>
+
+                </div>
+
+
+                <div class="command">
+
+                    <span class="command-gesture">
+                        👌
+                    </span>
+
+                    <div>
+                        <strong>SÉLECTION</strong>
+                        <small>Pouce + index</small>
+                    </div>
+
+                </div>
+
+
+                <div class="command">
+
+                    <span class="command-gesture">
+                        ✋
+                    </span>
+
+                    <div>
+                        <strong>MAIN OUVERTE</strong>
+                        <small>Mode normal</small>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ==========================================
+         CURSEUR VIRTUEL
+    ========================================== -->
+
+    <div id="virtualCursor">
+
+        <div class="cursor-ring"></div>
+        <div class="cursor-core"></div>
+
+    </div>
+
+
+    <!-- ==========================================
+         SCRIPT
+    ========================================== -->
+
+    <script type="module" src="script.js"></script>
+
+</body>
+
+</html>

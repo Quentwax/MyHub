@@ -2283,10 +2283,10 @@ function getSectionFromName(pageName) {
         "MyDLP":
             "mydlpSection",
 
-        "Ludothèque":
+        "Dessin":
             "ludothequeSection",
 
-        "Musique":
+        "Contrôle":
             "musicSection",
 
         "Agenda":
@@ -6953,3 +6953,2445 @@ handleSpotifyCallback();
 console.log(
     "🔥 SCRIPT MYHUB V3 CHARGÉ"
 );
+
+/* =========================================================
+   JARVIS - GESTURE CONTROL V4
+   Caméra + MediaPipe + Curseur + Pinch
+   ========================================================= */
+
+(() => {
+
+    console.log("🤖 JARVIS Gesture Control V4 : chargement...");
+
+    const gestureCamera =
+        document.getElementById("gestureCamera");
+
+    const gestureCanvas =
+        document.getElementById("gestureCanvas");
+
+    const gestureToggleButton =
+        document.getElementById("gestureToggleButton");
+
+    const gestureStatus =
+        document.getElementById("gestureStatus");
+
+    const gestureCameraStatus =
+        document.getElementById("gestureCameraStatus");
+
+    const gestureCameraSelect =
+        document.getElementById("gestureCameraSelect");
+
+    if (
+        !gestureCamera ||
+        !gestureCanvas ||
+        !gestureToggleButton ||
+        !gestureStatus ||
+        !gestureCameraStatus ||
+        !gestureCameraSelect
+    ) {
+
+        console.warn(
+            "🤖 Gesture Control : éléments HTML introuvables."
+        );
+
+        return;
+    }
+
+
+    const gestureCtx =
+        gestureCanvas.getContext("2d");
+
+
+    /* =====================================================
+       VARIABLES
+    ===================================================== */
+
+    let gestureStream = null;
+
+    let handLandmarker = null;
+
+    let gestureRunning = false;
+
+    let detectingHands = false;
+
+    let lastVideoTime = -1;
+
+    let camerasLoaded = false;
+
+
+    /* =====================================================
+   CURSEUR - STABILISATION
+===================================================== */
+
+let cursorX =
+    window.innerWidth / 2;
+
+let cursorY =
+    window.innerHeight / 2;
+
+/*
+ * Plus cette valeur est basse,
+ * plus le curseur est fluide.
+ */
+const CURSOR_SMOOTHING = 0.12;
+
+/*
+ * Zone morte :
+ * les tout petits mouvements de la main
+ * ne font pas bouger le curseur.
+ */
+const CURSOR_DEADZONE = 8;
+
+/*
+ * Nombre de frames pendant lesquelles
+ * on garde le curseur à sa position
+ * si MediaPipe perd momentanément la main.
+ */
+const HAND_LOST_TOLERANCE = 8;
+
+let handLostFrames = 0;
+
+
+    /* =====================================================
+       PINCH
+    ===================================================== */
+
+    let pinchActive = false;
+
+    let lastClickTime = 0;
+
+    const CLICK_COOLDOWN = 600;
+
+    const PINCH_DISTANCE = 0.065;
+
+
+    /* =====================================================
+       ZONE DE MOUVEMENT
+    ===================================================== */
+
+    const GESTURE_LEFT = 0.15;
+
+    const GESTURE_RIGHT = 0.85;
+
+    const GESTURE_TOP = 0.10;
+
+    const GESTURE_BOTTOM = 0.90;
+
+
+    /* =====================================================
+       CURSEUR VISUEL
+    ===================================================== */
+
+    const virtualCursor =
+        document.createElement("div");
+
+    virtualCursor.id =
+        "jarvisGestureCursor";
+
+    virtualCursor.innerHTML = `
+        <div class="jarvis-cursor-core"></div>
+        <div class="jarvis-cursor-ring"></div>
+    `;
+
+    document.body.appendChild(
+        virtualCursor
+    );
+
+
+    const cursorStyle =
+        document.createElement("style");
+
+    cursorStyle.textContent = `
+
+        #jarvisGestureCursor {
+
+            position: fixed;
+
+            left: 0;
+            top: 0;
+
+            width: 28px;
+            height: 28px;
+
+            transform:
+                translate(-50%, -50%);
+
+            pointer-events: none;
+
+            z-index: 999999;
+
+            display: none;
+        }
+
+
+        .jarvis-cursor-core {
+
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
+
+            width: 8px;
+            height: 8px;
+
+            transform:
+                translate(-50%, -50%);
+
+            border-radius: 50%;
+
+            background: white;
+
+            box-shadow:
+                0 0 10px rgba(255,255,255,0.9);
+        }
+
+
+        .jarvis-cursor-ring {
+
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
+
+            width: 26px;
+            height: 26px;
+
+            transform:
+                translate(-50%, -50%);
+
+            border-radius: 50%;
+
+            border:
+                2px solid rgba(255,255,255,0.9);
+
+            box-shadow:
+                0 0 15px rgba(255,255,255,0.5);
+
+            transition:
+                width 0.12s,
+                height 0.12s,
+                border-color 0.12s,
+                box-shadow 0.12s;
+        }
+
+
+        #jarvisGestureCursor.pinching
+        .jarvis-cursor-ring {
+
+            width: 36px;
+            height: 36px;
+
+            border-color:
+                rgba(255,100,100,1);
+
+            box-shadow:
+                0 0 25px rgba(255,80,80,0.9);
+        }
+
+
+        #jarvisGestureCursor.clicked
+        .jarvis-cursor-ring {
+
+            width: 48px;
+            height: 48px;
+
+            border-color:
+                white;
+
+            box-shadow:
+                0 0 30px white;
+        }
+
+    `;
+
+    document.head.appendChild(
+        cursorStyle
+    );
+
+
+    /* =====================================================
+       CHARGEMENT DES CAMÉRAS
+    ===================================================== */
+
+    async function loadCameras() {
+
+        try {
+
+            gestureCameraStatus.textContent =
+                "Recherche des caméras...";
+
+
+            /*
+             * On demande temporairement l'accès
+             * pour que le navigateur révèle les noms
+             * et les deviceId des caméras.
+             */
+
+            const temporaryStream =
+                await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+
+
+            temporaryStream
+                .getTracks()
+                .forEach(track => {
+                    track.stop();
+                });
+
+
+            const devices =
+                await navigator.mediaDevices.enumerateDevices();
+
+
+            const videoDevices =
+                devices.filter(
+                    device =>
+                        device.kind === "videoinput"
+                );
+
+
+            gestureCameraSelect.innerHTML = "";
+
+
+            if (videoDevices.length === 0) {
+
+                const option =
+                    document.createElement("option");
+
+                option.textContent =
+                    "Aucune caméra détectée";
+
+                option.value = "";
+
+                gestureCameraSelect.appendChild(
+                    option
+                );
+
+                return false;
+            }
+
+
+            /*
+             * Ajout des caméras dans le menu.
+             */
+
+            videoDevices.forEach(
+                (device, index) => {
+
+                    const option =
+                        document.createElement("option");
+
+                    option.value =
+                        device.deviceId;
+
+                    option.textContent =
+                        device.label ||
+                        `Caméra ${index + 1}`;
+
+                    gestureCameraSelect.appendChild(
+                        option
+                    );
+
+                }
+            );
+
+
+            /*
+             * On cherche une webcam / caméra PC.
+             */
+
+            const pcCamera =
+                videoDevices.find(
+                    device => {
+
+                        const name =
+                            device.label.toLowerCase();
+
+                        return (
+                            name.includes("webcam") ||
+                            name.includes("integrated") ||
+                            name.includes("built-in") ||
+                            name.includes("hd camera") ||
+                            name.includes("camera")
+                        );
+
+                    }
+                );
+
+
+            if (pcCamera) {
+
+                gestureCameraSelect.value =
+                    pcCamera.deviceId;
+
+                console.log(
+                    "📷 Caméra PC sélectionnée :",
+                    pcCamera.label
+                );
+
+            } else {
+
+                /*
+                 * Si aucune caméra PC identifiable
+                 * n'est trouvée, on prend la première.
+                 */
+
+                gestureCameraSelect.value =
+                    videoDevices[0].deviceId;
+
+                console.log(
+                    "📷 Caméra par défaut :",
+                    videoDevices[0].label
+                );
+            }
+
+
+            camerasLoaded = true;
+
+            console.log(
+                "📷 Caméras disponibles :",
+                videoDevices
+            );
+
+
+            return true;
+
+        } catch (error) {
+
+            console.error(
+                "❌ Impossible de récupérer les caméras :",
+                error
+            );
+
+            gestureCameraStatus.textContent =
+                "Autorisation caméra nécessaire";
+
+            return false;
+        }
+    }
+
+
+    /* =====================================================
+       CHARGEMENT MEDIAPIPE
+    ===================================================== */
+
+    async function loadMediaPipe() {
+
+        gestureCameraStatus.textContent =
+            "Chargement du système de vision...";
+
+        gestureStatus.textContent =
+            "● Initialisation";
+
+
+        try {
+
+            const module =
+                await import(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/+esm"
+                );
+
+
+            const HandLandmarker =
+                module.HandLandmarker;
+
+            const FilesetResolver =
+                module.FilesetResolver;
+
+
+            const vision =
+                await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.20/wasm"
+                );
+
+
+            handLandmarker =
+                await HandLandmarker.createFromOptions(
+                    vision,
+                    {
+
+                        baseOptions: {
+
+                            modelAssetPath:
+                                "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+
+                            delegate:
+                                "GPU"
+                        },
+
+                        runningMode:
+                            "VIDEO",
+
+                        numHands:
+                            2
+                    }
+                );
+
+
+            console.log(
+                "🤖 MediaPipe chargé."
+            );
+
+
+            return true;
+
+
+        } catch (error) {
+
+            console.error(
+                "❌ Erreur MediaPipe :",
+                error
+            );
+
+
+            gestureCameraStatus.textContent =
+                "Erreur de chargement MediaPipe";
+
+            gestureStatus.textContent =
+                "● Erreur";
+
+
+            return false;
+        }
+    }
+
+
+    /* =====================================================
+       DÉMARRAGE
+    ===================================================== */
+
+    async function startGestureControl() {
+
+        if (gestureRunning) {
+
+            stopGestureControl();
+
+            return;
+        }
+
+
+        gestureToggleButton.disabled =
+            true;
+
+
+        gestureStatus.textContent =
+            "● Démarrage";
+
+
+        /*
+         * 1. Charger les caméras
+         */
+
+        if (!camerasLoaded) {
+
+            const camerasOK =
+                await loadCameras();
+
+            if (!camerasOK) {
+
+                gestureToggleButton.disabled =
+                    false;
+
+                return;
+            }
+        }
+
+
+        /*
+         * 2. Charger MediaPipe
+         */
+
+        if (!handLandmarker) {
+
+            const loaded =
+                await loadMediaPipe();
+
+            if (!loaded) {
+
+                gestureToggleButton.disabled =
+                    false;
+
+                return;
+            }
+        }
+
+
+        /*
+         * 3. Récupérer la caméra sélectionnée
+         */
+
+        const selectedCamera =
+            gestureCameraSelect.value;
+
+
+        try {
+
+            gestureStream =
+                await navigator.mediaDevices.getUserMedia({
+
+                    video: selectedCamera
+                        ? {
+                            deviceId: {
+                                exact:
+                                    selectedCamera
+                            },
+
+                            width: {
+                                ideal: 1280
+                            },
+
+                            height: {
+                                ideal: 720
+                            }
+                        }
+
+                        : {
+                            width: {
+                                ideal: 1280
+                            },
+
+                            height: {
+                                ideal: 720
+                            }
+                        },
+
+                    audio: false
+                });
+
+
+            gestureCamera.srcObject =
+                gestureStream;
+
+
+            await gestureCamera.play();
+
+
+            /*
+             * Dimensions réelles de la vidéo.
+             */
+
+            gestureCanvas.width =
+                gestureCamera.videoWidth;
+
+            gestureCanvas.height =
+                gestureCamera.videoHeight;
+
+
+            console.log(
+                "📷 Résolution caméra :",
+                gestureCamera.videoWidth,
+                "x",
+                gestureCamera.videoHeight
+            );
+
+
+            gestureRunning =
+                true;
+
+
+            gestureToggleButton.disabled =
+                false;
+
+
+            gestureToggleButton.textContent =
+                "🛑 Désactiver le contrôle gestuel";
+
+
+            gestureStatus.textContent =
+                "● Caméra active";
+
+
+            gestureCameraStatus.textContent =
+                "Caméra active — présente ta main";
+
+
+            virtualCursor.style.display =
+                "block";
+
+
+            document
+                .querySelector(".gesture-widget")
+                ?.classList.add(
+                    "gesture-active"
+                );
+
+
+            console.log(
+                "🤖 Contrôle gestuel activé."
+            );
+
+
+            /*
+             * IMPORTANT :
+             * on remet le compteur vidéo à zéro.
+             */
+
+            lastVideoTime =
+                -1;
+
+
+            detectHands();
+
+
+        } catch (error) {
+
+            console.error(
+                "❌ Erreur caméra :",
+                error
+            );
+
+
+            gestureToggleButton.disabled =
+                false;
+
+
+            gestureStatus.textContent =
+                "● Erreur caméra";
+
+
+            gestureCameraStatus.textContent =
+                error.name === "NotAllowedError"
+
+                    ? "Autorisation caméra refusée"
+
+                    : error.message;
+        }
+
+    }
+
+
+    /* =====================================================
+       ARRÊT
+    ===================================================== */
+
+    function stopGestureControl() {
+
+        gestureRunning =
+            false;
+
+
+        if (gestureStream) {
+
+            gestureStream
+                .getTracks()
+                .forEach(track => {
+
+                    track.stop();
+
+                });
+
+            gestureStream =
+                null;
+        }
+
+
+        gestureCamera.srcObject =
+            null;
+
+
+        gestureCtx.clearRect(
+            0,
+            0,
+            gestureCanvas.width,
+            gestureCanvas.height
+        );
+
+
+        virtualCursor.style.display =
+            "none";
+
+
+        virtualCursor.classList.remove(
+            "pinching"
+        );
+
+
+        virtualCursor.classList.remove(
+            "clicked"
+        );
+
+
+        gestureToggleButton.textContent =
+            "✋ Activer le contrôle gestuel";
+
+
+        gestureStatus.textContent =
+            "● Inactif";
+
+
+        gestureCameraStatus.textContent =
+            "Contrôle gestuel désactivé";
+
+
+        document
+            .querySelector(".gesture-widget")
+            ?.classList.remove(
+                "gesture-active"
+            );
+
+
+        pinchActive =
+            false;
+
+        if (typeof window.myHubVolumeGesture === "function") {
+            window.myHubVolumeGesture(null);
+        }
+
+
+        console.log(
+            "🤖 Contrôle gestuel désactivé."
+        );
+    }
+
+
+    /* =====================================================
+       DÉTECTION DES MAINS
+    ===================================================== */
+
+    async function detectHands() {
+
+        if (!gestureRunning)
+            return;
+
+
+        if (detectingHands)
+            return;
+
+
+        detectingHands =
+            true;
+
+
+        try {
+
+            if (
+
+                gestureCamera.readyState >= 2 &&
+
+                gestureCamera.currentTime !==
+                lastVideoTime
+
+            ) {
+
+                lastVideoTime =
+                    gestureCamera.currentTime;
+
+
+                const results =
+                    handLandmarker.detectForVideo(
+                        gestureCamera,
+                        performance.now()
+                    );
+
+
+                processHands(
+                    results
+                );
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "❌ Erreur détection main :",
+                error
+            );
+
+        }
+
+
+        detectingHands =
+            false;
+
+
+        if (gestureRunning) {
+
+            requestAnimationFrame(
+                detectHands
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       TRAITEMENT DES MAINS
+    ===================================================== */
+
+    function processHands(results) {
+
+        gestureCtx.clearRect(
+            0,
+            0,
+            gestureCanvas.width,
+            gestureCanvas.height
+        );
+
+
+        if (
+    !results ||
+    !results.landmarks ||
+    results.landmarks.length === 0
+) {
+
+    handLostFrames++;
+
+    gestureStatus.textContent =
+        "● Aucune main";
+
+    pinchActive =
+        false;
+
+    if (typeof window.myHubVolumeGesture === "function") {
+        window.myHubVolumeGesture(null);
+    }
+
+    /*
+     * On ne fait disparaître le curseur
+     * qu'après plusieurs frames sans main.
+     */
+    if (
+        handLostFrames >
+        HAND_LOST_TOLERANCE
+    ) {
+
+        virtualCursor.style.display =
+            "none";
+    }
+
+    return;
+}
+
+
+/*
+ * Une main est retrouvée.
+ */
+handLostFrames = 0;
+
+virtualCursor.style.display =
+    "block";
+
+
+        /*
+ * Main principale
+ */
+
+const hand =
+    results.landmarks[0];
+
+
+/* ==========================================
+   CONTRÔLE DU VOLUME
+========================================== */
+
+if (
+    typeof window.myHubVolumeGesture ===
+    "function"
+) {
+    window.myHubVolumeGesture(
+        hand
+    );
+}
+
+        /*
+         * INDEX
+         */
+
+        const indexTip =
+            hand[8];
+
+
+        let x =
+            indexTip.x;
+
+        let y =
+            indexTip.y;
+
+
+        /*
+         * Conversion de la zone caméra
+         * vers tout l'écran.
+         */
+
+        x =
+            (x - GESTURE_LEFT) /
+            (GESTURE_RIGHT - GESTURE_LEFT);
+
+
+        y =
+            (y - GESTURE_TOP) /
+            (GESTURE_BOTTOM - GESTURE_TOP);
+
+
+        x =
+            Math.max(
+                0,
+                Math.min(1, x)
+            );
+
+
+        y =
+            Math.max(
+                0,
+                Math.min(1, y)
+            );
+
+
+        /*
+         * Image miroir.
+         */
+
+        x =
+            1 - x;
+
+
+        const targetX =
+            x *
+            window.innerWidth;
+
+
+        const targetY =
+            y *
+            window.innerHeight;
+
+
+        /*
+         * Lissage du curseur.
+         */
+
+        /* =====================================================
+   LISSAGE + ZONE MORTE
+===================================================== */
+
+const distanceX =
+    targetX - cursorX;
+
+const distanceY =
+    targetY - cursorY;
+
+
+/*
+ * Si le mouvement est minuscule,
+ * on ne bouge pas le curseur.
+ */
+if (
+    Math.abs(distanceX) >
+    CURSOR_DEADZONE
+) {
+
+    cursorX +=
+        distanceX *
+        CURSOR_SMOOTHING;
+}
+
+
+if (
+    Math.abs(distanceY) >
+    CURSOR_DEADZONE
+) {
+
+    cursorY +=
+        distanceY *
+        CURSOR_SMOOTHING;
+}
+
+        /* ==========================================
+   DESSIN PAR GESTES
+========================================== */
+
+if (
+    typeof window.myHubDrawingGesture === "function"
+) {
+    window.myHubDrawingGesture(
+        cursorX,
+        cursorY,
+        pinchActive
+    );
+}
+
+        virtualCursor.style.left =
+            `${cursorX}px`;
+
+
+        virtualCursor.style.top =
+            `${cursorY}px`;
+
+
+        virtualCursor.style.display =
+            "block";
+
+
+        gestureStatus.textContent =
+            "● Main détectée";
+
+
+        /*
+         * PINCH
+         */
+
+        const thumbTip =
+            hand[4];
+
+
+        const dx =
+            thumbTip.x -
+            indexTip.x;
+
+
+        const dy =
+            thumbTip.y -
+            indexTip.y;
+
+
+        const distance =
+            Math.sqrt(
+                dx * dx +
+                dy * dy
+            );
+
+
+        const isPinching =
+            distance <
+            PINCH_DISTANCE;
+
+
+        if (isPinching) {
+
+            virtualCursor.classList.add(
+                "pinching"
+            );
+
+
+            gestureStatus.textContent =
+                "● Sélection";
+
+
+            if (!pinchActive) {
+
+                const now =
+                    Date.now();
+
+
+                if (
+
+                    now -
+                    lastClickTime >
+                    CLICK_COOLDOWN
+
+                ) {
+
+                    performGestureClick();
+
+
+                    lastClickTime =
+                        now;
+                }
+
+
+                pinchActive =
+                    true;
+            }
+
+
+        } else {
+
+            virtualCursor.classList.remove(
+                "pinching"
+            );
+
+
+            pinchActive =
+                false;
+        }
+
+
+        /*
+         * DESSIN MEDIAPIPE
+         */
+
+        for (
+
+            const landmarks
+            of results.landmarks
+
+        ) {
+
+            drawHand(
+                landmarks
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CLIC
+    ===================================================== */
+
+    function performGestureClick() {
+
+        console.log(
+            "👆 JARVIS : clic gestuel"
+        );
+
+
+        const element =
+            document.elementFromPoint(
+                cursorX,
+                cursorY
+            );
+
+
+        if (!element)
+            return;
+
+
+        if (
+
+            element ===
+            virtualCursor ||
+
+            virtualCursor.contains(
+                element
+            )
+
+        ) {
+
+            return;
+        }
+
+
+        console.log(
+            "Élément sélectionné :",
+            element
+        );
+
+
+        element.click();
+
+
+        virtualCursor.classList.add(
+            "clicked"
+        );
+
+
+        setTimeout(
+            () => {
+
+                virtualCursor.classList.remove(
+                    "clicked"
+                );
+
+            },
+            180
+        );
+
+    }
+
+
+    /* =====================================================
+       DESSIN DE LA MAIN
+    ===================================================== */
+
+    function drawHand(landmarks) {
+
+        const connections = [
+
+            [0,1],
+            [1,2],
+            [2,3],
+            [3,4],
+
+            [0,5],
+            [5,6],
+            [6,7],
+            [7,8],
+
+            [0,9],
+            [9,10],
+            [10,11],
+            [11,12],
+
+            [0,13],
+            [13,14],
+            [14,15],
+            [15,16],
+
+            [0,17],
+            [17,18],
+            [18,19],
+            [19,20],
+
+            [5,9],
+            [9,13],
+            [13,17]
+
+        ];
+
+
+        gestureCtx.strokeStyle =
+            "rgba(255,255,255,0.8)";
+
+
+        gestureCtx.lineWidth =
+            2;
+
+
+        for (
+
+            const [start, end]
+            of connections
+
+        ) {
+
+            const x1 =
+                landmarks[start].x *
+                gestureCanvas.width;
+
+
+            const y1 =
+                landmarks[start].y *
+                gestureCanvas.height;
+
+
+            const x2 =
+                landmarks[end].x *
+                gestureCanvas.width;
+
+
+            const y2 =
+                landmarks[end].y *
+                gestureCanvas.height;
+
+
+            gestureCtx.beginPath();
+
+
+            gestureCtx.moveTo(
+                x1,
+                y1
+            );
+
+
+            gestureCtx.lineTo(
+                x2,
+                y2
+            );
+
+
+            gestureCtx.stroke();
+
+        }
+
+
+        /*
+         * Points
+         */
+
+        for (
+
+            const point
+            of landmarks
+
+        ) {
+
+            const x =
+                point.x *
+                gestureCanvas.width;
+
+
+            const y =
+                point.y *
+                gestureCanvas.height;
+
+
+            gestureCtx.beginPath();
+
+
+            gestureCtx.arc(
+                x,
+                y,
+                4,
+                0,
+                Math.PI * 2
+            );
+
+
+            gestureCtx.fillStyle =
+                "white";
+
+
+            gestureCtx.fill();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CHANGEMENT DE CAMÉRA
+    ===================================================== */
+
+    gestureCameraSelect.addEventListener(
+        "change",
+        () => {
+
+            if (!gestureRunning)
+                return;
+
+
+            /*
+             * On redémarre avec
+             * la nouvelle caméra.
+             */
+
+            stopGestureControl();
+
+            startGestureControl();
+
+        }
+    );
+
+
+    /* =====================================================
+       BOUTON
+    ===================================================== */
+
+    gestureToggleButton.addEventListener(
+        "click",
+        () => {
+
+            if (gestureRunning) {
+
+                stopGestureControl();
+
+            } else {
+
+                startGestureControl();
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       REDIMENSIONNEMENT
+    ===================================================== */
+
+    window.addEventListener(
+        "resize",
+        () => {
+
+            cursorX =
+                window.innerWidth / 2;
+
+            cursorY =
+                window.innerHeight / 2;
+
+        }
+    );
+
+
+    /* =====================================================
+       API JARVIS
+    ===================================================== */
+
+    window.jarvisGestureControl = {
+
+        start:
+            startGestureControl,
+
+        stop:
+            stopGestureControl,
+
+        toggle:
+            () => {
+
+                if (gestureRunning) {
+
+                    stopGestureControl();
+
+                } else {
+
+                    startGestureControl();
+
+                }
+
+            },
+
+        isActive:
+            () =>
+                gestureRunning
+
+    };
+
+
+    console.log(
+        "🤖 JARVIS Gesture Control V4 prêt."
+    );
+
+})();
+
+
+/* ==========================================
+   MYHUB - ZONE DE DESSIN V3
+========================================== */
+
+(() => {
+
+    const canvas = document.getElementById("drawingCanvas");
+    const workspace = document.querySelector(".drawing-workspace");
+    const palette = document.getElementById("drawingPalette");
+
+    if (!canvas || !workspace || !palette) return;
+
+    const ctx = canvas.getContext("2d");
+
+    let drawing = false;
+    let currentColor = "#000000";
+    let currentSize = 5;
+    let eraser = false;
+
+    let history = [];
+
+    /* ==============================
+       CANVAS
+    ============================== */
+
+    function resizeCanvas() {
+
+        const rect = workspace.getBoundingClientRect();
+
+        if (rect.width <= 0 || rect.height <= 0) {
+            return;
+        }
+
+        const oldCanvas = document.createElement("canvas");
+
+        oldCanvas.width = canvas.width || 1;
+        oldCanvas.height = canvas.height || 1;
+
+        if (canvas.width > 1 && canvas.height > 1) {
+            oldCanvas
+                .getContext("2d")
+                .drawImage(canvas, 0, 0);
+        }
+
+        canvas.width = Math.floor(rect.width);
+        canvas.height = Math.floor(rect.height);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        if (
+            oldCanvas.width > 1 &&
+            oldCanvas.height > 1
+        ) {
+            ctx.drawImage(
+                oldCanvas,
+                0,
+                0,
+                oldCanvas.width,
+                oldCanvas.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+    }
+
+    resizeCanvas();
+
+    window.addEventListener(
+        "resize",
+        resizeCanvas
+    );
+
+    /* Permet au canvas de se redimensionner
+       quand la section devient visible */
+
+    if (window.ResizeObserver) {
+
+        const observer =
+            new ResizeObserver(() => {
+
+                if (
+                    workspace.offsetWidth > 0 &&
+                    workspace.offsetHeight > 0
+                ) {
+                    resizeCanvas();
+                }
+
+            });
+
+        observer.observe(workspace);
+    }
+
+    /* ==============================
+       POSITION
+    ============================== */
+
+    function getPosition(x, y) {
+
+        const rect =
+            canvas.getBoundingClientRect();
+
+        return {
+            x:
+                (x - rect.left) *
+                (canvas.width / rect.width),
+
+            y:
+                (y - rect.top) *
+                (canvas.height / rect.height)
+        };
+    }
+
+    /* ==============================
+       HISTORIQUE
+    ============================== */
+
+    function saveHistory() {
+
+        if (
+            canvas.width <= 0 ||
+            canvas.height <= 0
+        ) {
+            return;
+        }
+
+        history.push(
+            ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            )
+        );
+
+        if (history.length > 30) {
+            history.shift();
+        }
+    }
+
+    /* ==============================
+       STYLE
+    ============================== */
+
+    function updateBrush() {
+
+        ctx.lineWidth = currentSize;
+
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        if (eraser) {
+
+            ctx.strokeStyle = "#ffffff";
+
+        } else {
+
+            ctx.strokeStyle = currentColor;
+        }
+    }
+
+    /* ==============================
+       DESSIN
+    ============================== */
+
+    function beginDrawing(x, y) {
+
+        const position =
+            getPosition(x, y);
+
+        saveHistory();
+
+        drawing = true;
+
+        updateBrush();
+
+        ctx.beginPath();
+
+        ctx.arc(
+            position.x,
+            position.y,
+            currentSize / 2,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            eraser
+                ? "#ffffff"
+                : currentColor;
+
+        ctx.fill();
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            position.x,
+            position.y
+        );
+    }
+
+    function continueDrawing(x, y) {
+
+        if (!drawing) return;
+
+        const position =
+            getPosition(x, y);
+
+        updateBrush();
+
+        ctx.lineTo(
+            position.x,
+            position.y
+        );
+
+        ctx.stroke();
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            position.x,
+            position.y
+        );
+    }
+
+    function endDrawing() {
+
+        if (!drawing) return;
+
+        drawing = false;
+
+        ctx.beginPath();
+    }
+
+    /* ==============================
+       SOURIS / DOIGT
+    ============================== */
+
+    canvas.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+
+            canvas.setPointerCapture(
+                event.pointerId
+            );
+
+            beginDrawing(
+                event.clientX,
+                event.clientY
+            );
+        }
+    );
+
+    canvas.addEventListener(
+        "pointermove",
+        event => {
+
+            if (!drawing) return;
+
+            event.preventDefault();
+
+            continueDrawing(
+                event.clientX,
+                event.clientY
+            );
+        }
+    );
+
+    canvas.addEventListener(
+        "pointerup",
+        endDrawing
+    );
+
+    canvas.addEventListener(
+        "pointercancel",
+        endDrawing
+    );
+
+    canvas.addEventListener(
+        "pointerleave",
+        event => {
+
+            if (
+                drawing &&
+                event.buttons === 0
+            ) {
+                endDrawing();
+            }
+        }
+    );
+
+    /* ==============================
+       COULEURS
+    ============================== */
+
+    const colorButtons =
+        document.querySelectorAll(
+            ".drawing-color"
+        );
+
+    colorButtons.forEach(button => {
+
+        button.addEventListener(
+            "click",
+            event => {
+
+                event.preventDefault();
+
+                const selectedColor =
+                    button.getAttribute(
+                        "data-color"
+                    );
+
+                if (!selectedColor) return;
+
+                currentColor =
+                    selectedColor;
+
+                eraser = false;
+
+                colorButtons.forEach(
+                    other => {
+
+                        other.classList.remove(
+                            "active"
+                        );
+                    }
+                );
+
+                button.classList.add(
+                    "active"
+                );
+
+                document
+                    .getElementById(
+                        "drawingBrush"
+                    )
+                    ?.classList.add("active");
+
+                document
+                    .getElementById(
+                        "drawingEraser"
+                    )
+                    ?.classList.remove("active");
+
+                console.log(
+                    "🎨 Couleur :",
+                    currentColor
+                );
+            }
+        );
+    });
+
+    /* ==============================
+       ÉPAISSEUR
+    ============================== */
+
+    const sizeSlider =
+        document.getElementById(
+            "drawingSize"
+        );
+
+    if (sizeSlider) {
+
+        currentSize =
+            Number(sizeSlider.value) || 5;
+
+        sizeSlider.addEventListener(
+            "input",
+            () => {
+
+                currentSize =
+                    Number(sizeSlider.value);
+
+                if (
+                    currentSize < 1
+                ) {
+                    currentSize = 1;
+                }
+            }
+        );
+    }
+
+    /* ==============================
+       PINCEAU
+    ============================== */
+
+    const brush =
+        document.getElementById(
+            "drawingBrush"
+        );
+
+    const eraserButton =
+        document.getElementById(
+            "drawingEraser"
+        );
+
+    brush?.addEventListener(
+        "click",
+        () => {
+
+            eraser = false;
+
+            brush.classList.add(
+                "active"
+            );
+
+            eraserButton?.classList.remove(
+                "active"
+            );
+        }
+    );
+
+    /* ==============================
+       GOMME
+    ============================== */
+
+    eraserButton?.addEventListener(
+        "click",
+        () => {
+
+            eraser = true;
+
+            eraserButton.classList.add(
+                "active"
+            );
+
+            brush?.classList.remove(
+                "active"
+            );
+        }
+    );
+
+    /* ==============================
+       ANNULER
+    ============================== */
+
+    document
+        .getElementById("drawingUndo")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                if (
+                    history.length === 0
+                ) {
+                    return;
+                }
+
+                const previous =
+                    history.pop();
+
+                ctx.putImageData(
+                    previous,
+                    0,
+                    0
+                );
+            }
+        );
+
+    /* ==============================
+       EFFACER
+    ============================== */
+
+    document
+        .getElementById("drawingClear")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                saveHistory();
+
+                ctx.fillStyle =
+                    "#ffffff";
+
+                ctx.fillRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+            }
+        );
+
+    /* ==============================
+       SAUVEGARDER
+    ============================== */
+
+    document
+        .getElementById("drawingSave")
+        ?.addEventListener(
+            "click",
+            () => {
+
+                const link =
+                    document.createElement(
+                        "a"
+                    );
+
+                link.download =
+                    "mon-dessin.png";
+
+                link.href =
+                    canvas.toDataURL(
+                        "image/png"
+                    );
+
+                link.click();
+            }
+        );
+
+    /* ==============================
+       PALETTE À LA SOURIS
+    ============================== */
+
+    let paletteDragging = false;
+
+    let paletteOffsetX = 0;
+    let paletteOffsetY = 0;
+
+    const paletteHandle =
+        palette.querySelector(
+            ".drawing-palette-handle"
+        );
+
+    function movePalette(
+        clientX,
+        clientY
+    ) {
+
+        const workspaceRect =
+            workspace.getBoundingClientRect();
+
+        let x =
+            clientX -
+            workspaceRect.left -
+            paletteOffsetX;
+
+        let y =
+            clientY -
+            workspaceRect.top -
+            paletteOffsetY;
+
+        const maxX =
+            workspaceRect.width -
+            palette.offsetWidth;
+
+        const maxY =
+            workspaceRect.height -
+            palette.offsetHeight;
+
+        x = Math.max(
+            0,
+            Math.min(x, maxX)
+        );
+
+        y = Math.max(
+            0,
+            Math.min(y, maxY)
+        );
+
+        palette.style.left =
+            `${x}px`;
+
+        palette.style.top =
+            `${y}px`;
+
+        palette.style.right =
+            "auto";
+    }
+
+    if (paletteHandle) {
+
+        paletteHandle.addEventListener(
+            "pointerdown",
+            event => {
+
+                paletteDragging = true;
+
+                const rect =
+                    palette.getBoundingClientRect();
+
+                paletteOffsetX =
+                    event.clientX -
+                    rect.left;
+
+                paletteOffsetY =
+                    event.clientY -
+                    rect.top;
+
+                paletteHandle.setPointerCapture(
+                    event.pointerId
+                );
+
+                event.preventDefault();
+            }
+        );
+
+        paletteHandle.addEventListener(
+            "pointermove",
+            event => {
+
+                if (!paletteDragging) {
+                    return;
+                }
+
+                movePalette(
+                    event.clientX,
+                    event.clientY
+                );
+            }
+        );
+
+        paletteHandle.addEventListener(
+            "pointerup",
+            event => {
+
+                paletteDragging = false;
+
+                try {
+                    paletteHandle.releasePointerCapture(
+                        event.pointerId
+                    );
+                } catch {}
+            }
+        );
+    }
+
+    /* ==============================
+       GESTES
+    ============================== */
+
+    let gestureDrawing = false;
+    let gesturePaletteDragging = false;
+
+    window.myHubDrawingGesture =
+        function(
+            x,
+            y,
+            pinch
+        ) {
+
+            if (
+                typeof x !== "number" ||
+                typeof y !== "number"
+            ) {
+                return;
+            }
+
+            const handle =
+                palette.querySelector(
+                    ".drawing-palette-handle"
+                );
+
+            const handleRect =
+                handle?.getBoundingClientRect();
+
+            const overHandle =
+                handleRect &&
+                x >= handleRect.left &&
+                x <= handleRect.right &&
+                y >= handleRect.top &&
+                y <= handleRect.bottom;
+
+            /* PALETTE */
+
+            if (
+                pinch &&
+                overHandle
+            ) {
+
+                const paletteRect =
+                    palette.getBoundingClientRect();
+
+                if (
+                    !gesturePaletteDragging
+                ) {
+
+                    gesturePaletteDragging = true;
+
+                    paletteOffsetX =
+                        x -
+                        paletteRect.left;
+
+                    paletteOffsetY =
+                        y -
+                        paletteRect.top;
+                }
+
+                movePalette(
+                    x,
+                    y
+                );
+
+                return;
+            }
+
+            if (
+                !pinch &&
+                gesturePaletteDragging
+            ) {
+
+                gesturePaletteDragging = false;
+            }
+
+            /* CANVAS */
+
+            const canvasRect =
+                canvas.getBoundingClientRect();
+
+            const insideCanvas =
+                x >= canvasRect.left &&
+                x <= canvasRect.right &&
+                y >= canvasRect.top &&
+                y <= canvasRect.bottom;
+
+            if (!insideCanvas) {
+
+                if (gestureDrawing) {
+
+                    endDrawing();
+
+                    gestureDrawing = false;
+                }
+
+                return;
+            }
+
+            /* PINCH = DESSIN */
+
+            if (pinch) {
+
+                if (!gestureDrawing) {
+
+                    beginDrawing(
+                        x,
+                        y
+                    );
+
+                    gestureDrawing = true;
+
+                } else {
+
+                    continueDrawing(
+                        x,
+                        y
+                    );
+                }
+
+            } else {
+
+                if (gestureDrawing) {
+
+                    endDrawing();
+
+                    gestureDrawing = false;
+                }
+            }
+        };
+
+    console.log(
+        "🎨 Zone de dessin V3 chargée."
+    );
+
+})();
+
+/* ==========================================
+   MYHUB - CONTRÔLE DU VOLUME PAR LA MAIN
+========================================== */
+
+(() => {
+
+    const volumeIndicator =
+        document.getElementById(
+            "gestureVolumeIndicator"
+        );
+
+    const volumeFill =
+        document.getElementById(
+            "gestureVolumeFill"
+        );
+
+    const volumeValue =
+        document.getElementById(
+            "gestureVolumeValue"
+        );
+
+    if (
+        !volumeIndicator ||
+        !volumeFill ||
+        !volumeValue
+    ) {
+        console.warn(
+            "🔊 Système de volume : éléments HTML introuvables."
+        );
+
+        return;
+    }
+
+    let currentVolume = Number(spotifyVolumeSlider?.value) || 50;
+
+    let targetVolume = currentVolume;
+
+    let volumeActive = false;
+    let lastPalmAngle = null;
+    let volumeHasStarted = false;
+    let lastAppliedVolume = Math.round(currentVolume);
+
+    const VOLUME_PER_DEGREE = 0.6;
+    const ROTATION_DEADZONE = 0.5 * Math.PI / 180;
+
+    /*
+     * Lissage
+     */
+
+    const SMOOTHING = 0.15;
+
+
+    /* ==========================================
+       CALCUL DU VOLUME
+    ========================================== */
+
+    function updateVolumeFromRotation(
+        landmarks
+    ) {
+
+        if (!landmarks || landmarks.length < 18) {
+            lastPalmAngle = null;
+            volumeActive = false;
+            volumeIndicator.classList.remove("active");
+            return;
+        }
+
+        if (!volumeHasStarted) {
+            const sliderVolume = Number(spotifyVolumeSlider?.value);
+            currentVolume = Number.isFinite(sliderVolume) ? sliderVolume : currentVolume;
+            targetVolume = currentVolume;
+            lastAppliedVolume = Math.round(currentVolume);
+            volumeHasStarted = true;
+        }
+
+        const indexKnuckle = landmarks[5];
+        const pinkyKnuckle = landmarks[17];
+        const palmAngle = Math.atan2(
+            pinkyKnuckle.y - indexKnuckle.y,
+            pinkyKnuckle.x - indexKnuckle.x
+        );
+
+        if (lastPalmAngle !== null) {
+            let angleDelta = palmAngle - lastPalmAngle;
+
+            if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+            if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+
+            if (Math.abs(angleDelta) >= ROTATION_DEADZONE) {
+                targetVolume = Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        targetVolume - angleDelta * 180 / Math.PI * VOLUME_PER_DEGREE
+                    )
+                );
+            }
+        }
+
+        lastPalmAngle = palmAngle;
+
+        volumeActive = true;
+
+        volumeIndicator.classList.add(
+            "active"
+        );
+    }
+
+
+    /* ==========================================
+       ANIMATION / LISSAGE
+    ========================================== */
+
+    function animateVolume() {
+
+        currentVolume +=
+            (
+                targetVolume -
+                currentVolume
+            ) * SMOOTHING;
+
+        const rounded =
+            Math.round(
+                currentVolume
+            );
+
+        volumeFill.style.width =
+            `${rounded}%`;
+
+        volumeValue.textContent =
+            `${rounded} %`;
+
+        if (rounded !== lastAppliedVolume) {
+            applyVolume(rounded);
+            lastAppliedVolume = rounded;
+        }
+
+        requestAnimationFrame(
+            animateVolume
+        );
+    }
+
+
+    /* ==========================================
+       APPLICATION DU VOLUME
+    ========================================== */
+
+    function applyVolume(
+        volume
+    ) {
+
+        setSpotifyVolume(volume);
+    }
+
+
+    /* ==========================================
+       API POUR LE SYSTÈME DE GESTES
+    ========================================== */
+
+    window.myHubVolumeGesture =
+        function(
+            landmarks
+        ) {
+
+            updateVolumeFromRotation(landmarks);
+        };
+
+
+    /* ==========================================
+       DÉMARRAGE
+    ========================================== */
+
+    animateVolume();
+
+    console.log(
+        "🔊 Contrôle du volume chargé."
+    );
+
+})();
