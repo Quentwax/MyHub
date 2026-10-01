@@ -1784,8 +1784,8 @@ body {
 }
 
 .gesture-mode-control {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    justify-content: center;
     gap: 6px;
     padding: 5px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1794,6 +1794,7 @@ body {
 }
 
 .gesture-mode-button {
+    display: block;
     min-height: 40px;
     padding: 8px 12px;
     border: 1px solid transparent;
@@ -1803,13 +1804,9 @@ body {
     font: inherit;
     font-size: 13px;
     font-weight: 600;
-    cursor: pointer;
+    cursor: default;
+    text-align: center;
     transition: color 0.2s, background 0.2s, border-color 0.2s;
-}
-
-.gesture-mode-button:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
 }
 
 .gesture-mode-button.active {
@@ -2258,6 +2255,837 @@ body {
         height: 32px;
     }
 }
+
+.studio-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.studio-heading h1 {
+    margin: 5px 0 3px;
+    color: #202820;
+    font-size: 30px;
+}
+
+.studio-heading p {
+    color: #68736d;
+    font-size: 14px;
+}
+
+.studio-eyebrow {
+    color: #39836d;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.studio-session,
+.studio-gesture-indicator {
+    display: flex;
+    align-items: center;
+}
+
+.studio-session {
+    gap: 12px;
+}
+
+.studio-gesture-indicator {
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid #dfe7e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #66736b;
+    font-size: 12px;
+}
+
+.studio-status-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: #aab5ad;
+}
+
+.studio-camera-button,
+.studio-export-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid #26382f;
+    border-radius: 7px;
+    background: #26382f;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.16s, border-color 0.16s, transform 0.16s;
+}
+
+.studio-camera-button:hover,
+.studio-export-button:hover {
+    transform: translateY(-1px);
+    background: #365b49;
+    border-color: #365b49;
+}
+
+.studio-camera-button[aria-pressed="true"] {
+    border-color: #c75f46;
+    background: #c75f46;
+}
+
+.studio-camera-button[aria-pressed="true"]:hover {
+    background: #ad4c36;
+}
+
+.studio-session:has(.studio-camera-button[aria-pressed="true"]) .studio-gesture-indicator {
+    border-color: #bddaca;
+    color: #2f705b;
+}
+
+.studio-session:has(.studio-camera-button[aria-pressed="true"]) .studio-status-dot {
+    background: #37836d;
+    box-shadow: 0 0 0 3px rgba(55, 131, 109, 0.12);
+}
+
+.studio-toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(150px, 1fr) minmax(200px, 0.8fr) auto;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e0e5df;
+    border-radius: 9px;
+    background: #fff;
+}
+
+.studio-toolset,
+.studio-swatches {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.studio-tool {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #4a554e;
+    font: inherit;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.studio-tool:hover {
+    border-color: #e3e9e4;
+    background: #f3f6f3;
+}
+
+.studio-tool.active {
+    border-color: #c9ded1;
+    background: #e6f1e9;
+    color: #28654f;
+}
+
+.studio-tool-divider {
+    width: 1px;
+    height: 25px;
+    margin: 0 4px;
+    background: #e2e7e2;
+}
+
+.studio-swatches {
+    justify-content: center;
+    gap: 10px;
+}
+
+.studio-swatches .drawing-color {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--swatch);
+    box-shadow: 0 0 0 1px #d7ddd8;
+    cursor: pointer;
+    transition: transform 0.14s, box-shadow 0.14s;
+}
+
+.studio-swatches .drawing-color:hover {
+    transform: scale(1.12);
+}
+
+.studio-swatches .drawing-color.active {
+    box-shadow: 0 0 0 2px #2d7259;
+}
+
+.studio-custom-color {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    border: 1px dashed #aab6ad;
+    border-radius: 50%;
+    color: #4b6455;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    overflow: hidden;
+}
+
+.studio-custom-color input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.studio-size-control {
+    display: grid;
+    grid-template-columns: auto minmax(60px, 1fr) 38px;
+    align-items: center;
+    gap: 10px;
+    color: #68736d;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.studio-size-control input {
+    width: 100%;
+    accent-color: #37836d;
+    cursor: pointer;
+}
+
+.studio-size-control output {
+    color: #26382f;
+    font-size: 11px;
+    text-align: right;
+}
+
+.studio-export-button {
+    min-height: 38px;
+    padding: 0 12px;
+    border-color: #dfe6e0;
+    background: #f4f7f4;
+    color: #2d5945;
+}
+
+.studio-export-button:hover {
+    border-color: #c4d9ca;
+    background: #e8f1e9;
+}
+
+.drawing-workspace {
+    height: max(420px, calc(100vh - 420px));
+    max-height: 690px;
+    min-height: 420px;
+    border: 1px solid #d9e0d9;
+    border-radius: 9px;
+    background-color: #fbfaf6;
+    background-image:
+        linear-gradient(rgba(55, 106, 83, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55, 106, 83, 0.045) 1px, transparent 1px);
+    background-size: 24px 24px;
+    box-shadow: 0 10px 28px rgba(35, 52, 42, 0.08);
+}
+
+#drawingCanvas {
+    background: transparent;
+    cursor: crosshair;
+}
+
+.studio-statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    min-height: 34px;
+    color: #657169;
+    font-size: 11px;
+}
+
+.studio-statusbar > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.studio-statusbar .studio-status-dot {
+    width: 6px;
+    height: 6px;
+    flex-basis: 6px;
+    background: #37836d;
+}
+
+.studio-canvas-size {
+    color: #89948c;
+    font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    .studio-toolbar {
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+    }
+
+    .studio-swatches {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+
+    .studio-size-control {
+        grid-row: 3;
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 600px) {
+    .studio-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .studio-session {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .studio-gesture-indicator {
+        padding: 0 9px;
+        font-size: 11px;
+    }
+
+    .studio-toolbar {
+        padding: 8px;
+    }
+
+    .studio-toolset {
+        gap: 2px;
+    }
+
+    .studio-tool {
+        width: 34px;
+        height: 36px;
+    }
+
+    .studio-swatches {
+        justify-content: space-between;
+        gap: 6px;
+    }
+
+    .drawing-workspace {
+        height: max(360px, calc(100svh - 405px));
+        min-height: 360px;
+        border-radius: 7px;
+    }
+
+    .studio-heading h1 {
+        font-size: 26px;
+    }
+
+    .studio-camera-button {
+        padding: 0 10px;
+        font-size: 12px;
+    }
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.workdesk-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 22px;
+}
+
+.workdesk-header h1 {
+    margin: 5px 0;
+    color: #202820;
+    font-size: 30px;
+}
+
+.workdesk-header p {
+    color: #68736d;
+    font-size: 14px;
+}
+
+.workdesk-eyebrow,
+.workdesk-kicker {
+    color: #39836d;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.workdesk-session,
+.workdesk-camera-state {
+    display: flex;
+    align-items: center;
+}
+
+.workdesk-session {
+    gap: 12px;
+}
+
+.workdesk-camera-state {
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid #dfe7e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #66736b;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.workdesk-state-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: #aab5ad;
+}
+
+.workdesk-state-dot.active {
+    background: #37836d;
+    box-shadow: 0 0 0 3px rgba(55, 131, 109, 0.14);
+}
+
+.workdesk-camera-button,
+.focus-primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid #26382f;
+    border-radius: 7px;
+    background: #26382f;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.16s, border-color 0.16s, transform 0.16s;
+}
+
+.workdesk-camera-button:hover,
+.focus-primary-button:hover {
+    transform: translateY(-1px);
+    border-color: #365b49;
+    background: #365b49;
+}
+
+.workdesk-camera-button[aria-pressed="true"] {
+    border-color: #c75f46;
+    background: #c75f46;
+}
+
+.workdesk-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(290px, 0.85fr);
+    align-items: start;
+    gap: 14px;
+}
+
+.workdesk-side {
+    display: grid;
+    gap: 14px;
+}
+
+.workdesk-panel {
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid #e1e6e1;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.workdesk-tasks {
+    min-height: 450px;
+}
+
+.workdesk-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.workdesk-panel-heading h2 {
+    margin-top: 4px;
+    color: #26332b;
+    font-size: 18px;
+}
+
+.workdesk-count {
+    color: #39836d;
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.workdesk-add-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.workdesk-add-form input,
+.workdesk-focus-select {
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid #dce3dd;
+    border-radius: 6px;
+    background: #fbfcfa;
+    color: #26332b;
+    font: inherit;
+    font-size: 13px;
+}
+
+.workdesk-add-form input {
+    flex: 1;
+}
+
+.workdesk-add-form input:focus,
+.workdesk-focus-select:focus,
+.workdesk-notes textarea:focus {
+    outline: 2px solid rgba(55, 131, 109, 0.24);
+    border-color: #37836d;
+}
+
+.workdesk-add-form > button {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border: 0;
+    border-radius: 6px;
+    background: #37836d;
+    color: #fff;
+    cursor: pointer;
+    font-size: 23px;
+    transition: background 0.15s;
+}
+
+.workdesk-add-form > button:hover {
+    background: #28644f;
+}
+
+.workdesk-task-list {
+    border-top: 1px solid #edf0ed;
+}
+
+.workdesk-task-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    border-bottom: 1px solid #edf0ed;
+}
+
+.workdesk-task-complete,
+.workdesk-task-remove,
+.focus-reset-button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #dce4dd;
+    border-radius: 50%;
+    background: #fff;
+    color: #48816a;
+    cursor: pointer;
+    font: inherit;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.workdesk-task-complete:hover {
+    border-color: #37836d;
+    background: #37836d;
+    color: #fff;
+}
+
+.workdesk-task-text {
+    overflow-wrap: anywhere;
+    color: #354138;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.workdesk-task-remove {
+    border-color: transparent;
+    color: #8d9890;
+    font-size: 20px;
+}
+
+.workdesk-task-remove:hover {
+    border-color: #f1d7cf;
+    background: #fff4f0;
+    color: #bf5238;
+}
+
+.workdesk-empty-state {
+    padding: 48px 12px;
+    color: #738078;
+    text-align: center;
+}
+
+.workdesk-empty-state[hidden] {
+    display: none;
+}
+
+.workdesk-empty-state > span {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    background: #e8f2eb;
+    color: #37836d;
+}
+
+.workdesk-empty-state p {
+    font-size: 13px;
+}
+
+.focus-mode-label {
+    padding: 5px 8px;
+    border-radius: 4px;
+    background: #edf4ee;
+    color: #367356;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.workdesk-focus-select {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.focus-timer-display {
+    margin: 4px 0 8px;
+    color: #25352b;
+    font-size: 48px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: center;
+}
+
+.focus-timer-track {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #e9eeea;
+}
+
+.focus-timer-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: #37836d;
+    transition: width 0.2s linear;
+}
+
+.focus-timer-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.focus-primary-button {
+    min-height: 38px;
+    flex: 1;
+}
+
+.focus-reset-button {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    color: #55645a;
+    font-size: 20px;
+}
+
+.focus-reset-button:hover {
+    border-color: #c9d9cd;
+    background: #f0f6f1;
+}
+
+.focus-mode-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.focus-mode-button {
+    min-height: 32px;
+    padding: 0 6px;
+    border: 1px solid #e2e8e2;
+    border-radius: 5px;
+    background: #fff;
+    color: #69756d;
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+}
+
+.focus-mode-button.active {
+    border-color: #b9d4c1;
+    background: #edf5ef;
+    color: #2f7057;
+}
+
+.workdesk-save-state {
+    color: #39836d;
+    font-size: 11px;
+}
+
+.workdesk-notes textarea {
+    display: block;
+    width: 100%;
+    min-height: 126px;
+    padding: 11px 12px;
+    resize: vertical;
+    border: 1px solid #e1e7e1;
+    border-radius: 6px;
+    background: #fbfcfa;
+    color: #354138;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.workdesk-notes textarea::placeholder {
+    color: #9aa49c;
+}
+
+.workdesk-note-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    color: #87928a;
+    font-size: 10px;
+}
+
+.workdesk-shortcuts {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 50px;
+    margin-top: 8px;
+    border-top: 1px solid #e2e7e2;
+}
+
+.workdesk-shortcuts > span {
+    color: #88948b;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.workdesk-shortcuts button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 0;
+    border: 0;
+    background: transparent;
+    color: #3e6851;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+
+.workdesk-shortcuts button:hover {
+    color: #b85237;
+}
+
+@media (max-width: 900px) {
+    .workdesk-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .workdesk-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .workdesk-tasks {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .workdesk-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .workdesk-header h1 {
+        font-size: 26px;
+    }
+
+    .workdesk-session {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .workdesk-camera-button {
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    .workdesk-panel {
+        padding: 16px;
+    }
+
+    .workdesk-shortcuts {
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        padding: 10px 0;
+    }
+}
+
 /* ==========================================
    CONTRÔLE DU VOLUME PAR GESTE
 ========================================== */

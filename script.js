@@ -707,6 +707,33 @@ const memoInput =
 const memoStatus =
     document.getElementById("memoStatus");
 
+const workspaceTaskListElement =
+    document.getElementById("workspaceTaskList");
+
+const workspaceTaskCount =
+    document.getElementById("workspaceTaskCount");
+
+const workspaceTaskEmpty =
+    document.getElementById("workspaceTaskEmpty");
+
+const workspaceTaskForm =
+    document.getElementById("workspaceTaskForm");
+
+const workspaceTaskInput =
+    document.getElementById("workspaceTaskInput");
+
+const workspaceMemoInput =
+    document.getElementById("workspaceMemoInput");
+
+const workspaceMemoStatus =
+    document.getElementById("workspaceMemoStatus");
+
+const workspaceMemoCount =
+    document.getElementById("workspaceMemoCount");
+
+const workspaceFocusTask =
+    document.getElementById("workspaceFocusTask");
+
 function normalizeTaskList(items) {
 
     if (!Array.isArray(items)) {
@@ -972,6 +999,7 @@ async function loadSharedState() {
 function renderTasks() {
 
     if (!tasksListElement) {
+        renderWorkspaceTasks();
         return;
     }
 
@@ -985,6 +1013,7 @@ function renderTasks() {
         emptyState.className = "task-empty";
         emptyState.textContent = "Aucune tâche pour le moment.";
         tasksListElement.appendChild(emptyState);
+        renderWorkspaceTasks();
         return;
     }
 
@@ -1012,11 +1041,86 @@ function renderTasks() {
         label.appendChild(span);
         tasksListElement.appendChild(label);
     });
+
+    renderWorkspaceTasks();
+}
+
+function renderWorkspaceTasks() {
+
+    if (!workspaceTaskListElement) return;
+
+    workspaceTaskListElement.replaceChildren();
+
+    if (workspaceTaskCount) {
+        workspaceTaskCount.textContent = String(taskList.length).padStart(2, "0");
+    }
+
+    if (workspaceTaskEmpty) {
+        workspaceTaskEmpty.hidden = taskList.length > 0;
+    }
+
+    if (workspaceFocusTask) {
+        const selectedTask = workspaceFocusTask.value;
+        workspaceFocusTask.replaceChildren();
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Choisir une tâche";
+        workspaceFocusTask.appendChild(placeholder);
+
+        taskList.forEach((taskText, index) => {
+            const option = document.createElement("option");
+            option.value = String(index);
+            option.textContent = taskText;
+            workspaceFocusTask.appendChild(option);
+        });
+
+        if (selectedTask && Number(selectedTask) < taskList.length) {
+            workspaceFocusTask.value = selectedTask;
+        }
+    }
+
+    taskList.forEach((taskText, taskIndex) => {
+        const row = document.createElement("div");
+        row.className = "workdesk-task-row";
+
+        const completeButton = document.createElement("button");
+        completeButton.type = "button";
+        completeButton.className = "workdesk-task-complete";
+        completeButton.setAttribute("aria-label", `Terminer : ${taskText}`);
+        completeButton.title = "Terminer cette tâche";
+        completeButton.textContent = "✓";
+        completeButton.addEventListener("click", () => {
+            taskList = taskList.filter((_, index) => index !== taskIndex);
+            persistSharedState();
+            renderTasks();
+        });
+
+        const text = document.createElement("span");
+        text.className = "workdesk-task-text";
+        text.textContent = taskText;
+
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "workdesk-task-remove";
+        removeButton.setAttribute("aria-label", `Supprimer : ${taskText}`);
+        removeButton.title = "Supprimer cette tâche";
+        removeButton.textContent = "×";
+        removeButton.addEventListener("click", () => {
+            taskList = taskList.filter((_, index) => index !== taskIndex);
+            persistSharedState();
+            renderTasks();
+        });
+
+        row.append(completeButton, text, removeButton);
+        workspaceTaskListElement.appendChild(row);
+    });
 }
 
 function renderMemo() {
 
     if (!memoInput) {
+        renderWorkspaceMemo();
         return;
     }
 
@@ -1026,6 +1130,22 @@ function renderMemo() {
         memoStatus.textContent = REMOTE_DB_URL
             ? "Sauvegarde locale + synchronisation cloud"
             : "Sauvegarde locale";
+    }
+
+    renderWorkspaceMemo();
+}
+
+function renderWorkspaceMemo() {
+    if (workspaceMemoInput) {
+        workspaceMemoInput.value = memoText;
+    }
+
+    if (workspaceMemoCount) {
+        workspaceMemoCount.textContent = `${memoText.length} / 2000`;
+    }
+
+    if (workspaceMemoStatus) {
+        workspaceMemoStatus.textContent = "Enregistré";
     }
 }
 
@@ -1053,6 +1173,7 @@ if (memoInput) {
     memoInput.addEventListener("input", () => {
         memoText = memoInput.value;
         persistSharedState();
+        renderWorkspaceMemo();
 
         if (memoStatus) {
             memoStatus.textContent = "Sauvegardé";
@@ -1060,11 +1181,150 @@ if (memoInput) {
     });
 }
 
+workspaceTaskForm?.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const taskText = workspaceTaskInput.value.trim();
+    if (!taskText) return;
+
+    taskList.push(taskText);
+    workspaceTaskInput.value = "";
+    persistSharedState();
+    renderTasks();
+});
+
+workspaceMemoInput?.addEventListener("input", () => {
+    memoText = workspaceMemoInput.value;
+    persistSharedState();
+    renderWorkspaceMemo();
+
+    if (workspaceMemoStatus) {
+        workspaceMemoStatus.textContent = "Enregistrement…";
+        window.clearTimeout(workspaceMemoInput.saveStatusTimeout);
+        workspaceMemoInput.saveStatusTimeout = window.setTimeout(() => {
+            workspaceMemoStatus.textContent = "Enregistré";
+        }, 450);
+    }
+});
+
 if (addTaskButton) {
     addTaskButton.addEventListener("click", addTask);
 }
 
 loadSharedState();
+
+/* ==========================================
+   ESPACE DE TRAVAIL - MINUTEUR
+========================================== */
+
+(() => {
+    const timerDisplay = document.getElementById("focusTimerDisplay");
+    const timerProgress = document.getElementById("focusTimerProgress");
+    const timerToggle = document.getElementById("focusTimerToggle");
+    const timerReset = document.getElementById("focusTimerReset");
+    const modeLabel = document.getElementById("focusModeLabel");
+    const modeButtons = document.querySelectorAll(".focus-mode-button");
+
+    if (!timerDisplay || !timerToggle || !timerReset || !modeLabel) return;
+
+    let durationSeconds = 25 * 60;
+    let remainingSeconds = durationSeconds;
+    let timerEndTime = null;
+    let timerInterval = null;
+
+    function renderTimer() {
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+        timerDisplay.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+        if (timerProgress) {
+            const progress = ((durationSeconds - remainingSeconds) / durationSeconds) * 100;
+            timerProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        }
+    }
+
+    function pauseTimer() {
+        if (timerEndTime !== null) {
+            remainingSeconds = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
+        }
+
+        window.clearInterval(timerInterval);
+        timerInterval = null;
+        timerEndTime = null;
+        timerToggle.textContent = "Reprendre";
+        renderTimer();
+    }
+
+    function tickTimer() {
+        remainingSeconds = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
+
+        if (remainingSeconds === 0) {
+            window.clearInterval(timerInterval);
+            timerInterval = null;
+            timerEndTime = null;
+            timerToggle.textContent = "Recommencer";
+            modeLabel.textContent = "TERMINÉ";
+        }
+
+        renderTimer();
+    }
+
+    timerToggle.addEventListener("click", () => {
+        if (timerEndTime !== null) {
+            pauseTimer();
+            return;
+        }
+
+        if (remainingSeconds === 0) {
+            remainingSeconds = durationSeconds;
+        }
+
+        timerEndTime = Date.now() + remainingSeconds * 1000;
+        timerToggle.textContent = "Pause";
+        modeLabel.textContent = Number(document.querySelector(".focus-mode-button.active")?.dataset.minutes) === 5
+            ? "PAUSE"
+            : "FOCUS";
+        timerInterval = window.setInterval(tickTimer, 250);
+    });
+
+    timerReset.addEventListener("click", () => {
+        window.clearInterval(timerInterval);
+        timerInterval = null;
+        timerEndTime = null;
+        remainingSeconds = durationSeconds;
+        timerToggle.textContent = "Démarrer";
+        modeLabel.textContent = Number(document.querySelector(".focus-mode-button.active")?.dataset.minutes) === 5
+            ? "PAUSE"
+            : "FOCUS";
+        renderTimer();
+    });
+
+    modeButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            window.clearInterval(timerInterval);
+            timerInterval = null;
+            timerEndTime = null;
+            durationSeconds = Number(button.dataset.minutes) * 60;
+            remainingSeconds = durationSeconds;
+            timerToggle.textContent = "Démarrer";
+            modeLabel.textContent = Number(button.dataset.minutes) === 5 ? "PAUSE" : "FOCUS";
+
+            modeButtons.forEach(modeButton => {
+                const active = modeButton === button;
+                modeButton.classList.toggle("active", active);
+                modeButton.setAttribute("aria-pressed", String(active));
+            });
+
+            renderTimer();
+        });
+    });
+
+    renderTimer();
+})();
+
+document.querySelectorAll("[data-open-section]").forEach(button => {
+    button.addEventListener("click", () => showSection(button.dataset.openSection));
+});
 
 /* ==========================================
    JARVIS
@@ -2282,6 +2542,9 @@ function getSectionFromName(pageName) {
 
         "MyDLP":
             "mydlpSection",
+
+        "Espace travail":
+            "ludothequeSection",
 
         "Dessin":
             "ludothequeSection",
@@ -6972,6 +7235,15 @@ console.log(
     const gestureToggleButton =
         document.getElementById("gestureToggleButton");
 
+    const studioGestureToggle =
+        document.getElementById("studioGestureToggle");
+
+    const studioGestureState =
+        document.getElementById("studioGestureState");
+
+    const studioGestureDot =
+        document.getElementById("studioGestureDot");
+
     const gestureStatus =
         document.getElementById("gestureStatus");
 
@@ -6981,21 +7253,13 @@ console.log(
     const gestureCameraSelect =
         document.getElementById("gestureCameraSelect");
 
-    const gesturePointerModeButton =
-        document.getElementById("gesturePointerMode");
-
-    const gestureVolumeModeButton =
-        document.getElementById("gestureVolumeMode");
-
     if (
         !gestureCamera ||
         !gestureCanvas ||
         !gestureToggleButton ||
         !gestureStatus ||
         !gestureCameraStatus ||
-        !gestureCameraSelect ||
-        !gesturePointerModeButton ||
-        !gestureVolumeModeButton
+        !gestureCameraSelect
     ) {
 
         console.warn(
@@ -7026,9 +7290,15 @@ console.log(
 
     let camerasLoaded = false;
 
-    let gestureMode = "cursor";
-
     let pointerPoseSince = null;
+
+    let musicSwipeStartX = null;
+
+    let musicSwipeStartedAt = 0;
+
+    let musicSwipeConsumed = false;
+
+    let lastMusicSwipeTime = 0;
 
 
     /* =====================================================
@@ -7108,38 +7378,25 @@ let handLostFrames = 0;
             !isFingerExtended(hand, 20, 18);
     }
 
+    function isTwoFingerSwipePose(hand) {
+        return isFingerExtended(hand, 8, 6) &&
+            isFingerExtended(hand, 12, 10) &&
+            !isFingerExtended(hand, 16, 14) &&
+            !isFingerExtended(hand, 20, 18);
+    }
+
+    function isVolumeGesture(hand, pinchDistance) {
+        return pinchDistance < PINCH_DISTANCE &&
+            isFingerExtended(hand, 12, 10) &&
+            isFingerExtended(hand, 16, 14) &&
+            isFingerExtended(hand, 20, 18);
+    }
+
     function drawDetectedHands(results) {
         for (const landmarks of results.landmarks) {
             drawHand(landmarks);
         }
     }
-
-    function setGestureMode(mode) {
-        gestureMode = mode;
-        pointerPoseSince = null;
-        pinchActive = false;
-
-        gesturePointerModeButton.classList.toggle("active", mode === "cursor");
-        gesturePointerModeButton.setAttribute("aria-pressed", String(mode === "cursor"));
-        gestureVolumeModeButton.classList.toggle("active", mode === "volume");
-        gestureVolumeModeButton.setAttribute("aria-pressed", String(mode === "volume"));
-
-        if (typeof window.myHubVolumeGesture === "function") {
-            window.myHubVolumeGesture(null);
-        }
-
-        if (mode === "volume") {
-            virtualCursor.style.display = "none";
-            gestureCameraStatus.textContent = gestureRunning
-                ? "Mode volume — pince pouce-index et tourne"
-                : "Mode volume sélectionné";
-        } else {
-            gestureCameraStatus.textContent = gestureRunning
-                ? "Mode curseur — garde l’index pointé"
-                : "Mode curseur sélectionné";
-        }
-    }
-
 
     /* =====================================================
        CURSEUR VISUEL
@@ -7202,10 +7459,13 @@ let handLostFrames = 0;
 
             border-radius: 50%;
 
-            background: white;
+            background: #101513;
+
+            border: 2px solid white;
 
             box-shadow:
-                0 0 10px rgba(255,255,255,0.9);
+                0 0 0 1px #101513,
+                0 0 8px rgba(255,255,255,0.95);
         }
 
 
@@ -7225,10 +7485,11 @@ let handLostFrames = 0;
             border-radius: 50%;
 
             border:
-                2px solid rgba(255,255,255,0.9);
+                2px solid #101513;
 
             box-shadow:
-                0 0 15px rgba(255,255,255,0.5);
+                0 0 0 2px rgba(255,255,255,0.92),
+                0 0 0 3px rgba(16,21,19,0.75);
 
             transition:
                 width 0.12s,
@@ -7538,6 +7799,12 @@ let handLostFrames = 0;
         gestureToggleButton.disabled =
             true;
 
+        if (studioGestureState) {
+            studioGestureState.textContent = "Activation en cours";
+        }
+
+        studioGestureDot?.classList.remove("active");
+
 
         gestureStatus.textContent =
             "● Démarrage";
@@ -7557,6 +7824,12 @@ let handLostFrames = 0;
                 gestureToggleButton.disabled =
                     false;
 
+                if (studioGestureState) {
+                    studioGestureState.textContent = "Caméra inactive";
+                }
+
+                studioGestureDot?.classList.remove("active");
+
                 return;
             }
         }
@@ -7575,6 +7848,12 @@ let handLostFrames = 0;
 
                 gestureToggleButton.disabled =
                     false;
+
+                if (studioGestureState) {
+                    studioGestureState.textContent = "Caméra inactive";
+                }
+
+                studioGestureDot?.classList.remove("active");
 
                 return;
             }
@@ -7661,15 +7940,24 @@ let handLostFrames = 0;
             gestureToggleButton.textContent =
                 "🛑 Désactiver le contrôle gestuel";
 
+            if (studioGestureToggle) {
+                studioGestureToggle.setAttribute("aria-pressed", "true");
+                studioGestureToggle.querySelector("span:last-child").textContent = "Désactiver le curseur";
+            }
+
+            if (studioGestureState) {
+                studioGestureState.textContent = "Curseur actif";
+            }
+
+            studioGestureDot?.classList.add("active");
+
 
             gestureStatus.textContent =
                 "● Caméra active";
 
 
             gestureCameraStatus.textContent =
-                gestureMode === "volume"
-                    ? "Mode volume — pince pouce-index et tourne"
-                    : "Mode curseur — garde l’index pointé";
+                "Mode automatique — index, pincement ou balayage";
 
 
             virtualCursor.style.display =
@@ -7722,6 +8010,17 @@ let handLostFrames = 0;
                     ? "Autorisation caméra refusée"
 
                     : error.message;
+
+            if (studioGestureToggle) {
+                studioGestureToggle.setAttribute("aria-pressed", "false");
+                studioGestureToggle.querySelector("span:last-child").textContent = "Activer le curseur";
+            }
+
+            if (studioGestureState) {
+                studioGestureState.textContent = "Caméra indisponible";
+            }
+
+            studioGestureDot?.classList.remove("active");
         }
 
     }
@@ -7781,6 +8080,17 @@ let handLostFrames = 0;
         gestureToggleButton.textContent =
             "✋ Activer le contrôle gestuel";
 
+        if (studioGestureToggle) {
+            studioGestureToggle.setAttribute("aria-pressed", "false");
+            studioGestureToggle.querySelector("span:last-child").textContent = "Activer le curseur";
+        }
+
+        if (studioGestureState) {
+            studioGestureState.textContent = "Caméra inactive";
+        }
+
+        studioGestureDot?.classList.remove("active");
+
 
         gestureStatus.textContent =
             "● Inactif";
@@ -7800,6 +8110,8 @@ let handLostFrames = 0;
         pinchActive =
             false;
         pointerPoseSince = null;
+        musicSwipeStartX = null;
+        musicSwipeConsumed = false;
 
         if (typeof window.myHubVolumeGesture === "function") {
             window.myHubVolumeGesture(null);
@@ -7911,6 +8223,8 @@ let handLostFrames = 0;
     pinchActive =
         false;
     pointerPoseSince = null;
+    musicSwipeStartX = null;
+    musicSwipeConsumed = false;
 
     if (typeof window.myHubVolumeGesture === "function") {
         window.myHubVolumeGesture(null);
@@ -7954,19 +8268,72 @@ const pinchDistance = Math.hypot(
 );
 const isPinching = pinchDistance < PINCH_DISTANCE;
 
-if (gestureMode === "volume") {
+if (isTwoFingerSwipePose(hand)) {
     pointerPoseSince = null;
     pinchActive = false;
     virtualCursor.style.display = "none";
     virtualCursor.classList.remove("pinching");
 
     if (typeof window.myHubVolumeGesture === "function") {
-        window.myHubVolumeGesture(isPinching ? hand : null);
+        window.myHubVolumeGesture(null);
     }
 
-    gestureStatus.textContent = isPinching
-        ? "● Maintiens le pincement et tourne"
-        : "● Pince pouce-index pour régler";
+    const swipeX = Math.max(0, Math.min(1, 1 - hand[9].x));
+    const swipeNow = performance.now();
+
+    if (
+        musicSwipeStartX === null ||
+        (!musicSwipeConsumed && swipeNow - musicSwipeStartedAt > 1200)
+    ) {
+        musicSwipeStartX = swipeX;
+        musicSwipeStartedAt = swipeNow;
+        musicSwipeConsumed = false;
+        gestureStatus.textContent = "● Geste détecté — balaie à gauche ou à droite";
+    } else if (
+        !musicSwipeConsumed &&
+        Math.abs(swipeX - musicSwipeStartX) >= 0.18
+    ) {
+        musicSwipeConsumed = true;
+
+        const movedRight = swipeX > musicSwipeStartX;
+        const playerAction = movedRight ? "nextTrack" : "previousTrack";
+        const currentTime = Date.now();
+
+        if (currentTime - lastMusicSwipeTime > 1000) {
+            lastMusicSwipeTime = currentTime;
+
+            if (spotifyPlayer && typeof spotifyPlayer[playerAction] === "function") {
+                spotifyPlayer[playerAction]().catch(error => {
+                    console.error("Erreur de changement de piste par geste :", error);
+                });
+
+                gestureStatus.textContent = movedRight
+                    ? "● Piste suivante"
+                    : "● Piste précédente";
+            } else {
+                gestureStatus.textContent = "● Lecteur musical non connecté";
+            }
+        }
+    }
+
+    drawDetectedHands(results);
+    return;
+}
+
+musicSwipeStartX = null;
+musicSwipeConsumed = false;
+
+if (isVolumeGesture(hand, pinchDistance)) {
+    pointerPoseSince = null;
+    pinchActive = false;
+    virtualCursor.style.display = "none";
+    virtualCursor.classList.remove("pinching");
+
+    if (typeof window.myHubVolumeGesture === "function") {
+        window.myHubVolumeGesture(hand);
+    }
+
+    gestureStatus.textContent = "● Volume — tourne la main";
 
     if (typeof window.myHubDrawingGesture === "function") {
         window.myHubDrawingGesture(cursorX, cursorY, false);
@@ -8448,16 +8815,16 @@ if (
         }
     );
 
-    gesturePointerModeButton.addEventListener(
+    studioGestureToggle?.addEventListener(
         "click",
-        () => setGestureMode("cursor")
+        () => {
+            if (gestureRunning) {
+                stopGestureControl();
+            } else {
+                startGestureControl();
+            }
+        }
     );
-
-    gestureVolumeModeButton.addEventListener(
-        "click",
-        () => setGestureMode("volume")
-    );
-
 
     /* =====================================================
        REDIMENSIONNEMENT
@@ -8533,11 +8900,13 @@ if (
     const ctx = canvas.getContext("2d");
 
     let drawing = false;
-    let currentColor = "#000000";
+    let currentColor = "#202820";
+    let currentColorName = "Charbon";
     let currentSize = 5;
     let eraser = false;
 
     let history = [];
+    let redoHistory = [];
 
     /* ==============================
        CANVAS
@@ -8565,8 +8934,7 @@ if (
         canvas.width = Math.floor(rect.width);
         canvas.height = Math.floor(rect.height);
 
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(
+        ctx.clearRect(
             0,
             0,
             canvas.width,
@@ -8666,6 +9034,8 @@ if (
         if (history.length > 30) {
             history.shift();
         }
+
+        redoHistory = [];
     }
 
     /* ==============================
@@ -8678,6 +9048,9 @@ if (
 
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+        ctx.globalCompositeOperation = eraser
+            ? "destination-out"
+            : "source-over";
 
         if (eraser) {
 
@@ -8686,6 +9059,19 @@ if (
         } else {
 
             ctx.strokeStyle = currentColor;
+        }
+    }
+
+    function updateStudioStatus() {
+        const toolState = document.getElementById("studioToolState");
+        const sizeValue = document.getElementById("drawingSizeValue");
+
+        if (toolState) {
+            toolState.textContent = `${eraser ? "Gomme" : "Pinceau"} · ${currentColorName} · ${currentSize} px`;
+        }
+
+        if (sizeValue) {
+            sizeValue.textContent = `${currentSize} px`;
         }
     }
 
@@ -8847,6 +9233,8 @@ if (
 
                 currentColor =
                     selectedColor;
+                currentColorName =
+                    button.title || "Couleur";
 
                 eraser = false;
 
@@ -8863,6 +9251,9 @@ if (
                     "active"
                 );
 
+                const customColor = document.getElementById("drawingCustomColor");
+                if (customColor) customColor.value = currentColor;
+
                 document
                     .getElementById(
                         "drawingBrush"
@@ -8874,6 +9265,8 @@ if (
                         "drawingEraser"
                     )
                     ?.classList.remove("active");
+
+                updateStudioStatus();
 
                 console.log(
                     "🎨 Couleur :",
@@ -8909,6 +9302,8 @@ if (
                 ) {
                     currentSize = 1;
                 }
+
+                updateStudioStatus();
             }
         );
     }
@@ -8932,6 +9327,7 @@ if (
         () => {
 
             eraser = false;
+            currentColorName = document.querySelector(".drawing-color.active")?.title || currentColorName;
 
             brush.classList.add(
                 "active"
@@ -8940,6 +9336,8 @@ if (
             eraserButton?.classList.remove(
                 "active"
             );
+
+            updateStudioStatus();
         }
     );
 
@@ -8952,6 +9350,7 @@ if (
         () => {
 
             eraser = true;
+            currentColorName = "Blanc";
 
             eraserButton.classList.add(
                 "active"
@@ -8960,6 +9359,8 @@ if (
             brush?.classList.remove(
                 "active"
             );
+
+            updateStudioStatus();
         }
     );
 
@@ -8973,22 +9374,21 @@ if (
             "click",
             () => {
 
-                if (
-                    history.length === 0
-                ) {
-                    return;
-                }
+                if (history.length === 0) return;
 
-                const previous =
-                    history.pop();
-
-                ctx.putImageData(
-                    previous,
-                    0,
-                    0
-                );
+                redoHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+                ctx.putImageData(history.pop(), 0, 0);
             }
         );
+
+    document
+        .getElementById("drawingRedo")
+        ?.addEventListener("click", () => {
+            if (redoHistory.length === 0) return;
+
+            history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            ctx.putImageData(redoHistory.pop(), 0, 0);
+        });
 
     /* ==============================
        EFFACER
@@ -9002,10 +9402,7 @@ if (
 
                 saveHistory();
 
-                ctx.fillStyle =
-                    "#ffffff";
-
-                ctx.fillRect(
+                ctx.clearRect(
                     0,
                     0,
                     canvas.width,
@@ -9030,16 +9427,35 @@ if (
                     );
 
                 link.download =
-                    "mon-dessin.png";
+                    "atelier-myhub.png";
 
-                link.href =
-                    canvas.toDataURL(
-                        "image/png"
-                    );
+                const exportCanvas = document.createElement("canvas");
+                exportCanvas.width = canvas.width;
+                exportCanvas.height = canvas.height;
+                const exportContext = exportCanvas.getContext("2d");
+                exportContext.fillStyle = "#fbfaf6";
+                exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+                exportContext.drawImage(canvas, 0, 0);
+                link.href = exportCanvas.toDataURL("image/png");
 
                 link.click();
             }
         );
+
+    document
+        .getElementById("drawingCustomColor")
+        ?.addEventListener("input", event => {
+            currentColor = event.target.value;
+            currentColorName = "Personnalisée";
+            eraser = false;
+
+            colorButtons.forEach(button => button.classList.remove("active"));
+            brush?.classList.add("active");
+            eraserButton?.classList.remove("active");
+            updateStudioStatus();
+        });
+
+    updateStudioStatus();
 
     /* ==============================
        PALETTE À LA SOURIS

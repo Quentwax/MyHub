@@ -35,13 +35,8 @@
             </button>
 
             <button class="nav-item">
-                <span>🏰</span>
-                <span>MyDLP</span>
-            </button>
-
-            <button class="nav-item">
-                <span>🎲</span>
-                <span>Dessin</span>
+                <span>▣</span>
+                <span>Espace travail</span>
             </button>
 
             <button class="nav-item">
@@ -563,146 +558,89 @@
 
 <section id="ludothequeSection" class="page-section">
 
-    <div class="page-title">
-        <h1>🎨 Zone de dessin</h1>
-        <p>Dessine librement dans MyHub</p>
-    </div>
-
-    <div class="drawing-workspace">
-
-        <canvas id="drawingCanvas"></canvas>
-
-        <!-- PALETTE FLOTTANTE -->
-
-        <div id="drawingPalette" class="drawing-palette">
-
-            <div class="drawing-palette-handle">
-                ✋
-            </div>
-
-            <div class="drawing-colors">
-
-                <button
-                    class="drawing-color active"
-                    data-color="#000000"
-                    style="background:#000000;"
-                    title="Noir">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#ffffff"
-                    style="background:#ffffff;"
-                    title="Blanc">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#ff3b30"
-                    style="background:#ff3b30;"
-                    title="Rouge">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#ff9500"
-                    style="background:#ff9500;"
-                    title="Orange">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#ffcc00"
-                    style="background:#ffcc00;"
-                    title="Jaune">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#34c759"
-                    style="background:#34c759;"
-                    title="Vert">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#007aff"
-                    style="background:#007aff;"
-                    title="Bleu">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#5856d6"
-                    style="background:#5856d6;"
-                    title="Violet">
-                </button>
-
-                <button
-                    class="drawing-color"
-                    data-color="#ff2d55"
-                    style="background:#ff2d55;"
-                    title="Rose">
-                </button>
-
-            </div>
-
-            <div class="drawing-tools">
-
-                <button
-                    id="drawingBrush"
-                    class="drawing-tool active"
-                    title="Pinceau">
-                    🖌️
-                </button>
-
-                <button
-                    id="drawingEraser"
-                    class="drawing-tool"
-                    title="Gomme">
-                    🧹
-                </button>
-
-                <button
-                    id="drawingUndo"
-                    class="drawing-tool"
-                    title="Annuler">
-                    ↩️
-                </button>
-
-                <button
-                    id="drawingClear"
-                    class="drawing-tool"
-                    title="Tout effacer">
-                    🗑️
-                </button>
-
-                <button
-                    id="drawingSave"
-                    class="drawing-tool"
-                    title="Sauvegarder">
-                    💾
-                </button>
-
-            </div>
-
-            <div class="drawing-size">
-
-                <span>Épaisseur</span>
-
-                <input
-                    id="drawingSize"
-                    type="range"
-                    min="1"
-                    max="50"
-                    value="5"
-                >
-
-            </div>
-
+    <header class="workdesk-header">
+        <div>
+            <span class="workdesk-eyebrow">MYHUB / TON BUREAU</span>
+            <h1>Espace de travail</h1>
+            <p>Une vue claire pour avancer, une action à la fois.</p>
         </div>
+        <div class="workdesk-session">
+            <span class="workdesk-camera-state">
+                <span id="studioGestureDot" class="workdesk-state-dot"></span>
+                <span id="studioGestureState">Curseur inactif</span>
+            </span>
+            <button id="studioGestureToggle" class="workdesk-camera-button" type="button" aria-pressed="false">
+                <span aria-hidden="true">◉</span><span>Activer le curseur</span>
+            </button>
+        </div>
+    </header>
 
+    <div class="workdesk-grid">
+        <section class="workdesk-panel workdesk-tasks" aria-labelledby="workspaceTasksHeading">
+            <div class="workdesk-panel-heading">
+                <div>
+                    <span class="workdesk-kicker">À FAIRE</span>
+                    <h2 id="workspaceTasksHeading">Prochaines actions</h2>
+                </div>
+                <span id="workspaceTaskCount" class="workdesk-count">0</span>
+            </div>
+            <form id="workspaceTaskForm" class="workdesk-add-form">
+                <label class="visually-hidden" for="workspaceTaskInput">Nouvelle tâche</label>
+                <input id="workspaceTaskInput" type="text" maxlength="120" placeholder="Ajouter une tâche…" autocomplete="off">
+                <button type="submit" aria-label="Ajouter la tâche" title="Ajouter la tâche">＋</button>
+            </form>
+            <div id="workspaceTaskList" class="workdesk-task-list" aria-live="polite"></div>
+            <div id="workspaceTaskEmpty" class="workdesk-empty-state" hidden>
+                <span aria-hidden="true">✓</span>
+                <p>Tout est à jour.</p>
+            </div>
+        </section>
+
+        <aside class="workdesk-side">
+            <section class="workdesk-panel focus-panel" aria-labelledby="focusHeading">
+                <div class="workdesk-panel-heading">
+                    <div>
+                        <span class="workdesk-kicker">CONCENTRATION</span>
+                        <h2 id="focusHeading">Minuteur</h2>
+                    </div>
+                    <span id="focusModeLabel" class="focus-mode-label">FOCUS</span>
+                </div>
+                <label class="visually-hidden" for="workspaceFocusTask">Tâche de concentration</label>
+                <select id="workspaceFocusTask" class="workdesk-focus-select">
+                    <option value="">Choisir une tâche</option>
+                </select>
+                <div id="focusTimerDisplay" class="focus-timer-display" role="timer" aria-live="off">25:00</div>
+                <div class="focus-timer-track"><span id="focusTimerProgress"></span></div>
+                <div class="focus-timer-controls">
+                    <button id="focusTimerToggle" class="focus-primary-button" type="button">Démarrer</button>
+                    <button id="focusTimerReset" class="focus-reset-button" type="button" title="Réinitialiser" aria-label="Réinitialiser">↺</button>
+                </div>
+                <div class="focus-mode-controls" role="group" aria-label="Durée du minuteur">
+                    <button class="focus-mode-button active" data-minutes="25" type="button" aria-pressed="true">25 min focus</button>
+                    <button class="focus-mode-button" data-minutes="5" type="button" aria-pressed="false">5 min pause</button>
+                </div>
+            </section>
+
+            <section class="workdesk-panel workdesk-notes" aria-labelledby="workspaceNotesHeading">
+                <div class="workdesk-panel-heading">
+                    <div>
+                        <span class="workdesk-kicker">CAPTURE RAPIDE</span>
+                        <h2 id="workspaceNotesHeading">Notes</h2>
+                    </div>
+                    <span id="workspaceMemoStatus" class="workdesk-save-state">Enregistré</span>
+                </div>
+                <label class="visually-hidden" for="workspaceMemoInput">Notes de travail</label>
+                <textarea id="workspaceMemoInput" maxlength="2000" placeholder="Une idée, un détail à garder, une prochaine étape…"></textarea>
+                <div class="workdesk-note-footer"><span>Sauvegarde automatique</span><span id="workspaceMemoCount">0 / 2000</span></div>
+            </section>
+        </aside>
     </div>
+
+    <nav class="workdesk-shortcuts" aria-label="Raccourcis de travail">
+        <span>CONTINUER</span>
+        <button type="button" data-open-section="agendaSection"><span aria-hidden="true">▦</span> Agenda</button>
+        <button type="button" data-open-section="musicSection"><span aria-hidden="true">⌖</span> Réglages du curseur</button>
+    </nav>
 
 </section>
 
@@ -787,23 +725,8 @@
 </div>
 
 
-            <div class="gesture-mode-control" role="group" aria-label="Mode de contrôle gestuel">
-                <button
-                    id="gesturePointerMode"
-                    class="gesture-mode-button active"
-                    type="button"
-                    aria-pressed="true"
-                >
-                    ☝️ Curseur
-                </button>
-                <button
-                    id="gestureVolumeMode"
-                    class="gesture-mode-button"
-                    type="button"
-                    aria-pressed="false"
-                >
-                    🔊 Volume
-                </button>
+            <div class="gesture-mode-control" aria-label="Mode de contrôle gestuel">
+                <span class="gesture-mode-button active">✋ Mode automatique</span>
             </div>
 
 
@@ -863,7 +786,7 @@
                         </strong>
 
                         <small>
-                            Garde l’index pointé
+                            Lève l’index seul
                         </small>
 
                     </div>
@@ -905,7 +828,28 @@
                         </strong>
 
                         <small>
-                            Pince et tourne
+                            Pince pouce-index, lève les autres doigts et tourne
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <div class="gesture-info-item">
+
+                    <span>
+                        ✌️
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Pistes
+                        </strong>
+
+                        <small>
+                            Deux doigts levés, balaie à gauche ou à droite
                         </small>
 
                     </div>
