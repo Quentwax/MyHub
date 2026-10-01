@@ -35,8 +35,13 @@
             </button>
 
             <button class="nav-item">
-                <span>▣</span>
-                <span>Espace travail</span>
+                <span>🎛️</span>
+                <span>DJ gestuel</span>
+            </button>
+
+            <button class="nav-item">
+                <span>🎨</span>
+                <span>Dessin</span>
             </button>
 
             <button class="nav-item">
@@ -556,92 +561,93 @@
     </div>
 </section>
 
-<section id="ludothequeSection" class="page-section">
-
-    <header class="workdesk-header">
+<section id="gestureDjSection" class="page-section">
+    <header class="dj-header">
         <div>
-            <span class="workdesk-eyebrow">MYHUB / TON BUREAU</span>
-            <h1>Espace de travail</h1>
-            <p>Une vue claire pour avancer, une action à la fois.</p>
+            <span class="dj-eyebrow">MYHUB / LIVE SET</span>
+            <h1>DJ gestuel</h1>
+            <p>Choisis la musique. Garde les mains libres pour la piloter.</p>
         </div>
-        <div class="workdesk-session">
-            <span class="workdesk-camera-state">
-                <span id="studioGestureDot" class="workdesk-state-dot"></span>
-                <span id="studioGestureState">Curseur inactif</span>
-            </span>
-            <button id="studioGestureToggle" class="workdesk-camera-button" type="button" aria-pressed="false">
-                <span aria-hidden="true">◉</span><span>Activer le curseur</span>
-            </button>
+        <div class="dj-live-controls">
+            <span class="dj-live-state"><span id="studioGestureDot" class="dj-state-dot"></span><span id="studioGestureState">Gestes inactifs</span></span>
+            <button id="studioGestureToggle" class="dj-camera-button" type="button" aria-pressed="false"><span aria-hidden="true">◉</span><span>Activer les gestes</span></button>
         </div>
     </header>
 
-    <div class="workdesk-grid">
-        <section class="workdesk-panel workdesk-tasks" aria-labelledby="workspaceTasksHeading">
-            <div class="workdesk-panel-heading">
-                <div>
-                    <span class="workdesk-kicker">À FAIRE</span>
-                    <h2 id="workspaceTasksHeading">Prochaines actions</h2>
+    <div class="dj-layout">
+        <section class="dj-player-panel" aria-label="Lecture Spotify">
+            <div class="dj-now-playing-label"><span>EN LECTURE</span><span id="gestureDjQueueInfo">Prépare ta file</span></div>
+            <div class="dj-current-track">
+                <div id="gestureDjCover" class="dj-cover" aria-hidden="true">♫</div>
+                <div class="dj-track-copy">
+                    <h2 id="gestureDjTrackName">Aucun morceau</h2>
+                    <p id="gestureDjArtist">Connecte Spotify pour commencer</p>
+                    <span id="gestureDjPlaybackState" class="dj-playback-state">Lecteur prêt quand tu l’es</span>
                 </div>
-                <span id="workspaceTaskCount" class="workdesk-count">0</span>
             </div>
-            <form id="workspaceTaskForm" class="workdesk-add-form">
-                <label class="visually-hidden" for="workspaceTaskInput">Nouvelle tâche</label>
-                <input id="workspaceTaskInput" type="text" maxlength="120" placeholder="Ajouter une tâche…" autocomplete="off">
-                <button type="submit" aria-label="Ajouter la tâche" title="Ajouter la tâche">＋</button>
-            </form>
-            <div id="workspaceTaskList" class="workdesk-task-list" aria-live="polite"></div>
-            <div id="workspaceTaskEmpty" class="workdesk-empty-state" hidden>
-                <span aria-hidden="true">✓</span>
-                <p>Tout est à jour.</p>
+            <div class="dj-progress-wrap">
+                <input id="gestureDjProgress" type="range" min="0" max="100" value="0" aria-label="Position dans le morceau">
+                <div class="dj-progress-times"><span id="gestureDjCurrentTime">0:00</span><span id="gestureDjDuration">0:00</span></div>
+            </div>
+            <div class="dj-transport-controls">
+                <button id="gestureDjPrevious" type="button" title="Morceau précédent" aria-label="Morceau précédent">⏮</button>
+                <button id="gestureDjPlay" class="dj-play-button" type="button" title="Lecture / pause" aria-label="Lecture">▶</button>
+                <button id="gestureDjNext" type="button" title="Morceau suivant" aria-label="Morceau suivant">⏭</button>
             </div>
         </section>
 
-        <aside class="workdesk-side">
-            <section class="workdesk-panel focus-panel" aria-labelledby="focusHeading">
-                <div class="workdesk-panel-heading">
-                    <div>
-                        <span class="workdesk-kicker">CONCENTRATION</span>
-                        <h2 id="focusHeading">Minuteur</h2>
-                    </div>
-                    <span id="focusModeLabel" class="focus-mode-label">FOCUS</span>
-                </div>
-                <label class="visually-hidden" for="workspaceFocusTask">Tâche de concentration</label>
-                <select id="workspaceFocusTask" class="workdesk-focus-select">
-                    <option value="">Choisir une tâche</option>
-                </select>
-                <div id="focusTimerDisplay" class="focus-timer-display" role="timer" aria-live="off">25:00</div>
-                <div class="focus-timer-track"><span id="focusTimerProgress"></span></div>
-                <div class="focus-timer-controls">
-                    <button id="focusTimerToggle" class="focus-primary-button" type="button">Démarrer</button>
-                    <button id="focusTimerReset" class="focus-reset-button" type="button" title="Réinitialiser" aria-label="Réinitialiser">↺</button>
-                </div>
-                <div class="focus-mode-controls" role="group" aria-label="Durée du minuteur">
-                    <button class="focus-mode-button active" data-minutes="25" type="button" aria-pressed="true">25 min focus</button>
-                    <button class="focus-mode-button" data-minutes="5" type="button" aria-pressed="false">5 min pause</button>
-                </div>
-            </section>
-
-            <section class="workdesk-panel workdesk-notes" aria-labelledby="workspaceNotesHeading">
-                <div class="workdesk-panel-heading">
-                    <div>
-                        <span class="workdesk-kicker">CAPTURE RAPIDE</span>
-                        <h2 id="workspaceNotesHeading">Notes</h2>
-                    </div>
-                    <span id="workspaceMemoStatus" class="workdesk-save-state">Enregistré</span>
-                </div>
-                <label class="visually-hidden" for="workspaceMemoInput">Notes de travail</label>
-                <textarea id="workspaceMemoInput" maxlength="2000" placeholder="Une idée, un détail à garder, une prochaine étape…"></textarea>
-                <div class="workdesk-note-footer"><span>Sauvegarde automatique</span><span id="workspaceMemoCount">0 / 2000</span></div>
-            </section>
-        </aside>
+        <section class="dj-search-panel" aria-labelledby="djSearchHeading">
+            <div class="dj-section-heading">
+                <div><span class="dj-eyebrow">À LA DEMANDE</span><h2 id="djSearchHeading">Trouver un morceau</h2></div>
+                <span class="dj-search-mark" aria-hidden="true">⌕</span>
+            </div>
+            <form id="gestureDjSearchForm" class="dj-search-form">
+                <label class="visually-hidden" for="gestureDjSearchInput">Rechercher un titre ou un artiste</label>
+                <input id="gestureDjSearchInput" type="search" placeholder="Titre ou artiste…" autocomplete="off">
+                <button id="gestureDjSearchButton" type="submit">Chercher</button>
+            </form>
+            <button id="gestureDjConnect" class="dj-connect-button" type="button" hidden>Connecter Spotify</button>
+            <div id="gestureDjSearchStatus" class="dj-search-status" aria-live="polite">Recherche Spotify parmi tes titres disponibles.</div>
+            <div id="gestureDjSearchResults" class="dj-search-results" aria-live="polite"></div>
+        </section>
     </div>
 
-    <nav class="workdesk-shortcuts" aria-label="Raccourcis de travail">
-        <span>CONTINUER</span>
-        <button type="button" data-open-section="agendaSection"><span aria-hidden="true">▦</span> Agenda</button>
-        <button type="button" data-open-section="musicSection"><span aria-hidden="true">⌖</span> Réglages du curseur</button>
-    </nav>
+    <section class="dj-gesture-guide" aria-label="Commandes gestuelles">
+        <div class="dj-guide-heading"><span class="dj-eyebrow">MAINS LIBRES</span><span>Gestes reconnus</span></div>
+        <div class="dj-gesture-cards">
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">✋</span><div><strong>Pause</strong><small>Montre la paume</small></div></article>
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">👍</span><div><strong>Lecture</strong><small>Pouce levé</small></div></article>
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">✌️</span><div><strong>Changer de titre</strong><small>Deux doigts, balaie horizontalement</small></div></article>
+            <button class="dj-gesture-card dj-settings-card" type="button" data-open-section="musicSection"><span class="dj-gesture-icon">⚙</span><div><strong>Réglages caméra</strong><small>Choisir une caméra</small></div><span class="dj-card-arrow" aria-hidden="true">↗</span></button>
+        </div>
+    </section>
+</section>
 
+<section id="ludothequeSection" class="page-section">
+    <div class="page-title"><h1>🎨 Dessin</h1><p>Ta toile libre, au doigt, à la souris ou au curseur gestuel.</p></div>
+    <div class="drawing-workspace">
+        <canvas id="drawingCanvas" aria-label="Toile de dessin"></canvas>
+        <div id="drawingPalette" class="drawing-palette">
+            <div class="drawing-palette-handle" title="Déplacer la palette">✥</div>
+            <div class="drawing-colors">
+                <button class="drawing-color active" data-color="#202820" style="background:#202820" title="Charbon" type="button"></button>
+                <button class="drawing-color" data-color="#ffffff" style="background:#ffffff" title="Blanc" type="button"></button>
+                <button class="drawing-color" data-color="#d95d39" style="background:#d95d39" title="Coquelicot" type="button"></button>
+                <button class="drawing-color" data-color="#d2a900" style="background:#d2a900" title="Safran" type="button"></button>
+                <button class="drawing-color" data-color="#37836d" style="background:#37836d" title="Sauge" type="button"></button>
+                <button class="drawing-color" data-color="#4175a8" style="background:#4175a8" title="Bleu" type="button"></button>
+            </div>
+            <div class="drawing-tools">
+                <button id="drawingBrush" class="drawing-tool active" title="Pinceau" type="button">✎</button>
+                <button id="drawingEraser" class="drawing-tool" title="Gomme" type="button">⌫</button>
+                <button id="drawingUndo" class="drawing-tool" title="Annuler" type="button">↶</button>
+                <button id="drawingRedo" class="drawing-tool" title="Rétablir" type="button">↷</button>
+                <button id="drawingClear" class="drawing-tool" title="Tout effacer" type="button">⌧</button>
+                <button id="drawingSave" class="drawing-tool" title="Exporter le dessin" type="button">↗</button>
+            </div>
+            <label class="drawing-size"><span>Épaisseur</span><input id="drawingSize" type="range" min="1" max="50" value="5"></label>
+        </div>
+    </div>
 </section>
 
 
@@ -797,7 +803,7 @@
                 <div class="gesture-info-item">
 
                     <span>
-                        👌
+                        🤏
                     </span>
 
                     <div>
@@ -818,7 +824,7 @@
                 <div class="gesture-info-item">
 
                     <span>
-                        ✋
+                        🤏
                     </span>
 
                     <div>
@@ -831,6 +837,30 @@
                             Pince pouce-index, lève les autres doigts et tourne
                         </small>
 
+                    </div>
+
+                </div>
+
+
+                <div class="gesture-info-item">
+
+                    <span>✋</span>
+
+                    <div>
+                        <strong>Pause</strong>
+                        <small>Maintiens la paume ouverte</small>
+                    </div>
+
+                </div>
+
+
+                <div class="gesture-info-item">
+
+                    <span>👍</span>
+
+                    <div>
+                        <strong>Lecture</strong>
+                        <small>Maintiens le pouce levé</small>
                     </div>
 
                 </div>

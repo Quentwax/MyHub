@@ -3086,6 +3086,547 @@ body {
     }
 }
 
+.dj-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.dj-header h1 {
+    margin: 5px 0;
+    color: #202820;
+    font-size: 30px;
+}
+
+.dj-header p {
+    color: #68736d;
+    font-size: 14px;
+}
+
+.dj-eyebrow {
+    color: #bc583e;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.dj-live-controls,
+.dj-live-state {
+    display: flex;
+    align-items: center;
+}
+
+.dj-live-controls {
+    gap: 10px;
+}
+
+.dj-live-state {
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 11px;
+    border: 1px solid #dfe5df;
+    border-radius: 6px;
+    background: #fff;
+    color: #637067;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.dj-state-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: #aab5ad;
+}
+
+.dj-state-dot.active {
+    background: #39836c;
+    box-shadow: 0 0 0 3px rgba(57, 131, 108, 0.14);
+}
+
+.dj-camera-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 13px;
+    border: 1px solid #273a31;
+    border-radius: 6px;
+    background: #273a31;
+    color: #fff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.dj-camera-button:hover {
+    border-color: #3d7258;
+    background: #3d7258;
+}
+
+.dj-camera-button[aria-pressed="true"] {
+    border-color: #c45a40;
+    background: #c45a40;
+}
+
+.dj-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: 14px;
+}
+
+.dj-player-panel {
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid #23382f;
+    border-radius: 8px;
+    background: #26382f;
+    color: #fff;
+}
+
+.dj-now-playing-label,
+.dj-progress-times {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.dj-now-playing-label {
+    color: #b9c8bd;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.dj-now-playing-label span:first-child {
+    color: #f0ac65;
+}
+
+.dj-current-track {
+    display: grid;
+    grid-template-columns: 144px minmax(0, 1fr);
+    align-items: center;
+    gap: 18px;
+    margin: 22px 0 18px;
+}
+
+.dj-cover {
+    display: grid;
+    place-items: center;
+    width: 144px;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 6px;
+    background: #d95d39;
+    color: #fff2dc;
+    font-size: 52px;
+}
+
+.dj-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.dj-track-copy {
+    min-width: 0;
+}
+
+.dj-track-copy h2 {
+    overflow-wrap: anywhere;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1.18;
+}
+
+.dj-track-copy p {
+    margin-top: 7px;
+    color: #d0d9d2;
+    font-size: 13px;
+}
+
+.dj-playback-state {
+    display: inline-block;
+    margin-top: 12px;
+    color: #f0ac65;
+    font-size: 10px;
+}
+
+.dj-progress-wrap input {
+    display: block;
+    width: 100%;
+    margin: 6px 0;
+    accent-color: #f0ac65;
+    cursor: pointer;
+}
+
+.dj-progress-times {
+    color: #bac6bd;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dj-transport-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    margin-top: 14px;
+}
+
+.dj-transport-controls button {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: #e6eee8;
+    cursor: pointer;
+    font-size: 19px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.dj-transport-controls button:hover {
+    background: rgba(255,255,255,0.1);
+    color: #f0ac65;
+}
+
+.dj-transport-controls .dj-play-button {
+    width: 48px;
+    height: 48px;
+    border-color: #f0ac65;
+    background: #f0ac65;
+    color: #26382f;
+    font-size: 20px;
+}
+
+.dj-transport-controls .dj-play-button:hover {
+    background: #ffd08d;
+    color: #26382f;
+}
+
+.dj-search-panel {
+    min-width: 0;
+    min-height: 320px;
+    padding: 20px;
+    border: 1px solid #e0e6e0;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.dj-section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.dj-section-heading h2 {
+    margin-top: 5px;
+    color: #26332b;
+    font-size: 18px;
+}
+
+.dj-search-mark {
+    color: #ce6849;
+    font-size: 30px;
+}
+
+.dj-search-form {
+    display: flex;
+    gap: 7px;
+}
+
+.dj-search-form input {
+    min-width: 0;
+    min-height: 41px;
+    flex: 1;
+    padding: 0 11px;
+    border: 1px solid #dce3dd;
+    border-radius: 5px;
+    background: #fbfcfa;
+    color: #26332b;
+    font: inherit;
+    font-size: 13px;
+}
+
+.dj-search-form input:focus {
+    outline: 2px solid rgba(57, 131, 108, 0.22);
+    border-color: #39836c;
+}
+
+.dj-search-form button,
+.dj-connect-button {
+    min-height: 41px;
+    padding: 0 13px;
+    border: 1px solid #39836c;
+    border-radius: 5px;
+    background: #39836c;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.dj-search-form button:hover,
+.dj-connect-button:hover {
+    border-color: #28644f;
+    background: #28644f;
+}
+
+.dj-search-form button:disabled {
+    cursor: progress;
+    opacity: 0.6;
+}
+
+.dj-connect-button {
+    margin-top: 10px;
+}
+
+.dj-connect-button[hidden] {
+    display: none;
+}
+
+.dj-search-status {
+    min-height: 31px;
+    padding-top: 10px;
+    color: #7c8980;
+    font-size: 10px;
+}
+
+.dj-search-results {
+    display: grid;
+    gap: 2px;
+    max-height: 205px;
+    overflow: auto;
+}
+
+.dj-result-item {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) 28px;
+    align-items: center;
+    gap: 10px;
+    min-height: 49px;
+    padding: 5px 7px;
+    border: 0;
+    border-radius: 5px;
+    background: #fff;
+    color: #304037;
+    cursor: pointer;
+    text-align: left;
+}
+
+.dj-result-item:hover,
+.dj-result-item:focus-visible {
+    outline: 0;
+    background: #edf4ee;
+}
+
+.dj-result-cover {
+    width: 38px;
+    height: 38px;
+    border-radius: 3px;
+    background: #e5ebe5;
+    object-fit: cover;
+}
+
+.dj-result-copy {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+
+.dj-result-copy strong,
+.dj-result-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dj-result-copy strong {
+    font-size: 11px;
+}
+
+.dj-result-copy small {
+    color: #77847a;
+    font-size: 10px;
+}
+
+.dj-result-play {
+    color: #39836c;
+    font-size: 12px;
+}
+
+.dj-gesture-guide {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e0e6e0;
+}
+
+.dj-guide-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: #66736b;
+    font-size: 12px;
+}
+
+.dj-gesture-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.dj-gesture-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 67px;
+    padding: 10px;
+    border: 1px solid #e2e7e2;
+    border-radius: 6px;
+    background: #fff;
+    color: #2d3a31;
+    text-align: left;
+}
+
+.dj-gesture-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 5px;
+    background: #eef3ef;
+    font-size: 18px;
+}
+
+.dj-gesture-card > div {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.dj-gesture-card strong {
+    font-size: 11px;
+}
+
+.dj-gesture-card small {
+    color: #738078;
+    font-size: 9px;
+    line-height: 1.35;
+}
+
+.dj-settings-card {
+    position: relative;
+    cursor: pointer;
+    font: inherit;
+}
+
+.dj-settings-card:hover {
+    border-color: #b9d2bf;
+    background: #f8fbf8;
+}
+
+.dj-card-arrow {
+    margin-left: auto;
+    color: #39836c;
+}
+
+@media (max-width: 1000px) {
+    .dj-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 0.95fr);
+    }
+
+    .dj-gesture-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .dj-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .dj-search-panel {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .dj-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 13px;
+    }
+
+    .dj-header h1 {
+        font-size: 26px;
+    }
+
+    .dj-live-controls {
+        width: 100%;
+        justify-content: space-between;
+        gap: 6px;
+    }
+
+    .dj-live-state {
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .dj-camera-button {
+        padding: 0 9px;
+        font-size: 11px;
+    }
+
+    .dj-player-panel,
+    .dj-search-panel {
+        padding: 16px;
+    }
+
+    .dj-current-track {
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 13px;
+        margin: 18px 0 15px;
+    }
+
+    .dj-cover {
+        width: 96px;
+        font-size: 38px;
+    }
+
+    .dj-track-copy h2 {
+        font-size: 17px;
+    }
+
+    .dj-track-copy p {
+        font-size: 11px;
+    }
+
+    .dj-gesture-cards {
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+    }
+
+    .dj-gesture-card {
+        gap: 7px;
+        padding: 8px;
+    }
+}
+
 /* ==========================================
    CONTRÔLE DU VOLUME PAR GESTE
 ========================================== */

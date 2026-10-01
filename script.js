@@ -707,33 +707,6 @@ const memoInput =
 const memoStatus =
     document.getElementById("memoStatus");
 
-const workspaceTaskListElement =
-    document.getElementById("workspaceTaskList");
-
-const workspaceTaskCount =
-    document.getElementById("workspaceTaskCount");
-
-const workspaceTaskEmpty =
-    document.getElementById("workspaceTaskEmpty");
-
-const workspaceTaskForm =
-    document.getElementById("workspaceTaskForm");
-
-const workspaceTaskInput =
-    document.getElementById("workspaceTaskInput");
-
-const workspaceMemoInput =
-    document.getElementById("workspaceMemoInput");
-
-const workspaceMemoStatus =
-    document.getElementById("workspaceMemoStatus");
-
-const workspaceMemoCount =
-    document.getElementById("workspaceMemoCount");
-
-const workspaceFocusTask =
-    document.getElementById("workspaceFocusTask");
-
 function normalizeTaskList(items) {
 
     if (!Array.isArray(items)) {
@@ -999,7 +972,6 @@ async function loadSharedState() {
 function renderTasks() {
 
     if (!tasksListElement) {
-        renderWorkspaceTasks();
         return;
     }
 
@@ -1013,7 +985,6 @@ function renderTasks() {
         emptyState.className = "task-empty";
         emptyState.textContent = "Aucune tâche pour le moment.";
         tasksListElement.appendChild(emptyState);
-        renderWorkspaceTasks();
         return;
     }
 
@@ -1041,86 +1012,11 @@ function renderTasks() {
         label.appendChild(span);
         tasksListElement.appendChild(label);
     });
-
-    renderWorkspaceTasks();
-}
-
-function renderWorkspaceTasks() {
-
-    if (!workspaceTaskListElement) return;
-
-    workspaceTaskListElement.replaceChildren();
-
-    if (workspaceTaskCount) {
-        workspaceTaskCount.textContent = String(taskList.length).padStart(2, "0");
-    }
-
-    if (workspaceTaskEmpty) {
-        workspaceTaskEmpty.hidden = taskList.length > 0;
-    }
-
-    if (workspaceFocusTask) {
-        const selectedTask = workspaceFocusTask.value;
-        workspaceFocusTask.replaceChildren();
-
-        const placeholder = document.createElement("option");
-        placeholder.value = "";
-        placeholder.textContent = "Choisir une tâche";
-        workspaceFocusTask.appendChild(placeholder);
-
-        taskList.forEach((taskText, index) => {
-            const option = document.createElement("option");
-            option.value = String(index);
-            option.textContent = taskText;
-            workspaceFocusTask.appendChild(option);
-        });
-
-        if (selectedTask && Number(selectedTask) < taskList.length) {
-            workspaceFocusTask.value = selectedTask;
-        }
-    }
-
-    taskList.forEach((taskText, taskIndex) => {
-        const row = document.createElement("div");
-        row.className = "workdesk-task-row";
-
-        const completeButton = document.createElement("button");
-        completeButton.type = "button";
-        completeButton.className = "workdesk-task-complete";
-        completeButton.setAttribute("aria-label", `Terminer : ${taskText}`);
-        completeButton.title = "Terminer cette tâche";
-        completeButton.textContent = "✓";
-        completeButton.addEventListener("click", () => {
-            taskList = taskList.filter((_, index) => index !== taskIndex);
-            persistSharedState();
-            renderTasks();
-        });
-
-        const text = document.createElement("span");
-        text.className = "workdesk-task-text";
-        text.textContent = taskText;
-
-        const removeButton = document.createElement("button");
-        removeButton.type = "button";
-        removeButton.className = "workdesk-task-remove";
-        removeButton.setAttribute("aria-label", `Supprimer : ${taskText}`);
-        removeButton.title = "Supprimer cette tâche";
-        removeButton.textContent = "×";
-        removeButton.addEventListener("click", () => {
-            taskList = taskList.filter((_, index) => index !== taskIndex);
-            persistSharedState();
-            renderTasks();
-        });
-
-        row.append(completeButton, text, removeButton);
-        workspaceTaskListElement.appendChild(row);
-    });
 }
 
 function renderMemo() {
 
     if (!memoInput) {
-        renderWorkspaceMemo();
         return;
     }
 
@@ -1132,21 +1028,6 @@ function renderMemo() {
             : "Sauvegarde locale";
     }
 
-    renderWorkspaceMemo();
-}
-
-function renderWorkspaceMemo() {
-    if (workspaceMemoInput) {
-        workspaceMemoInput.value = memoText;
-    }
-
-    if (workspaceMemoCount) {
-        workspaceMemoCount.textContent = `${memoText.length} / 2000`;
-    }
-
-    if (workspaceMemoStatus) {
-        workspaceMemoStatus.textContent = "Enregistré";
-    }
 }
 
 function addTask() {
@@ -1173,7 +1054,6 @@ if (memoInput) {
     memoInput.addEventListener("input", () => {
         memoText = memoInput.value;
         persistSharedState();
-        renderWorkspaceMemo();
 
         if (memoStatus) {
             memoStatus.textContent = "Sauvegardé";
@@ -1181,150 +1061,11 @@ if (memoInput) {
     });
 }
 
-workspaceTaskForm?.addEventListener("submit", event => {
-    event.preventDefault();
-
-    const taskText = workspaceTaskInput.value.trim();
-    if (!taskText) return;
-
-    taskList.push(taskText);
-    workspaceTaskInput.value = "";
-    persistSharedState();
-    renderTasks();
-});
-
-workspaceMemoInput?.addEventListener("input", () => {
-    memoText = workspaceMemoInput.value;
-    persistSharedState();
-    renderWorkspaceMemo();
-
-    if (workspaceMemoStatus) {
-        workspaceMemoStatus.textContent = "Enregistrement…";
-        window.clearTimeout(workspaceMemoInput.saveStatusTimeout);
-        workspaceMemoInput.saveStatusTimeout = window.setTimeout(() => {
-            workspaceMemoStatus.textContent = "Enregistré";
-        }, 450);
-    }
-});
-
 if (addTaskButton) {
     addTaskButton.addEventListener("click", addTask);
 }
 
 loadSharedState();
-
-/* ==========================================
-   ESPACE DE TRAVAIL - MINUTEUR
-========================================== */
-
-(() => {
-    const timerDisplay = document.getElementById("focusTimerDisplay");
-    const timerProgress = document.getElementById("focusTimerProgress");
-    const timerToggle = document.getElementById("focusTimerToggle");
-    const timerReset = document.getElementById("focusTimerReset");
-    const modeLabel = document.getElementById("focusModeLabel");
-    const modeButtons = document.querySelectorAll(".focus-mode-button");
-
-    if (!timerDisplay || !timerToggle || !timerReset || !modeLabel) return;
-
-    let durationSeconds = 25 * 60;
-    let remainingSeconds = durationSeconds;
-    let timerEndTime = null;
-    let timerInterval = null;
-
-    function renderTimer() {
-        const minutes = Math.floor(remainingSeconds / 60);
-        const seconds = remainingSeconds % 60;
-        timerDisplay.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-
-        if (timerProgress) {
-            const progress = ((durationSeconds - remainingSeconds) / durationSeconds) * 100;
-            timerProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-        }
-    }
-
-    function pauseTimer() {
-        if (timerEndTime !== null) {
-            remainingSeconds = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
-        }
-
-        window.clearInterval(timerInterval);
-        timerInterval = null;
-        timerEndTime = null;
-        timerToggle.textContent = "Reprendre";
-        renderTimer();
-    }
-
-    function tickTimer() {
-        remainingSeconds = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
-
-        if (remainingSeconds === 0) {
-            window.clearInterval(timerInterval);
-            timerInterval = null;
-            timerEndTime = null;
-            timerToggle.textContent = "Recommencer";
-            modeLabel.textContent = "TERMINÉ";
-        }
-
-        renderTimer();
-    }
-
-    timerToggle.addEventListener("click", () => {
-        if (timerEndTime !== null) {
-            pauseTimer();
-            return;
-        }
-
-        if (remainingSeconds === 0) {
-            remainingSeconds = durationSeconds;
-        }
-
-        timerEndTime = Date.now() + remainingSeconds * 1000;
-        timerToggle.textContent = "Pause";
-        modeLabel.textContent = Number(document.querySelector(".focus-mode-button.active")?.dataset.minutes) === 5
-            ? "PAUSE"
-            : "FOCUS";
-        timerInterval = window.setInterval(tickTimer, 250);
-    });
-
-    timerReset.addEventListener("click", () => {
-        window.clearInterval(timerInterval);
-        timerInterval = null;
-        timerEndTime = null;
-        remainingSeconds = durationSeconds;
-        timerToggle.textContent = "Démarrer";
-        modeLabel.textContent = Number(document.querySelector(".focus-mode-button.active")?.dataset.minutes) === 5
-            ? "PAUSE"
-            : "FOCUS";
-        renderTimer();
-    });
-
-    modeButtons.forEach(button => {
-        button.addEventListener("click", () => {
-            window.clearInterval(timerInterval);
-            timerInterval = null;
-            timerEndTime = null;
-            durationSeconds = Number(button.dataset.minutes) * 60;
-            remainingSeconds = durationSeconds;
-            timerToggle.textContent = "Démarrer";
-            modeLabel.textContent = Number(button.dataset.minutes) === 5 ? "PAUSE" : "FOCUS";
-
-            modeButtons.forEach(modeButton => {
-                const active = modeButton === button;
-                modeButton.classList.toggle("active", active);
-                modeButton.setAttribute("aria-pressed", String(active));
-            });
-
-            renderTimer();
-        });
-    });
-
-    renderTimer();
-})();
-
-document.querySelectorAll("[data-open-section]").forEach(button => {
-    button.addEventListener("click", () => showSection(button.dataset.openSection));
-});
 
 /* ==========================================
    JARVIS
@@ -2543,8 +2284,8 @@ function getSectionFromName(pageName) {
         "MyDLP":
             "mydlpSection",
 
-        "Espace travail":
-            "ludothequeSection",
+        "DJ gestuel":
+            "gestureDjSection",
 
         "Dessin":
             "ludothequeSection",
@@ -5623,28 +5364,36 @@ async function playSpotifyTheme(theme) {
     }
 }
 
-async function queueSpotifyRecommendations(trackId) {
+async function queueSpotifyRecommendations(trackOrId) {
+    const track = typeof trackOrId === "object" ? trackOrId : null;
+    const trackId = track?.id || trackOrId;
+
     if (!trackId || !spotifyAccessToken || !spotifyDeviceId || spotifyLastRecommendationTrackId === trackId) {
         return;
     }
 
     if (spotifyRecommendationRequest) {
-        return spotifyRecommendationRequest.then(() => queueSpotifyRecommendations(trackId));
+        return spotifyRecommendationRequest.then(() => queueSpotifyRecommendations(trackOrId));
     }
 
     spotifyLastRecommendationTrackId = trackId;
     spotifyRecommendationRequest = (async () => {
         try {
-            const response = await spotifyApiFetch(
-                `/recommendations?limit=10&seed_tracks=${encodeURIComponent(trackId)}`
-            );
+            let recommendations = [];
+            try {
+                const response = await spotifyApiFetch(
+                    `/recommendations?limit=10&seed_tracks=${encodeURIComponent(trackId)}`
+                );
 
-            if (!response.ok) {
-                return;
+                if (response.ok) {
+                    const data = await response.json();
+                    recommendations = data?.tracks || [];
+                }
+            } catch (error) {
+                console.warn("Recommandations Spotify indisponibles, recherche par artiste utilisée :", error);
             }
 
-            const data = await response.json();
-            const recommendations = (data?.tracks || [])
+            recommendations = recommendations
                 .filter(track => {
                     const fingerprint = getSpotifyTrackFingerprint(track);
 
@@ -5655,18 +5404,71 @@ async function queueSpotifyRecommendations(trackId) {
                 })
                 .slice(0, 5);
 
+            if (recommendations.length < 5 && track?.artists?.length) {
+                const artistName = track.artists[0].name;
+                const artistResponse = await spotifyApiFetch(
+                    `/search?type=track&limit=20&q=${encodeURIComponent(`artist:"${artistName}"`)}`
+                );
+
+                if (artistResponse.ok) {
+                    const artistData = await artistResponse.json();
+                    const artistTracks = (artistData?.tracks?.items || [])
+                        .filter(candidate => {
+                            const hasArtist = candidate.artists?.some(artist =>
+                                artist.name.toLowerCase() === artistName.toLowerCase()
+                            );
+                            const fingerprint = getSpotifyTrackFingerprint(candidate);
+
+                            return hasArtist &&
+                                candidate.id !== trackId &&
+                                !spotifyQueuedTrackIds.has(candidate.id) &&
+                                fingerprint &&
+                                !spotifyQueuedTrackFingerprints.has(fingerprint);
+                        });
+
+                    recommendations = [
+                        ...recommendations,
+                        ...shuffleSpotifyTracks(artistTracks).slice(0, 5 - recommendations.length)
+                    ];
+                }
+            }
+
+            const requestTrackIds = new Set();
+            const requestFingerprints = new Set();
+
             for (const track of recommendations) {
+                const fingerprint = getSpotifyTrackFingerprint(track);
+                if (
+                    !track?.id ||
+                    requestTrackIds.has(track.id) ||
+                    requestFingerprints.has(fingerprint) ||
+                    spotifyQueuedTrackIds.has(track.id) ||
+                    spotifyQueuedTrackFingerprints.has(fingerprint)
+                ) {
+                    continue;
+                }
+
                 const queueResponse = await spotifyApiFetch(
                     `/me/player/queue?uri=${encodeURIComponent(track.uri)}&device_id=${encodeURIComponent(spotifyDeviceId)}`,
                     { method: "POST" }
                 );
 
                 if (!queueResponse.ok) {
+                    console.warn("Spotify n'a pas accepté l'ajout à la file :", queueResponse.status);
                     break;
                 }
 
+                requestTrackIds.add(track.id);
+                requestFingerprints.add(fingerprint);
                 spotifyQueuedTrackIds.add(track.id);
-                spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
+                spotifyQueuedTrackFingerprints.add(fingerprint);
+            }
+
+            const queueInfo = document.getElementById("gestureDjQueueInfo");
+            if (queueInfo) {
+                queueInfo.textContent = spotifyQueuedTrackIds.size > 1
+                    ? `${spotifyQueuedTrackIds.size - 1} titre(s) en file`
+                    : "File en cours de préparation";
             }
         } catch (error) {
             console.warn("Impossible de remplir la file Spotify :", error);
@@ -5678,42 +5480,52 @@ async function queueSpotifyRecommendations(trackId) {
     return spotifyRecommendationRequest;
 }
 
-async function playSpotifySearchResult(query) {
-    const safeQuery = String(query || "").trim();
+function scoreSpotifyTrack(track, query) {
+    const normalize = value => String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
 
-    if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
+    const wanted = normalize(query);
+    const title = normalize(track.name);
+    const artists = normalize((track.artists || []).map(artist => artist.name).join(" "));
+    const album = normalize(track.album?.name);
+    const terms = wanted.split(/\s+/).filter(term => term.length > 1);
+
+    if (title === wanted) return 1000 + (track.popularity || 0);
+
+    let score = 0;
+    if (title.includes(wanted)) score += 30;
+    if (artists.includes(wanted)) score += 18;
+
+    terms.forEach(term => {
+        if (title.includes(term)) score += 5;
+        else if (artists.includes(term)) score += 4;
+        else if (album.includes(term)) score += 1;
+    });
+
+    return score + (track.popularity || 0) / 100;
+}
+
+async function startSpotifyTrack(track) {
+    if (!track?.uri || !spotifyAccessToken || !spotifyDeviceId) {
         return false;
     }
 
     try {
-        const searchResponse = await spotifyApiFetch(
-            `/search?type=track&limit=1&q=${encodeURIComponent(safeQuery)}`
-        );
-
-        if (!searchResponse.ok) {
-            return false;
-        }
-
-        const searchData = await searchResponse.json();
-        const track = searchData?.tracks?.items?.[0];
-        const trackUris = track?.uri ? [track.uri] : [];
-
-        if (trackUris.length === 0) {
-            return false;
-        }
-
         const playResponse = await spotifyApiFetch(
             `/me/player/play?device_id=${encodeURIComponent(spotifyDeviceId)}`,
             {
                 method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ uris: trackUris })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uris: [track.uri] })
             }
         );
 
         if (!playResponse.ok) {
+            console.warn("Spotify n'a pas pu démarrer ce morceau :", playResponse.status);
             return false;
         }
 
@@ -5722,9 +5534,46 @@ async function playSpotifySearchResult(query) {
         spotifyLastRecommendationTrackId = null;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
-        await queueSpotifyRecommendations(track.id);
 
+        const queueInfo = document.getElementById("gestureDjQueueInfo");
+        if (queueInfo) queueInfo.textContent = "File en cours de préparation";
+
+        void queueSpotifyRecommendations(track);
         return true;
+    } catch (error) {
+        console.warn("Impossible de lancer ce morceau sur Spotify :", error);
+        return false;
+    }
+}
+
+async function searchSpotifyTracks(query, limit = 10) {
+    const safeQuery = String(query || "").trim();
+    if (!safeQuery || !spotifyAccessToken) return [];
+
+    const response = await spotifyApiFetch(
+        `/search?type=track&limit=${limit}&q=${encodeURIComponent(safeQuery)}`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data?.tracks?.items?.filter(track => track?.uri) || [];
+}
+
+async function playSpotifySearchResult(query) {
+    const safeQuery = String(query || "").trim();
+
+    if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
+        return false;
+    }
+
+    try {
+        const tracks = await searchSpotifyTracks(safeQuery, 20);
+        const track = tracks.sort((first, second) =>
+            scoreSpotifyTrack(second, safeQuery) - scoreSpotifyTrack(first, safeQuery)
+        )[0];
+
+        return startSpotifyTrack(track);
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
         return false;
@@ -6309,6 +6158,9 @@ function initializeSpotifyPlayer(
                     "Connecté";
             }
 
+            const djConnect = document.getElementById("gestureDjConnect");
+            if (djConnect) djConnect.hidden = true;
+
 
             transferPlaybackToMyHub();
             hydrateSpotifyVolumeFromPlayer();
@@ -6436,7 +6288,12 @@ function initializeSpotifyPlayer(
                 spotifyQueuedTrackFingerprints.add(
                     getSpotifyTrackFingerprint(currentTrack)
                 );
-                queueSpotifyRecommendations(currentTrack.id);
+                void queueSpotifyRecommendations(currentTrack);
+            }
+
+            const queueInfo = document.getElementById("gestureDjQueueInfo");
+            if (queueInfo && spotifyQueuedTrackIds.size > 1) {
+                queueInfo.textContent = `${spotifyQueuedTrackIds.size - 1} titre(s) en file`;
             }
 
 
@@ -6623,6 +6480,8 @@ async function getSpotifyCurrentlyPlaying() {
             data
         );
 
+        updateSpotifyPlayButton({ paused: !data.is_playing });
+
 
     } catch (error) {
 
@@ -6638,10 +6497,31 @@ async function getSpotifyCurrentlyPlaying() {
    AFFICHAGE MORCEAU VIA API
 ========================================== */
 
+function updateGestureDjTrack(track) {
+    const name = document.getElementById("gestureDjTrackName");
+    const artist = document.getElementById("gestureDjArtist");
+    const cover = document.getElementById("gestureDjCover");
+
+    if (name) name.textContent = track?.name || "Aucun morceau";
+    if (artist) {
+        artist.textContent = (track?.artists || []).map(item => item.name).join(", ") || "Spotify";
+    }
+
+    if (cover && track?.album?.images?.length) {
+        cover.replaceChildren();
+        const image = document.createElement("img");
+        image.src = track.album.images[0].url;
+        image.alt = `Pochette de ${track.name}`;
+        cover.appendChild(image);
+    }
+}
+
 function updateSpotifyTrackFromAPI(data) {
 
     const track =
         data.item;
+
+    updateGestureDjTrack(track);
 
 
     const trackName =
@@ -6758,6 +6638,8 @@ function updateSpotifyTrack(state) {
         return;
     }
 
+    updateGestureDjTrack(track);
+
 
     const trackName =
         document.getElementById(
@@ -6855,16 +6737,27 @@ function updateSpotifyPlayButton(
             "spotifyPlay"
         );
 
+    const djButton = document.getElementById("gestureDjPlay");
+    const djState = document.getElementById("gestureDjPlaybackState");
 
-    if (!button) {
+
+    if (!button && !djButton) {
         return;
     }
 
 
-    button.textContent =
-        state.paused
-            ? "▶"
-            : "⏸";
+    if (button) {
+        button.textContent = state.paused ? "▶" : "⏸";
+    }
+
+    if (djButton) {
+        djButton.textContent = state.paused ? "▶" : "⏸";
+        djButton.setAttribute("aria-label", state.paused ? "Lecture" : "Pause");
+    }
+
+    if (djState) {
+        djState.textContent = state.paused ? "En pause" : "En lecture";
+    }
 }
 
 
@@ -6898,6 +6791,10 @@ function updateSpotifyProgress(
             "spotifyDuration"
         );
 
+    const djProgress = document.getElementById("gestureDjProgress");
+    const djCurrentTime = document.getElementById("gestureDjCurrentTime");
+    const djDuration = document.getElementById("gestureDjDuration");
+
 
     if (progress) {
 
@@ -6925,6 +6822,14 @@ function updateSpotifyProgress(
                 state.duration
             );
     }
+
+    if (djProgress) {
+        djProgress.max = state.duration || 0;
+        djProgress.value = state.position || 0;
+    }
+
+    if (djCurrentTime) djCurrentTime.textContent = formatSpotifyTime(state.position || 0);
+    if (djDuration) djDuration.textContent = formatSpotifyTime(state.duration || 0);
 }
 
 
@@ -6958,6 +6863,10 @@ function updateSpotifyProgressFromAPI(
             "spotifyDuration"
         );
 
+    const djProgress = document.getElementById("gestureDjProgress");
+    const djCurrentTime = document.getElementById("gestureDjCurrentTime");
+    const djDuration = document.getElementById("gestureDjDuration");
+
 
     if (progress) {
 
@@ -6985,6 +6894,14 @@ function updateSpotifyProgressFromAPI(
                 data.item?.duration_ms || 0
             );
     }
+
+    if (djProgress) {
+        djProgress.max = data.item?.duration_ms || 0;
+        djProgress.value = data.progress_ms || 0;
+    }
+
+    if (djCurrentTime) djCurrentTime.textContent = formatSpotifyTime(data.progress_ms || 0);
+    if (djDuration) djDuration.textContent = formatSpotifyTime(data.item?.duration_ms || 0);
 }
 
 
@@ -7132,6 +7049,138 @@ if (spotifyNext) {
         }
     );
 }
+
+const gestureDjSearchForm = document.getElementById("gestureDjSearchForm");
+const gestureDjSearchInput = document.getElementById("gestureDjSearchInput");
+const gestureDjSearchButton = document.getElementById("gestureDjSearchButton");
+const gestureDjSearchStatus = document.getElementById("gestureDjSearchStatus");
+const gestureDjSearchResults = document.getElementById("gestureDjSearchResults");
+const gestureDjConnectButton = document.getElementById("gestureDjConnect");
+
+if (gestureDjConnectButton) {
+    gestureDjConnectButton.hidden = Boolean(spotifyPlayer && spotifyDeviceId);
+    gestureDjConnectButton.textContent = spotifyAccessToken
+        ? "Activer le lecteur Spotify"
+        : "Connecter Spotify";
+    gestureDjConnectButton.addEventListener("click", () => {
+        if (spotifyAccessToken) {
+            window.initSpotifyPlayer?.();
+            if (gestureDjSearchStatus) {
+                gestureDjSearchStatus.textContent = "Connexion du lecteur Spotify…";
+            }
+        } else {
+            connectSpotify();
+        }
+    });
+}
+
+function renderGestureDjSearchResults(tracks) {
+    if (!gestureDjSearchResults) return;
+
+    gestureDjSearchResults.replaceChildren();
+
+    tracks.slice(0, 6).forEach(track => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "dj-result-item";
+
+        const image = document.createElement("img");
+        image.className = "dj-result-cover";
+        image.alt = "";
+        image.src = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || "";
+
+        const copy = document.createElement("span");
+        copy.className = "dj-result-copy";
+
+        const title = document.createElement("strong");
+        title.textContent = track.name;
+
+        const artist = document.createElement("small");
+        artist.textContent = (track.artists || []).map(item => item.name).join(", ");
+
+        const playMark = document.createElement("span");
+        playMark.className = "dj-result-play";
+        playMark.textContent = "▶";
+        playMark.setAttribute("aria-hidden", "true");
+
+        copy.append(title, artist);
+        button.append(image, copy, playMark);
+        button.addEventListener("click", async () => {
+            if (!spotifyDeviceId) {
+                if (gestureDjSearchStatus) {
+                    gestureDjSearchStatus.textContent = "Connecte Spotify et active le lecteur depuis l’accueil.";
+                }
+                return;
+            }
+
+            if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = `Lancement de « ${track.name} »…`;
+            const started = await startSpotifyTrack(track);
+            if (gestureDjSearchStatus) {
+                gestureDjSearchStatus.textContent = started
+                    ? `« ${track.name} » lancé · la suite se prépare en arrière-plan.`
+                    : "Spotify n’a pas pu lancer ce titre. Vérifie qu’un appareil Spotify est actif.";
+            }
+        });
+
+        gestureDjSearchResults.appendChild(button);
+    });
+}
+
+gestureDjSearchForm?.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const query = gestureDjSearchInput?.value.trim();
+    if (!query) return;
+
+    if (!spotifyAccessToken) {
+        if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "Connecte ton compte Spotify pour rechercher.";
+        gestureDjConnectButton?.removeAttribute("hidden");
+        return;
+    }
+
+    if (gestureDjSearchButton) gestureDjSearchButton.disabled = true;
+    if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "Recherche en cours…";
+
+    try {
+        const tracks = await searchSpotifyTracks(query, 10);
+        const rankedTracks = tracks.sort((first, second) =>
+            scoreSpotifyTrack(second, query) - scoreSpotifyTrack(first, query)
+        );
+
+        renderGestureDjSearchResults(rankedTracks);
+        if (gestureDjSearchStatus) {
+            gestureDjSearchStatus.textContent = rankedTracks.length
+                ? `${rankedTracks.length} résultat(s) · sélectionne un titre pour lancer la file.`
+                : "Aucun résultat. Essaie avec un titre ou un artiste différent.";
+        }
+    } catch (error) {
+        console.warn("Recherche DJ Spotify impossible :", error);
+        if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "La recherche Spotify a échoué. Réessaie dans un instant.";
+    } finally {
+        if (gestureDjSearchButton) gestureDjSearchButton.disabled = false;
+    }
+});
+
+document.getElementById("gestureDjPlay")?.addEventListener("click", async () => {
+    if (!spotifyPlayer) {
+        if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "Connecte Spotify depuis l’accueil pour contrôler la lecture.";
+        return;
+    }
+
+    try {
+        if (spotifyCurrentState?.paused) await spotifyPlayer.resume();
+        else await spotifyPlayer.togglePlay();
+    } catch (error) {
+        console.error("Commande lecture DJ impossible :", error);
+    }
+});
+
+document.getElementById("gestureDjPrevious")?.addEventListener("click", () => spotifyPlayer?.previousTrack());
+document.getElementById("gestureDjNext")?.addEventListener("click", () => spotifyPlayer?.nextTrack());
+
+document.getElementById("gestureDjProgress")?.addEventListener("change", event => {
+    if (spotifyPlayer) spotifyPlayer.seek(Number(event.target.value));
+});
 
 
 /* ==========================================
@@ -7298,7 +7347,17 @@ console.log(
 
     let musicSwipeConsumed = false;
 
+    let musicSwipePoseSince = null;
+
     let lastMusicSwipeTime = 0;
+
+    let transportGesturePose = null;
+
+    let transportGestureStartedAt = 0;
+
+    let transportGestureConsumed = false;
+
+    let lastTransportGestureTime = 0;
 
 
     /* =====================================================
@@ -7348,6 +7407,14 @@ let handLostFrames = 0;
 
     const POINTER_POSE_HOLD = 250;
 
+    const MUSIC_SWIPE_POSE_HOLD = 160;
+
+    const MUSIC_SWIPE_DISTANCE = 0.12;
+
+    const MUSIC_SWIPE_TIMEOUT = 1400;
+
+    const TRANSPORT_POSE_HOLD = 420;
+
 
     /* =====================================================
        ZONE DE MOUVEMENT
@@ -7381,6 +7448,34 @@ let handLostFrames = 0;
     function isTwoFingerSwipePose(hand) {
         return isFingerExtended(hand, 8, 6) &&
             isFingerExtended(hand, 12, 10) &&
+            !isFingerExtended(hand, 16, 14) &&
+            !isFingerExtended(hand, 20, 18);
+    }
+
+    function isOpenPalmGesture(hand) {
+        const thumbOpen = Math.hypot(
+            hand[4].x - hand[5].x,
+            hand[4].y - hand[5].y
+        ) > Math.hypot(
+            hand[3].x - hand[5].x,
+            hand[3].y - hand[5].y
+        ) * 1.08;
+
+        return thumbOpen &&
+            isFingerExtended(hand, 8, 6) &&
+            isFingerExtended(hand, 12, 10) &&
+            isFingerExtended(hand, 16, 14) &&
+            isFingerExtended(hand, 20, 18);
+    }
+
+    function isThumbsUpGesture(hand) {
+        const thumbPointsUp =
+            hand[4].y < hand[3].y - 0.035 &&
+            hand[4].y < hand[9].y;
+
+        return thumbPointsUp &&
+            !isFingerExtended(hand, 8, 6) &&
+            !isFingerExtended(hand, 12, 10) &&
             !isFingerExtended(hand, 16, 14) &&
             !isFingerExtended(hand, 20, 18);
     }
@@ -7957,7 +8052,7 @@ let handLostFrames = 0;
 
 
             gestureCameraStatus.textContent =
-                "Mode automatique — index, pincement ou balayage";
+                "Paume : pause · pouce levé : lecture · deux doigts : piste suivante/précédente";
 
 
             virtualCursor.style.display =
@@ -8112,6 +8207,10 @@ let handLostFrames = 0;
         pointerPoseSince = null;
         musicSwipeStartX = null;
         musicSwipeConsumed = false;
+        musicSwipePoseSince = null;
+        transportGesturePose = null;
+        transportGestureStartedAt = 0;
+        transportGestureConsumed = false;
 
         if (typeof window.myHubVolumeGesture === "function") {
             window.myHubVolumeGesture(null);
@@ -8225,6 +8324,10 @@ let handLostFrames = 0;
     pointerPoseSince = null;
     musicSwipeStartX = null;
     musicSwipeConsumed = false;
+    musicSwipePoseSince = null;
+    transportGesturePose = null;
+    transportGestureStartedAt = 0;
+    transportGestureConsumed = false;
 
     if (typeof window.myHubVolumeGesture === "function") {
         window.myHubVolumeGesture(null);
@@ -8268,6 +8371,70 @@ const pinchDistance = Math.hypot(
 );
 const isPinching = pinchDistance < PINCH_DISTANCE;
 
+const transportPose = isOpenPalmGesture(hand)
+    ? "pause"
+    : isThumbsUpGesture(hand)
+        ? "play"
+        : null;
+
+if (transportPose) {
+    pointerPoseSince = null;
+    pinchActive = false;
+    musicSwipeStartX = null;
+    musicSwipePoseSince = null;
+    musicSwipeConsumed = false;
+    virtualCursor.style.display = "none";
+    virtualCursor.classList.remove("pinching");
+
+    if (typeof window.myHubVolumeGesture === "function") {
+        window.myHubVolumeGesture(null);
+    }
+
+    const transportNow = performance.now();
+
+    if (transportGesturePose !== transportPose) {
+        transportGesturePose = transportPose;
+        transportGestureStartedAt = transportNow;
+        transportGestureConsumed = false;
+    } else if (
+        !transportGestureConsumed &&
+        transportNow - transportGestureStartedAt >= TRANSPORT_POSE_HOLD
+    ) {
+        transportGestureConsumed = true;
+
+        if (Date.now() - lastTransportGestureTime >= 1200) {
+            lastTransportGestureTime = Date.now();
+
+            if (spotifyPlayer) {
+                const playbackAction = transportPose === "pause" ? "pause" : "resume";
+                spotifyPlayer[playbackAction]().then(() => {
+                    gestureStatus.textContent = transportPose === "pause"
+                        ? "● Pause Spotify"
+                        : "● Lecture Spotify";
+                }).catch(error => {
+                    console.error("Commande de lecture gestuelle impossible :", error);
+                    gestureStatus.textContent = "● Commande Spotify impossible";
+                });
+            } else {
+                gestureStatus.textContent = "● Connecte Spotify pour utiliser la lecture gestuelle";
+            }
+        }
+    }
+
+    if (!transportGestureConsumed) {
+        gestureStatus.textContent = transportPose === "pause"
+            ? "● Maintiens la paume pour mettre en pause"
+            : "● Maintiens le pouce levé pour lancer la lecture";
+    }
+
+    drawDetectedHands(results);
+    return;
+}
+
+transportGesturePose = null;
+transportGestureStartedAt = 0;
+transportGestureConsumed = false;
+
 if (isTwoFingerSwipePose(hand)) {
     pointerPoseSince = null;
     pinchActive = false;
@@ -8281,39 +8448,47 @@ if (isTwoFingerSwipePose(hand)) {
     const swipeX = Math.max(0, Math.min(1, 1 - hand[9].x));
     const swipeNow = performance.now();
 
-    if (
-        musicSwipeStartX === null ||
-        (!musicSwipeConsumed && swipeNow - musicSwipeStartedAt > 1200)
-    ) {
+    if (musicSwipePoseSince === null) {
+        musicSwipePoseSince = swipeNow;
         musicSwipeStartX = swipeX;
         musicSwipeStartedAt = swipeNow;
         musicSwipeConsumed = false;
-        gestureStatus.textContent = "● Geste détecté — balaie à gauche ou à droite";
+    }
+
+    if (swipeNow - musicSwipePoseSince < MUSIC_SWIPE_POSE_HOLD) {
+        gestureStatus.textContent = "● Pose reconnue — balaie à gauche ou à droite";
     } else if (
         !musicSwipeConsumed &&
-        Math.abs(swipeX - musicSwipeStartX) >= 0.18
+        swipeNow - musicSwipeStartedAt <= MUSIC_SWIPE_TIMEOUT &&
+        Math.abs(swipeX - musicSwipeStartX) >= MUSIC_SWIPE_DISTANCE
     ) {
         musicSwipeConsumed = true;
 
         const movedRight = swipeX > musicSwipeStartX;
         const playerAction = movedRight ? "nextTrack" : "previousTrack";
-        const currentTime = Date.now();
 
-        if (currentTime - lastMusicSwipeTime > 1000) {
-            lastMusicSwipeTime = currentTime;
+        if (Date.now() - lastMusicSwipeTime >= 850) {
+            lastMusicSwipeTime = Date.now();
 
             if (spotifyPlayer && typeof spotifyPlayer[playerAction] === "function") {
-                spotifyPlayer[playerAction]().catch(error => {
+                spotifyPlayer[playerAction]().then(() => {
+                    gestureStatus.textContent = movedRight
+                        ? "● Morceau suivant"
+                        : "● Morceau précédent";
+                }).catch(error => {
                     console.error("Erreur de changement de piste par geste :", error);
+                    gestureStatus.textContent = "● Impossible de changer de morceau";
                 });
-
-                gestureStatus.textContent = movedRight
-                    ? "● Piste suivante"
-                    : "● Piste précédente";
             } else {
-                gestureStatus.textContent = "● Lecteur musical non connecté";
+                gestureStatus.textContent = "● Connecte Spotify pour changer de morceau";
             }
         }
+    } else if (
+        !musicSwipeConsumed &&
+        swipeNow - musicSwipeStartedAt > MUSIC_SWIPE_TIMEOUT
+    ) {
+        musicSwipeConsumed = true;
+        gestureStatus.textContent = "● Geste expiré — baisse les doigts et recommence";
     }
 
     drawDetectedHands(results);
@@ -8322,6 +8497,7 @@ if (isTwoFingerSwipePose(hand)) {
 
 musicSwipeStartX = null;
 musicSwipeConsumed = false;
+musicSwipePoseSince = null;
 
 if (isVolumeGesture(hand, pinchDistance)) {
     pointerPoseSince = null;
