@@ -6981,13 +6981,21 @@ console.log(
     const gestureCameraSelect =
         document.getElementById("gestureCameraSelect");
 
+    const gesturePointerModeButton =
+        document.getElementById("gesturePointerMode");
+
+    const gestureVolumeModeButton =
+        document.getElementById("gestureVolumeMode");
+
     if (
         !gestureCamera ||
         !gestureCanvas ||
         !gestureToggleButton ||
         !gestureStatus ||
         !gestureCameraStatus ||
-        !gestureCameraSelect
+        !gestureCameraSelect ||
+        !gesturePointerModeButton ||
+        !gestureVolumeModeButton
     ) {
 
         console.warn(
@@ -7017,6 +7025,10 @@ console.log(
     let lastVideoTime = -1;
 
     let camerasLoaded = false;
+
+    let gestureMode = "cursor";
+
+    let pointerPoseSince = null;
 
 
     /* =====================================================
@@ -7064,6 +7076,8 @@ let handLostFrames = 0;
 
     const PINCH_DISTANCE = 0.065;
 
+    const POINTER_POSE_HOLD = 250;
+
 
     /* =====================================================
        ZONE DE MOUVEMENT
@@ -7076,6 +7090,55 @@ let handLostFrames = 0;
     const GESTURE_TOP = 0.10;
 
     const GESTURE_BOTTOM = 0.90;
+
+    function isFingerExtended(hand, tipIndex, jointIndex) {
+        const wrist = hand[0];
+        const tip = hand[tipIndex];
+        const joint = hand[jointIndex];
+        const tipDistance = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+        const jointDistance = Math.hypot(joint.x - wrist.x, joint.y - wrist.y);
+
+        return tipDistance > jointDistance * 1.12;
+    }
+
+    function isIndexPointing(hand) {
+        return isFingerExtended(hand, 8, 6) &&
+            !isFingerExtended(hand, 12, 10) &&
+            !isFingerExtended(hand, 16, 14) &&
+            !isFingerExtended(hand, 20, 18);
+    }
+
+    function drawDetectedHands(results) {
+        for (const landmarks of results.landmarks) {
+            drawHand(landmarks);
+        }
+    }
+
+    function setGestureMode(mode) {
+        gestureMode = mode;
+        pointerPoseSince = null;
+        pinchActive = false;
+
+        gesturePointerModeButton.classList.toggle("active", mode === "cursor");
+        gesturePointerModeButton.setAttribute("aria-pressed", String(mode === "cursor"));
+        gestureVolumeModeButton.classList.toggle("active", mode === "volume");
+        gestureVolumeModeButton.setAttribute("aria-pressed", String(mode === "volume"));
+
+        if (typeof window.myHubVolumeGesture === "function") {
+            window.myHubVolumeGesture(null);
+        }
+
+        if (mode === "volume") {
+            virtualCursor.style.display = "none";
+            gestureCameraStatus.textContent = gestureRunning
+                ? "Mode volume — pince pouce-index et tourne"
+                : "Mode volume sélectionné";
+        } else {
+            gestureCameraStatus.textContent = gestureRunning
+                ? "Mode curseur — garde l’index pointé"
+                : "Mode curseur sélectionné";
+        }
+    }
 
 
     /* =====================================================
@@ -7604,11 +7667,13 @@ let handLostFrames = 0;
 
 
             gestureCameraStatus.textContent =
-                "Caméra active — présente ta main";
+                gestureMode === "volume"
+                    ? "Mode volume — pince pouce-index et tourne"
+                    : "Mode curseur — garde l’index pointé";
 
 
             virtualCursor.style.display =
-                "block";
+                "none";
 
 
             document
@@ -7734,6 +7799,7 @@ let handLostFrames = 0;
 
         pinchActive =
             false;
+        pointerPoseSince = null;
 
         if (typeof window.myHubVolumeGesture === "function") {
             window.myHubVolumeGesture(null);
@@ -7844,6 +7910,7 @@ let handLostFrames = 0;
 
     pinchActive =
         false;
+    pointerPoseSince = null;
 
     if (typeof window.myHubVolumeGesture === "function") {
         window.myHubVolumeGesture(null);
@@ -7871,9 +7938,6 @@ let handLostFrames = 0;
  */
 handLostFrames = 0;
 
-virtualCursor.style.display =
-    "block";
-
 
         /*
  * Main principale
@@ -7882,48 +7946,80 @@ virtualCursor.style.display =
 const hand =
     results.landmarks[0];
 
+const indexTip = hand[8];
+const thumbTip = hand[4];
+const pinchDistance = Math.hypot(
+    thumbTip.x - indexTip.x,
+    thumbTip.y - indexTip.y
+);
+const isPinching = pinchDistance < PINCH_DISTANCE;
 
-/* ==========================================
-   CONTRÔLE DU VOLUME
-========================================== */
+if (gestureMode === "volume") {
+    pointerPoseSince = null;
+    pinchActive = false;
+    virtualCursor.style.display = "none";
+    virtualCursor.classList.remove("pinching");
 
-if (
-    typeof window.myHubVolumeGesture ===
-    "function"
-) {
-    window.myHubVolumeGesture(
-        hand
-    );
+    if (typeof window.myHubVolumeGesture === "function") {
+        window.myHubVolumeGesture(isPinching ? hand : null);
+    }
+
+    gestureStatus.textContent = isPinching
+        ? "● Maintiens le pincement et tourne"
+        : "● Pince pouce-index pour régler";
+
+    if (typeof window.myHubDrawingGesture === "function") {
+        window.myHubDrawingGesture(cursorX, cursorY, false);
+    }
+
+    drawDetectedHands(results);
+    return;
 }
 
-        /*
-         * INDEX
-         */
+if (typeof window.myHubVolumeGesture === "function") {
+    window.myHubVolumeGesture(null);
+}
 
-        const indexTip =
-            hand[8];
+const now = performance.now();
 
+if (!isIndexPointing(hand)) {
+    pointerPoseSince = null;
+    pinchActive = false;
+    virtualCursor.style.display = "none";
+    virtualCursor.classList.remove("pinching");
+    gestureStatus.textContent = "● Garde l’index pointé";
+
+    if (typeof window.myHubDrawingGesture === "function") {
+        window.myHubDrawingGesture(cursorX, cursorY, false);
+    }
+
+    drawDetectedHands(results);
+    return;
+}
+
+if (pointerPoseSince === null) {
+    pointerPoseSince = now;
+    pinchActive = false;
+    virtualCursor.style.display = "none";
+    gestureStatus.textContent = "● Stabilisation du pointage...";
+    drawDetectedHands(results);
+    return;
+}
+
+if (now - pointerPoseSince < POINTER_POSE_HOLD) {
+    virtualCursor.style.display = "none";
+    gestureStatus.textContent = "● Stabilisation du pointage...";
+    drawDetectedHands(results);
+    return;
+}
+
+virtualCursor.style.display = "block";
 
         let x =
             indexTip.x;
 
         let y =
             indexTip.y;
-
-
-        /*
-         * Conversion de la zone caméra
-         * vers tout l'écran.
-         */
-
-        x =
-            (x - GESTURE_LEFT) /
-            (GESTURE_RIGHT - GESTURE_LEFT);
-
-
-        y =
-            (y - GESTURE_TOP) /
-            (GESTURE_BOTTOM - GESTURE_TOP);
 
 
         x =
@@ -8031,32 +8127,6 @@ if (
         /*
          * PINCH
          */
-
-        const thumbTip =
-            hand[4];
-
-
-        const dx =
-            thumbTip.x -
-            indexTip.x;
-
-
-        const dy =
-            thumbTip.y -
-            indexTip.y;
-
-
-        const distance =
-            Math.sqrt(
-                dx * dx +
-                dy * dy
-            );
-
-
-        const isPinching =
-            distance <
-            PINCH_DISTANCE;
-
 
         if (isPinching) {
 
@@ -8376,6 +8446,16 @@ if (
             }
 
         }
+    );
+
+    gesturePointerModeButton.addEventListener(
+        "click",
+        () => setGestureMode("cursor")
+    );
+
+    gestureVolumeModeButton.addEventListener(
+        "click",
+        () => setGestureMode("volume")
     );
 
 
@@ -9249,7 +9329,8 @@ if (
         return;
     }
 
-    let currentVolume = Number(spotifyVolumeSlider?.value) || 50;
+    const initialSliderVolume = Number(spotifyVolumeSlider?.value);
+    let currentVolume = Number.isFinite(initialSliderVolume) ? initialSliderVolume : 50;
 
     let targetVolume = currentVolume;
 
@@ -9259,7 +9340,7 @@ if (
     let lastAppliedVolume = Math.round(currentVolume);
 
     const VOLUME_PER_DEGREE = 0.6;
-    const ROTATION_DEADZONE = 0.5 * Math.PI / 180;
+    const ROTATION_DEADZONE = 1.5 * Math.PI / 180;
 
     /*
      * Lissage

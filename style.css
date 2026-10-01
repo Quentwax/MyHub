@@ -1783,6 +1783,41 @@ body {
     justify-content: center;
 }
 
+.gesture-mode-control {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.gesture-mode-button {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #b9becb;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.gesture-mode-button:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.gesture-mode-button.active {
+    color: #fff;
+    background: rgba(52, 164, 132, 0.2);
+    border-color: rgba(92, 211, 172, 0.45);
+}
+
 .gesture-toggle-button {
     width: 100%;
 
