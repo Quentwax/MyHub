@@ -5618,7 +5618,7 @@ async function searchSpotifyTracks(query, limit = 10) {
     if (!safeQuery || !spotifyAccessToken) return [];
 
     const response = await spotifyApiFetch(
-        `/search?type=track&limit=${limit}&market=from_token&q=${encodeURIComponent(safeQuery)}`
+        `/search?type=track&limit=${limit}&q=${encodeURIComponent(safeQuery)}`
     );
 
     if (!response.ok) {
