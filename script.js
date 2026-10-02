@@ -3678,7 +3678,7 @@ function getLocalFallbackReply(command) {
 function getLocalSpotifyAction(command) {
     const normalized = normalizeCommandText(command);
 
-    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|passe|veux|voudrais|aimerais|disney|pixar|marvel|star wars)/.test(normalized)) {
+    if (!/(spotify|musique|chanson|morceau|playlist|volume|pause|lecture|joue|lis|ecoute|entendre|mets|mettre|passe|cherche|recherche|trouve|trouver|veux|voudrais|aimerais|disney|pixar|marvel|star wars)/.test(normalized)) {
         return null;
     }
 
@@ -3753,9 +3753,12 @@ function getLocalSpotifyAction(command) {
         };
     }
 
-    if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play)/.test(normalized)) {
+    if (/(reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|ecoute|entendre|mets|met|mettre|cherche|recherche|trouve|trouver|veux|voudrais|aimerais|peux tu|pourrais tu|play)/.test(normalized)) {
         const query = normalized
-            .replace(/\b(?:spotify|musique|chanson|morceau|titre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|mettre|en|sur|la|le|les|un|une|ce|cette|moi)\b/g, " ")
+            .replace(/^(?:(?:s il te plait|s il vous plait)\s+)?(?:(?:est ce que\s+)?tu peux\s+|pourrais tu\s+|peux tu\s+|je veux\s+|je voudrais\s+|j aimerais\s+|j aimerai\s+)?(?:me\s+)?(?:faire\s+)?(?:ecouter|entendre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|met|mettre)\s+/i, "")
+            .replace(/^(?:je veux|je voudrais|j aimerais|j aimerai)\s+(?:(?:une|la|le)\s+)?(?:chanson|morceau|titre)\s+(?:de\s+)?/i, "")
+            .replace(/^(?:cherche|recherche|trouve|trouver)\s+(?:(?:moi|une|la|le|un)\s+)?(?:(?:chanson|morceau|titre)\s+(?:de\s+)?)?/i, "")
+            .replace(/\b(?:spotify|sur spotify|s il te plait|s il vous plait)\b/g, " ")
             .replace(/\s+/g, " ")
             .trim();
 
@@ -5160,6 +5163,8 @@ const spotifyQueuedTrackIds = new Set();
 const spotifyQueuedTrackFingerprints = new Set();
 let spotifyRecommendationRequest = null;
 let spotifyLastRecommendationTrackId = null;
+let spotifyFallbackTracks = [];
+let spotifyFallbackLastTransitionTrackId = null;
 const spotifyRandomHistoryKey = "spotify_random_theme_history";
 
 const spotifyVolumeSlider = document.getElementById("spotifyVolumeSlider");
@@ -5436,7 +5441,10 @@ async function queueSpotifyRecommendations(trackOrId) {
             const requestTrackIds = new Set();
             const requestFingerprints = new Set();
 
-            for (const track of recommendations) {
+            let queuedCount = 0;
+
+            for (let index = 0; index < recommendations.length; index += 1) {
+                const track = recommendations[index];
                 const fingerprint = getSpotifyTrackFingerprint(track);
                 if (
                     !track?.id ||
@@ -5455,13 +5463,21 @@ async function queueSpotifyRecommendations(trackOrId) {
 
                 if (!queueResponse.ok) {
                     console.warn("Spotify n'a pas accepté l'ajout à la file :", queueResponse.status);
+                    if (queuedCount === 0) {
+                        spotifyFallbackTracks = recommendations.slice(index);
+                    }
                     break;
                 }
 
+                queuedCount += 1;
                 requestTrackIds.add(track.id);
                 requestFingerprints.add(fingerprint);
                 spotifyQueuedTrackIds.add(track.id);
                 spotifyQueuedTrackFingerprints.add(fingerprint);
+            }
+
+            if (queuedCount > 0) {
+                spotifyFallbackTracks = [];
             }
 
             const queueInfo = document.getElementById("gestureDjQueueInfo");
@@ -5532,6 +5548,7 @@ async function startSpotifyTrack(track) {
         spotifyQueuedTrackIds.clear();
         spotifyQueuedTrackFingerprints.clear();
         spotifyLastRecommendationTrackId = null;
+        spotifyFallbackTracks = [];
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
 
@@ -5545,6 +5562,38 @@ async function startSpotifyTrack(track) {
         return false;
     }
 }
+
+window.setInterval(async () => {
+    if (!spotifyPlayer || spotifyFallbackTracks.length === 0) {
+        return;
+    }
+
+    try {
+        spotifyCurrentState = await spotifyPlayer.getCurrentState() || spotifyCurrentState;
+    } catch {
+        return;
+    }
+
+    const state = spotifyCurrentState;
+    const currentTrack = state?.track_window?.current_track;
+    const nextTracks = state?.track_window?.next_tracks || [];
+
+    if (
+        !state ||
+        state.paused ||
+        !currentTrack?.id ||
+        nextTracks.length > 0 ||
+        spotifyFallbackTracks.length === 0 ||
+        state.duration - state.position > 3000 ||
+        spotifyFallbackLastTransitionTrackId === currentTrack.id
+    ) {
+        return;
+    }
+
+    const nextTrack = spotifyFallbackTracks.shift();
+    spotifyFallbackLastTransitionTrackId = currentTrack.id;
+    void startSpotifyTrack(nextTrack);
+}, 1000);
 
 async function searchSpotifyTracks(query, limit = 10) {
     const safeQuery = String(query || "").trim();
