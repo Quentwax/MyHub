@@ -3256,11 +3256,17 @@ async function executeJarvisAction(result) {
 
             if (command === "play") {
                 if (result.query) {
-                    const started = await playSpotifySearchResult(result.query);
+                    const playback = await playSpotifySearchResult(result.query);
 
-                    return started
+                    return playback.started
                         ? (result.reply || `Je lance ${result.query}. 🎵`)
-                        : "Je n'ai pas trouvé ce morceau sur Spotify. 🔎";
+                        : playback.reason === "no_results"
+                            ? "Je n'ai trouvé aucun résultat pour ce titre sur Spotify. Vérifie le nom ou l'artiste. 🔎"
+                            : playback.reason === "device_not_ready"
+                                ? "Le lecteur Spotify n'est pas prêt. Réessaie dans un instant ou reconnecte Spotify. 🎵"
+                                : playback.reason === "playback_rejected"
+                                    ? "Spotify a trouvé le titre, mais a refusé de le lire. Vérifie que ton compte Premium est actif et que MyHub est bien le lecteur actif. ⚠️"
+                                    : `La recherche Spotify a échoué${playback.status ? ` (HTTP ${playback.status})` : ""}. Reconnecte Spotify puis réessaie. ⚠️`;
                 }
 
                     await spotifyPlayer.resume();
@@ -3758,6 +3764,8 @@ function getLocalSpotifyAction(command) {
             .replace(/^(?:(?:s il te plait|s il vous plait)\s+)?(?:(?:est ce que\s+)?tu peux\s+|pourrais tu\s+|peux tu\s+|je veux\s+|je voudrais\s+|j aimerais\s+|j aimerai\s+)?(?:me\s+)?(?:faire\s+)?(?:ecouter|entendre|reprends|reprend|relance|resume|lecture|joue|jouer|lis|lire|play|lance|lancer|mets|met|mettre)\s+/i, "")
             .replace(/^(?:je veux|je voudrais|j aimerais|j aimerai)\s+(?:(?:une|la|le)\s+)?(?:chanson|morceau|titre)\s+(?:de\s+)?/i, "")
             .replace(/^(?:cherche|recherche|trouve|trouver)\s+(?:(?:moi|une|la|le|un)\s+)?(?:(?:chanson|morceau|titre)\s+(?:de\s+)?)?/i, "")
+            .replace(/^(?:(?:moi|me)\s+)?(?:(?:une|la|le|un)\s+)?(?:chanson|morceau|titre)\s+(?:de\s+)?/i, "")
+            .replace(/^(?:moi|me)\s+/i, "")
             .replace(/\b(?:spotify|sur spotify|s il te plait|s il vous plait)\b/g, " ")
             .replace(/\s+/g, " ")
             .trim();
@@ -5464,7 +5472,18 @@ async function queueSpotifyRecommendations(trackOrId) {
                 if (!queueResponse.ok) {
                     console.warn("Spotify n'a pas accepté l'ajout à la file :", queueResponse.status);
                     if (queuedCount === 0) {
-                        spotifyFallbackTracks = recommendations.slice(index);
+                        recommendations.slice(index).forEach(candidate => {
+                            const fingerprint = getSpotifyTrackFingerprint(candidate);
+                            const alreadyQueued = spotifyFallbackTracks.some(track =>
+                                track.id === candidate.id || getSpotifyTrackFingerprint(track) === fingerprint
+                            );
+
+                            if (!alreadyQueued) {
+                                spotifyFallbackTracks.push(candidate);
+                                spotifyQueuedTrackIds.add(candidate.id);
+                                spotifyQueuedTrackFingerprints.add(fingerprint);
+                            }
+                        });
                     }
                     break;
                 }
@@ -5474,10 +5493,6 @@ async function queueSpotifyRecommendations(trackOrId) {
                 requestFingerprints.add(fingerprint);
                 spotifyQueuedTrackIds.add(track.id);
                 spotifyQueuedTrackFingerprints.add(fingerprint);
-            }
-
-            if (queuedCount > 0) {
-                spotifyFallbackTracks = [];
             }
 
             const queueInfo = document.getElementById("gestureDjQueueInfo");
@@ -5525,7 +5540,7 @@ function scoreSpotifyTrack(track, query) {
     return score + (track.popularity || 0) / 100;
 }
 
-async function startSpotifyTrack(track) {
+async function startSpotifyTrack(track, { continuation = false } = {}) {
     if (!track?.uri || !spotifyAccessToken || !spotifyDeviceId) {
         return false;
     }
@@ -5545,10 +5560,13 @@ async function startSpotifyTrack(track) {
             return false;
         }
 
-        spotifyQueuedTrackIds.clear();
-        spotifyQueuedTrackFingerprints.clear();
+        if (!continuation) {
+            spotifyQueuedTrackIds.clear();
+            spotifyQueuedTrackFingerprints.clear();
+            spotifyFallbackTracks = [];
+        }
         spotifyLastRecommendationTrackId = null;
-        spotifyFallbackTracks = [];
+        spotifyFallbackLastTransitionTrackId = null;
         spotifyQueuedTrackIds.add(track.id);
         spotifyQueuedTrackFingerprints.add(getSpotifyTrackFingerprint(track));
 
@@ -5592,7 +5610,7 @@ window.setInterval(async () => {
 
     const nextTrack = spotifyFallbackTracks.shift();
     spotifyFallbackLastTransitionTrackId = currentTrack.id;
-    void startSpotifyTrack(nextTrack);
+    void startSpotifyTrack(nextTrack, { continuation: true });
 }, 1000);
 
 async function searchSpotifyTracks(query, limit = 10) {
@@ -5600,10 +5618,14 @@ async function searchSpotifyTracks(query, limit = 10) {
     if (!safeQuery || !spotifyAccessToken) return [];
 
     const response = await spotifyApiFetch(
-        `/search?type=track&limit=${limit}&q=${encodeURIComponent(safeQuery)}`
+        `/search?type=track&limit=${limit}&market=from_token&q=${encodeURIComponent(safeQuery)}`
     );
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+        const error = new Error(`Recherche Spotify refusée (HTTP ${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
 
     const data = await response.json();
     return data?.tracks?.items?.filter(track => track?.uri) || [];
@@ -5612,20 +5634,33 @@ async function searchSpotifyTracks(query, limit = 10) {
 async function playSpotifySearchResult(query) {
     const safeQuery = String(query || "").trim();
 
-    if (!safeQuery || !spotifyAccessToken || !spotifyDeviceId) {
-        return false;
+    if (!safeQuery) {
+        return { started: false, reason: "no_results" };
+    }
+
+    if (!spotifyAccessToken) {
+        return { started: false, reason: "search_error" };
+    }
+
+    if (!spotifyDeviceId) {
+        return { started: false, reason: "device_not_ready" };
     }
 
     try {
         const tracks = await searchSpotifyTracks(safeQuery, 20);
+        if (tracks.length === 0) {
+            return { started: false, reason: "no_results" };
+        }
+
         const track = tracks.sort((first, second) =>
             scoreSpotifyTrack(second, safeQuery) - scoreSpotifyTrack(first, safeQuery)
         )[0];
 
-        return startSpotifyTrack(track);
+        const started = await startSpotifyTrack(track);
+        return { started, reason: started ? null : "playback_rejected" };
     } catch (error) {
         console.warn("Impossible de lancer une recherche Spotify :", error);
-        return false;
+        return { started: false, reason: "search_error", status: error.status };
     }
 }
 
