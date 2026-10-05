@@ -7491,13 +7491,13 @@ let handLostFrames = 0;
 
     const POINTER_POSE_HOLD = 250;
 
-    const MUSIC_SWIPE_POSE_HOLD = 160;
+    const MUSIC_SWIPE_POSE_HOLD = 100;
 
-    const MUSIC_SWIPE_DISTANCE = 0.12;
+    const MUSIC_SWIPE_DISTANCE = 0.075;
 
-    const MUSIC_SWIPE_TIMEOUT = 1400;
+    const MUSIC_SWIPE_TIMEOUT = 1800;
 
-    const TRANSPORT_POSE_HOLD = 420;
+    const TRANSPORT_POSE_HOLD = 700;
 
 
     /* =====================================================
@@ -7512,14 +7512,14 @@ let handLostFrames = 0;
 
     const GESTURE_BOTTOM = 0.90;
 
-    function isFingerExtended(hand, tipIndex, jointIndex) {
+    function isFingerExtended(hand, tipIndex, jointIndex, extensionRatio = 1.12) {
         const wrist = hand[0];
         const tip = hand[tipIndex];
         const joint = hand[jointIndex];
         const tipDistance = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
         const jointDistance = Math.hypot(joint.x - wrist.x, joint.y - wrist.y);
 
-        return tipDistance > jointDistance * 1.12;
+        return tipDistance > jointDistance * extensionRatio;
     }
 
     function isIndexPointing(hand) {
@@ -7543,13 +7543,13 @@ let handLostFrames = 0;
         ) > Math.hypot(
             hand[3].x - hand[5].x,
             hand[3].y - hand[5].y
-        ) * 1.08;
+        ) * 1.18;
 
         return thumbOpen &&
-            isFingerExtended(hand, 8, 6) &&
-            isFingerExtended(hand, 12, 10) &&
-            isFingerExtended(hand, 16, 14) &&
-            isFingerExtended(hand, 20, 18);
+            isFingerExtended(hand, 8, 6, 1.22) &&
+            isFingerExtended(hand, 12, 10, 1.22) &&
+            isFingerExtended(hand, 16, 14, 1.22) &&
+            isFingerExtended(hand, 20, 18, 1.22);
     }
 
     function isThumbsUpGesture(hand) {
@@ -8136,7 +8136,7 @@ let handLostFrames = 0;
 
 
             gestureCameraStatus.textContent =
-                "Paume : pause · pouce levé : lecture · deux doigts : piste suivante/précédente";
+                "Paume tenue 0,7 s : pause · pouce levé : lecture · deux doigts : pistes";
 
 
             virtualCursor.style.display =
