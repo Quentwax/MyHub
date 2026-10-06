@@ -2296,6 +2296,9 @@ function getSectionFromName(pageName) {
         "Agenda":
             "agendaSection",
 
+        "Disney Quest":
+            "disneyQuestSection",
+
         "Paramètres":
             "settingsSection"
     };
@@ -5050,6 +5053,7 @@ navItems.forEach(item => {
 
 
             const sectionId =
+                item.dataset.section ||
                 getSectionFromName(
                     pageName
                 );
@@ -9969,6 +9973,463 @@ if (
     console.log(
         "🎨 Zone de dessin V3 chargée."
     );
+
+})();
+
+/* ==========================================
+   DISNEY QUEST - JEU DE PARCOURS
+========================================== */
+
+(() => {
+
+    const QUEST_STORAGE_NAME = "myhub_disney_quest_v1";
+    const QUEST_STORE_NAME = "state";
+
+    const questLevels = [
+        {
+            name: "Le parc ouvre ses portes",
+            icon: "🗺️",
+            missions: [
+                {
+                    title: "La place du château",
+                    description: "Observe les tours et trouve le signe de bienvenue.",
+                    action: "Explorer la place",
+                    needed: 3,
+                    reward: 20
+                },
+                {
+                    title: "La forêt secrète",
+                    description: "Suis les traces de la forêt pour découvrir le chemin.",
+                    action: "Suivre les traces",
+                    needed: 3,
+                    reward: 25
+                },
+                {
+                    title: "Le pont de la rivière",
+                    description: "Crosses le pont et vérifie les dortoirs des oiseaux.",
+                    action: "Crosser le pont",
+                    needed: 3,
+                    reward: 30
+                }
+            ]
+        },
+        {
+            name: "Les montagnes de l’aventure",
+            icon: "⛰️",
+            missions: [
+                {
+                    title: "La grande montagne",
+                    description: "Escalade les courbes pour repérer le point de vue.",
+                    action: "Escalader la montagne",
+                    needed: 3,
+                    reward: 35
+                },
+                {
+                    title: "La course des chevaux",
+                    description: "Recherche les chevaux qui courent autour de la piste.",
+                    action: "Suivre la course",
+                    needed: 3,
+                    reward: 40
+                },
+                {
+                    title: "Le tunnel des rêves",
+                    description: "Ouvre les portes du tunnel et trouve la lumière.",
+                    action: "Entrer dans le tunnel",
+                    needed: 3,
+                    reward: 45
+                }
+            ]
+        },
+        {
+            name: "Le royaume de la magie",
+            icon: "✨",
+            missions: [
+                {
+                    title: "La tour des étoiles",
+                    description: "Monte à la tour et observe les étoiles du ciel.",
+                    action: "Monter à la tour",
+                    needed: 3,
+                    reward: 50
+                },
+                {
+                    title: "Le royaume des fées",
+                    description: "Recherche le chemin qui mène aux ateliers des fées.",
+                    action: "Suivre le royaume",
+                    needed: 3,
+                    reward: 55
+                },
+                {
+                    title: "Le trésor final",
+                    description: "Trouve le trésor caché derrière la porte magique.",
+                    action: "Ouvrir la porte",
+                    needed: 3,
+                    reward: 60
+                }
+            ]
+        }
+    ];
+
+    const questElements = {
+        section: document.getElementById("disneyQuestSection"),
+        stars: document.getElementById("questStars"),
+        level: document.getElementById("questLevel"),
+        missions: document.getElementById("questMissions"),
+        progressFill: document.getElementById("questProgressFill"),
+        progressLabel: document.getElementById("questProgressLabel"),
+        missionArt: document.getElementById("questMissionArt"),
+        missionType: document.getElementById("questMissionType"),
+        missionTitle: document.getElementById("questMissionTitle"),
+        missionDescription: document.getElementById("questMissionDescription"),
+        actionButton: document.getElementById("questActionButton"),
+        actionHint: document.getElementById("questActionHint"),
+        missionList: document.getElementById("questMissionList"),
+        map: document.getElementById("questMap"),
+        mapIcon: document.getElementById("questMapIcon"),
+        saveStatus: document.getElementById("questSaveStatus"),
+        saveButton: document.getElementById("questSaveButton"),
+        restartButton: document.getElementById("questRestartButton"),
+        completeOverlay: document.getElementById("questCompleteOverlay"),
+        completeTitle: document.getElementById("questCompleteTitle"),
+        completeText: document.getElementById("questCompleteText"),
+        completeStars: document.getElementById("questCompleteStars"),
+        nextButton: document.getElementById("questNextButton")
+    };
+
+    const defaultQuestState = {
+        version: 1,
+        stars: 0,
+        level: 0,
+        completedMissions: [],
+        currentMission: 0,
+        missionProgress: 0
+    };
+
+    let questState = { ...defaultQuestState };
+    let questSaveTimer = null;
+    let questDatabase = null;
+    let questLoading = true;
+
+    function readQuestState(savedState) {
+        const source = savedState && typeof savedState === "object"
+            ? savedState
+            : questState;
+
+        if (!source || typeof source !== "object") {
+            return { ...defaultQuestState };
+        }
+
+        const completed = Array.isArray(source.completedMissions)
+            ? source.completedMissions.filter(Number.isInteger)
+            : [];
+
+        const level = Math.max(0, Math.min(questLevels.length - 1, Number(source.level) || 0));
+        const currentMission = Math.max(0, Math.min(questLevels[level].missions.length - 1, Number(source.currentMission) || 0));
+
+        return {
+            version: 1,
+            stars: Math.max(0, Number(source.stars) || 0),
+            level,
+            completedMissions: completed,
+            currentMission,
+            missionProgress: Math.max(0, Number(source.missionProgress) || 0)
+        };
+    }
+
+    function openQuestDatabase() {
+        return new Promise(resolve => {
+            if (!("indexedDB" in window)) {
+                resolve(null);
+                return;
+            }
+
+            const request = indexedDB.open("myhub_disney_quest", 1);
+            request.onupgradeneeded = () => {
+                const database = request.result;
+                if (!database.objectStoreNames.contains(QUEST_STORE_NAME)) {
+                    database.createObjectStore(QUEST_STORE_NAME, { keyPath: "id" });
+                }
+            };
+            request.onsuccess = () => {
+                questDatabase = request.result;
+                resolve(request.result);
+            };
+            request.onerror = () => resolve(null);
+        });
+    }
+
+    async function loadQuest() {
+        try {
+            await openQuestDatabase();
+            if (questDatabase) {
+                const transaction = questDatabase.transaction(QUEST_STORE_NAME, "readonly");
+                const request = transaction.objectStore(QUEST_STORE_NAME).get(QUEST_STORAGE_NAME);
+                request.onsuccess = () => {
+                    if (request.result && request.result.payload) {
+                        questState = readQuestState(request.result.payload);
+                    }
+                    questLoading = false;
+                    renderQuest();
+                };
+                request.onerror = () => {
+                    questState = { ...defaultQuestState };
+                    questLoading = false;
+                    renderQuest();
+                };
+                return;
+            }
+        } catch (error) {
+            console.warn("Impossible de charger la progression Disney Quest :", error);
+        }
+
+        try {
+            const saved = localStorage.getItem(QUEST_STORAGE_NAME);
+            if (saved) {
+                questState = readQuestState(JSON.parse(saved));
+            }
+        } catch (error) {
+            console.warn("Impossible de charger la sauvegarde locale Disney Quest :", error);
+        }
+
+        questLoading = false;
+        renderQuest();
+    }
+
+    function persistQuest(immediate = false) {
+        if (questLoading) {
+            return;
+        }
+
+        const payload = JSON.stringify(questState);
+        const save = async () => {
+            try {
+                if (questDatabase) {
+                    const transaction = questDatabase.transaction(QUEST_STORE_NAME, "readwrite");
+                    transaction.objectStore(QUEST_STORE_NAME).put({ id: QUEST_STORAGE_NAME, payload: questState });
+                    await new Promise((resolve, reject) => {
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } else {
+                    localStorage.setItem(QUEST_STORAGE_NAME, payload);
+                }
+                if (questElements.saveStatus) {
+                    questElements.saveStatus.textContent = "Sauvegardé sur cet appareil";
+                }
+            } catch (error) {
+                console.warn("Impossible d’enregistrer Disney Quest :", error);
+                if (questElements.saveStatus) {
+                    questElements.saveStatus.textContent = "Sauvegarde locale disponible";
+                }
+            }
+        };
+
+        if (immediate) {
+            save();
+            return;
+        }
+
+        clearTimeout(questSaveTimer);
+        questSaveTimer = setTimeout(save, 350);
+        if (questElements.saveStatus) {
+            questElements.saveStatus.textContent = "Enregistrement automatique…";
+        }
+    }
+
+    function getMissionIndex() {
+        return questState.level * questLevels[questState.level].missions.length + questState.currentMission;
+    }
+
+    function getMission() {
+        return questLevels[questState.level].missions[questState.currentMission];
+    }
+
+    function renderQuest() {
+        if (!questElements.section) {
+            return;
+        }
+
+        const level = questLevels[questState.level];
+        const mission = getMission();
+        const totalMissions = questLevels.reduce((sum, item) => sum + item.missions.length, 0);
+        const completedCount = questState.completedMissions.length;
+        const progress = totalMissions === 0 ? 0 : Math.round((completedCount / totalMissions) * 100);
+
+        questElements.stars.textContent = questState.stars;
+        questElements.level.textContent = questState.level + 1;
+        questElements.missions.textContent = `${completedCount} / ${totalMissions}`;
+        questElements.progressFill.style.width = `${progress}%`;
+        questElements.progressLabel.textContent = `${progress}%`;
+        questElements.mapIcon.textContent = level.icon;
+        questElements.saveStatus.textContent = questLoading ? "Vérification de la sauvegarde…" : "Sauvegardé sur cet appareil";
+
+        renderQuestCards();
+        renderQuestMap();
+        renderCurrentMission(mission);
+    }
+
+    function renderCurrentMission(mission) {
+        if (!mission || !questElements.missionTitle) {
+            return;
+        }
+
+        const progress = questState.missionProgress;
+        const needed = mission.needed;
+        const isComplete = progress >= needed;
+
+        questElements.missionArt.textContent = questLevels[questState.level].icon;
+        questElements.missionType.textContent = `Niveau ${questState.level + 1} · Mission ${questState.currentMission + 1}`;
+        questElements.missionTitle.textContent = mission.title;
+        questElements.missionDescription.textContent = mission.description;
+        questElements.actionHint.textContent = isComplete ? "Mission terminée" : `${progress} / ${needed} actions`;
+        questElements.actionButton.textContent = isComplete ? "Mission terminée ✓" : mission.action;
+        questElements.actionButton.disabled = isComplete;
+        questElements.actionButton.dataset.missionIndex = String(getMissionIndex());
+    }
+
+    function renderQuestCards() {
+        if (!questElements.missionList) {
+            return;
+        }
+
+        questElements.missionList.innerHTML = "";
+        questLevels.forEach((level, levelIndex) => {
+            level.missions.forEach((mission, missionIndex) => {
+                const missionId = levelIndex * level.missions.length + missionIndex;
+                const completed = questState.completedMissions.includes(missionId);
+                const current = levelIndex === questState.level && missionIndex === questState.currentMission;
+                const locked = levelIndex > questState.level || (levelIndex === questState.level && missionIndex > questState.currentMission);
+                const card = document.createElement("article");
+                card.className = `quest-card${completed ? " completed" : ""}${locked ? " locked" : ""}${current ? " current" : ""}`;
+                card.innerHTML = `
+                    <span class="quest-card-number">${String(missionIndex + 1).padStart(2, "0")}</span>
+                    <span class="quest-card-status">${completed ? "Fait" : current ? "Actuelle" : locked ? "Verrouillée" : "Prêt"}</span>
+                    <h3>${mission.title}</h3>
+                    <p>${mission.description}</p>
+                `;
+                questElements.missionList.appendChild(card);
+            });
+        });
+    }
+
+    function renderQuestMap() {
+        if (!questElements.map) {
+            return;
+        }
+
+        questElements.map.innerHTML = "";
+        questLevels.forEach((level, levelIndex) => {
+            const stop = document.createElement("div");
+            stop.className = "quest-map-stop";
+            stop.title = level.name;
+            stop.textContent = levelIndex < questState.level ? "✓" : levelIndex === questState.level ? "●" : "·";
+            if (levelIndex < questState.level) stop.classList.add("completed");
+            if (levelIndex === questState.level) stop.classList.add("current");
+            if (levelIndex > questState.level) stop.classList.add("locked");
+            questElements.map.appendChild(stop);
+        });
+    }
+
+    function finishMission() {
+        const missionIndex = getMissionIndex();
+        const mission = getMission();
+        if (questState.completedMissions.includes(missionIndex)) {
+            return;
+        }
+
+        questState.completedMissions.push(missionIndex);
+        questState.stars += mission.reward;
+        questState.missionProgress = 0;
+
+        const isLevelComplete = questState.currentMission === questLevels[questState.level].missions.length - 1;
+        if (isLevelComplete) {
+            questState.level += 1;
+            if (questState.level >= questLevels.length) {
+                questState.level = questLevels.length - 1;
+                showQuestComplete(true);
+                persistQuest(true);
+                renderQuest();
+                return;
+            }
+            questState.currentMission = 0;
+            showQuestComplete(false);
+        } else {
+            questState.currentMission += 1;
+        }
+
+        persistQuest();
+        renderQuest();
+    }
+
+    function performQuestAction() {
+        const mission = getMission();
+        if (!mission || questState.missionProgress >= mission.needed) {
+            return;
+        }
+
+        questState.missionProgress += 1;
+        questElements.actionHint.textContent = `${questState.missionProgress} / ${mission.needed} actions`;
+        questElements.actionButton.textContent = questState.missionProgress >= mission.needed
+            ? "Mission terminée ✓"
+            : mission.action;
+
+        if (questState.missionProgress >= mission.needed) {
+            questElements.actionButton.disabled = true;
+            window.setTimeout(finishMission, 450);
+        } else {
+            questElements.actionButton.textContent = `${mission.action} · ${mission.needed - questState.missionProgress} restant`;
+        }
+
+        persistQuest();
+    }
+
+    function showQuestComplete(finalLevel) {
+        if (!questElements.completeOverlay) {
+            return;
+        }
+
+        questElements.completeTitle.textContent = finalLevel
+            ? "Le Parc est enfin révélé !"
+            : "Niveau terminé !";
+        questElements.completeText.textContent = finalLevel
+            ? "Tu as terminé toute l’aventure. La magie est désormais dans ta mémoire."
+            : "Tu as remporté des étoiles et tu peux poursuivre l’expédition.";
+        questElements.completeStars.textContent = finalLevel ? "★ ★ ★" : "★ ★";
+        questElements.completeOverlay.hidden = false;
+        questElements.nextButton.textContent = finalLevel ? "Rejouer le jeu" : "Continuer l’aventure";
+        questElements.nextButton.dataset.finalLevel = String(finalLevel);
+    }
+
+    function hideQuestComplete() {
+        if (questElements.completeOverlay) {
+            questElements.completeOverlay.hidden = true;
+        }
+    }
+
+    function restartQuest() {
+        questState = { ...defaultQuestState };
+        hideQuestComplete();
+        persistQuest(true);
+        renderQuest();
+    }
+
+    questElements.actionButton?.addEventListener("click", performQuestAction);
+    questElements.saveButton?.addEventListener("click", () => persistQuest(true));
+    questElements.restartButton?.addEventListener("click", restartQuest);
+    questElements.nextButton?.addEventListener("click", () => {
+        if (questElements.nextButton.dataset.finalLevel === "true") {
+            restartQuest();
+            return;
+        }
+        hideQuestComplete();
+        renderQuest();
+    });
+    questElements.completeOverlay?.addEventListener("click", event => {
+        if (event.target === questElements.completeOverlay) {
+            hideQuestComplete();
+        }
+    });
+
+    loadQuest();
 
 })();
 

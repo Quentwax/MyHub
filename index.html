@@ -54,6 +54,11 @@
                 <span>Agenda</span>
             </button>
 
+            <button class="nav-item" data-section="disneyQuestSection">
+                <span>🏰</span>
+                <span>Disney Quest</span>
+            </button>
+
         </nav>
 
         <div class="sidebar-bottom">
@@ -558,6 +563,97 @@
         <span>🎢</span>
         <h2>MyDLP</h2>
         <p>La connexion avec ton projet arrivera ici.</p>
+    </div>
+</section>
+
+<section id="disneyQuestSection" class="page-section">
+    <div class="quest-hero">
+        <div class="quest-hero-copy">
+            <span class="quest-eyebrow">MYHUB / PARIS</span>
+            <h1>Disney Quest</h1>
+            <p>Parcours le parc, trouve les trésors et révèle les secrets de Disneyland Paris.</p>
+        </div>
+        <div class="quest-hero-badge" aria-hidden="true">🏰</div>
+    </div>
+
+    <div class="quest-stats" aria-label="Statistiques du jeu">
+        <div class="quest-stat">
+            <span>Étoiles</span>
+            <strong id="questStars">0</strong>
+        </div>
+        <div class="quest-stat">
+            <span>Level</span>
+            <strong id="questLevel">1</strong>
+        </div>
+        <div class="quest-stat">
+            <span>Palettes</span>
+            <strong id="questMissions">0 / 3</strong>
+        </div>
+        <div class="quest-stat quest-stat-progress">
+            <span>Avancement</span>
+            <div class="quest-progress-track"><span id="questProgressFill"></span></div>
+            <strong id="questProgressLabel">0%</strong>
+        </div>
+    </div>
+
+    <div class="quest-layout">
+        <section class="quest-board" aria-labelledby="questBoardTitle">
+            <div class="quest-board-header">
+                <div>
+                    <span class="quest-eyebrow">MISSION ACTUELLE</span>
+                    <h2 id="questBoardTitle">La grande aventure</h2>
+                </div>
+                <button id="questRestartButton" class="quest-secondary-button" type="button">Rejouer</button>
+            </div>
+
+            <div id="questMissionCard" class="quest-mission-card">
+                <div class="quest-mission-art" id="questMissionArt" aria-hidden="true">🗺️</div>
+                <div class="quest-mission-copy">
+                    <span id="questMissionType">ÉCHELLE</span>
+                    <h3 id="questMissionTitle">Chargement de la mission…</h3>
+                    <p id="questMissionDescription">Le parc ouvre soon.</p>
+                </div>
+                <div class="quest-mission-action">
+                    <button id="questActionButton" class="quest-primary-button" type="button">Commencer</button>
+                    <small id="questActionHint">Choisis une action</small>
+                </div>
+            </div>
+
+            <div class="quest-card-grid" id="questMissionList" aria-label="Missions du niveau"></div>
+        </section>
+
+        <aside class="quest-sidebar">
+            <section class="quest-panel quest-map-panel">
+                <div class="quest-panel-heading">
+                    <div>
+                        <span class="quest-eyebrow">CARTE DU PARC</span>
+                        <h2>Ton itinéraire</h2>
+                    </div>
+                    <span id="questMapIcon" aria-hidden="true">🗺️</span>
+                </div>
+                <div id="questMap" class="quest-map"></div>
+            </section>
+
+            <section class="quest-panel quest-save-panel">
+                <div class="quest-save-icon" aria-hidden="true">💾</div>
+                <div>
+                    <h2>Progression sauvegardée</h2>
+                    <p id="questSaveStatus">Vérification de la sauvegarde…</p>
+                </div>
+                <button id="questSaveButton" class="quest-save-button" type="button">Enregistrer</button>
+            </section>
+        </aside>
+    </div>
+
+    <div id="questCompleteOverlay" class="quest-overlay" hidden>
+        <div class="quest-complete-card" role="dialog" aria-modal="true" aria-labelledby="questCompleteTitle">
+            <div class="quest-confetti" aria-hidden="true">✦</div>
+            <span class="quest-eyebrow">Niveau atteint</span>
+            <h2 id="questCompleteTitle">Quelles magnifiques aventures !</h2>
+            <p id="questCompleteText">Ton expedition est en route.</p>
+            <div class="quest-complete-stars" id="questCompleteStars">★ ★ ★</div>
+            <button id="questNextButton" class="quest-primary-button" type="button">Continuer l’aventure</button>
+        </div>
     </div>
 </section>
 
