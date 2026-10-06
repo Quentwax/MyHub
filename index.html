@@ -59,6 +59,11 @@
                 <span>Disney Quest</span>
             </button>
 
+            <button class="nav-item" data-section="disneyAdventureSection">
+                <span>🧭</span>
+                <span>Aventure Disney</span>
+            </button>
+
         </nav>
 
         <div class="sidebar-bottom">
@@ -653,6 +658,69 @@
             <p id="questCompleteText">Ton expedition est en route.</p>
             <div class="quest-complete-stars" id="questCompleteStars">★ ★ ★</div>
             <button id="questNextButton" class="quest-primary-button" type="button">Continuer l’aventure</button>
+        </div>
+    </div>
+</section>
+
+<section id="disneyAdventureSection" class="page-section">
+    <div class="adventure-hero">
+        <div class="adventure-hero-copy">
+            <span class="quest-eyebrow">UNE AVENTURE DE PARCOURS</span>
+            <h1>Disney Adventure</h1>
+            <p>Explore les quatre mondes du parc, trouve les précieux objets et révèle le secret du royaume.</p>
+        </div>
+        <div class="adventure-hero-icon" aria-hidden="true">🧭</div>
+    </div>
+
+    <div class="adventure-stats">
+        <div class="adventure-stat"><span>Étapes</span><strong id="adventureSteps">0</strong></div>
+        <div class="adventure-stat"><span>Objets</span><strong id="adventureItems">0 / 6</strong></div>
+        <div class="adventure-stat"><span>Lieu</span><strong id="adventureLocation">Château</strong></div>
+        <div class="adventure-stat"><span>État</span><strong id="adventureStatus">Prêt</strong></div>
+    </div>
+
+    <div class="adventure-layout">
+        <section class="adventure-map-card">
+            <div class="adventure-card-heading">
+                <div><span class="quest-eyebrow">CARTE DE L’AVENTURE</span><h2>Choisis ton prochain lieu</h2></div>
+                <button id="adventureResetButton" class="quest-secondary-button" type="button">Nouvelle aventure</button>
+            </div>
+            <div id="adventureMap" class="adventure-map"></div>
+            <p class="adventure-map-help">Chaque lieu possède trois actions. Découvre les objets pour compléter le trésor.</p>
+        </section>
+
+        <section class="adventure-story-card">
+            <div class="adventure-story-topline">
+                <span id="adventureStoryIcon">🏰</span>
+                <div><span class="quest-eyebrow">LIEU ACTUEL</span><h2 id="adventureStoryTitle">Le Château de Disneyland</h2></div>
+            </div>
+            <p id="adventureStoryText" class="adventure-story-text">Le parc est prêt. Choisis un lieu sur la carte pour commencer l’aventure.</p>
+            <div id="adventureActions" class="adventure-actions"></div>
+            <div id="adventureEvent" class="adventure-event" hidden></div>
+        </section>
+
+        <aside class="adventure-inventory-card">
+            <div class="adventure-card-heading">
+                <div><span class="quest-eyebrow">INVENTAIRE</span><h2>Objets découverts</h2></div>
+                <span id="adventureInventoryCount" class="adventure-count">0</span>
+            </div>
+            <div id="adventureInventory" class="adventure-inventory"></div>
+            <div class="adventure-objective">
+                <span class="quest-eyebrow">OBJECTIF FINAL</span>
+                <h3>Récupère les six objets</h3>
+                <p>Chaque monde cache un trésor. Le dernier objet révèle le secret du parc.</p>
+                <div class="adventure-objective-track"><span id="adventureObjectiveFill"></span></div>
+            </div>
+        </aside>
+    </div>
+
+    <div id="adventureCompleteOverlay" class="quest-overlay" hidden>
+        <div class="adventure-complete-card" role="dialog" aria-modal="true" aria-labelledby="adventureCompleteTitle">
+            <span class="adventure-complete-icon" aria-hidden="true">✦</span>
+            <span class="quest-eyebrow">AVENTURE TERMINÉE</span>
+            <h2 id="adventureCompleteTitle">Le secret du parc est révélé !</h2>
+            <p>Tu as exploré tous les mondes et retrouvé les six objets. Disneyland Paris est définitivement en ta mémoire.</p>
+            <button id="adventurePlayAgainButton" class="quest-primary-button" type="button">Explorer à nouveau</button>
         </div>
     </div>
 </section>

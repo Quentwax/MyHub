@@ -10434,6 +10434,325 @@ if (
 })();
 
 /* ==========================================
+   DISNEY ADVENTURE - EXPLORATION ET OBJETS
+========================================== */
+
+(() => {
+
+    const ADVENTURE_STORAGE_KEY = "myhub_disney_adventure_v1";
+    const locations = [
+        {
+            id: "castle",
+            name: "Château",
+            icon: "🏰",
+            short: "Château",
+            story: "Le Château est le point de départ de ton expedition. La porte est ouverte, mais le chemin vers les quatre mondes reste caché.",
+            actions: [
+                { id: "castle-door", icon: "🔑", title: "Ouvrir la porte secrète", description: "Recherche la petite clé sous le balcon.", reward: 1, item: "Clé de château" },
+                { id: "castle-portrait", icon: "🖼️", title: "Étudier le portrait", description: "Un détail du portrait révèle une carte ancienne.", reward: 1 },
+                { id: "castle-tower", icon: "🗼", title: "Explorer la tour", description: "Tu retrouves une petite boîte de chansons.", reward: 1 }
+            ]
+        },
+        {
+            id: "forest",
+            name: "Forêt secrète",
+            icon: "🌲",
+            short: "Forêt",
+            story: "La forêt résonne de centaines de pas. Une fée quitte les branches et te propose une piste dangereuse mais magnifique.",
+            actions: [
+                { id: "forest-path", icon: "🪵️", title: "Suivre la piste", description: "Les empreintes mènent vers une rivière secrète.", reward: 1, item: "Poudre de lune" },
+                { id: "forest-firefly", icon: "✨", title: "Suivre les lucioles", description: "Elles indicquent la position d’un objet perdu.", reward: 1, item: "Lune de forêt" },
+                { id: "forest-tree", icon: "🌳", title: "Explorer l’ancien arbre", description: "Un coffre contient une étiquette de voyage.", reward: 1 }
+            ]
+        },
+        {
+            id: "mountain",
+            name: "Montagne",
+            icon: "⛰️",
+            short: "Montagne",
+            story: "La montagne est pleine de vent et de bruit. Chaque sommetCache une partie du trésor du parc.",
+            actions: [
+                { id: "mountain-rail", icon: "🚞", title: "Prendre le téléphérique", description: "Le véhicule te mène vers une vue extraordinaire.", reward: 1, item: "Vue du parc" },
+                { id: "mountain-snow", icon: "❄️", title: "Explorer la neige", description: "Tu decouvres une pierre bleue dans la neige.", reward: 1, item: "Pierre bleue" },
+                { id: "mountain-sign", icon: "🧭", title: "Lire le signe", description: "Le signe confirme où se trouve le dernier trésor.", reward: 1 }
+            ]
+        },
+        {
+            id: "ocean",
+            name: "Océan",
+            icon: "🌊",
+            short: "Océan",
+            story: "Les eaux de l’océan cachent un bateau, une lumière et le dernier secret du parc.",
+            actions: [
+                { id: "ocean-boat", icon: "⛵", title: "Monter sur le bateau", description: "Le bateau porte un coffre avec une illustration.", reward: 1, item: "Coque de bateau" },
+                { id: "ocean-lighthouse", icon: "🗼", title: "Grimper à la lumière", description: "La lumière révèle une petite clé d’or.", reward: 1 },
+                { id: "ocean-shell", icon: "🐚", title: "Trouver la coquille", description: "La coquille contient le dernier message du parc.", reward: 1, item: "Coquille magique" }
+            ]
+        }
+    ];
+
+    const adventureElements = {
+        section: document.getElementById("disneyAdventureSection"),
+        steps: document.getElementById("adventureSteps"),
+        items: document.getElementById("adventureItems"),
+        location: document.getElementById("adventureLocation"),
+        status: document.getElementById("adventureStatus"),
+        map: document.getElementById("adventureMap"),
+        storyIcon: document.getElementById("adventureStoryIcon"),
+        storyTitle: document.getElementById("adventureStoryTitle"),
+        storyText: document.getElementById("adventureStoryText"),
+        actions: document.getElementById("adventureActions"),
+        event: document.getElementById("adventureEvent"),
+        inventory: document.getElementById("adventureInventory"),
+        inventoryCount: document.getElementById("adventureInventoryCount"),
+        objectiveFill: document.getElementById("adventureObjectiveFill"),
+        resetButton: document.getElementById("adventureResetButton"),
+        completeOverlay: document.getElementById("adventureCompleteOverlay"),
+        playAgainButton: document.getElementById("adventurePlayAgainButton")
+    };
+
+    const defaultAdventureState = {
+        version: 1,
+        currentLocation: "castle",
+        visitedLocations: ["castle"],
+        collectedItems: [],
+        steps: 0,
+        completed: false
+    };
+
+    let adventureState = { ...defaultAdventureState };
+    let adventureDatabase = null;
+    let adventureSaveTimer = null;
+
+    function normalizeAdventureState(savedState) {
+        const source = savedState && typeof savedState === "object" ? savedState : adventureState;
+        const current = locations.some(location => location.id === source.currentLocation)
+            ? source.currentLocation
+            : "castle";
+        const visited = Array.isArray(source.visitedLocations)
+            ? source.visitedLocations.filter(id => locations.some(location => location.id === id))
+            : ["castle"];
+        const collected = Array.isArray(source.collectedItems)
+            ? source.collectedItems.filter(item => typeof item === "string")
+            : [];
+
+        return {
+            version: 1,
+            currentLocation: current,
+            visitedLocations: Array.from(new Set(["castle", ...visited])),
+            collectedItems: Array.from(new Set(collected)),
+            steps: Math.max(0, Number(source.steps) || 0),
+            completed: Boolean(source.completed)
+        };
+    }
+
+    function openAdventureDatabase() {
+        return new Promise(resolve => {
+            if (!("indexedDB" in window)) {
+                resolve(null);
+                return;
+            }
+
+            const request = indexedDB.open("myhub_disney_adventure", 1);
+            request.onupgradeneeded = () => {
+                const database = request.result;
+                if (!database.objectStoreNames.contains("state")) {
+                    database.createObjectStore("state", { keyPath: "id" });
+                }
+            };
+            request.onsuccess = () => {
+                adventureDatabase = request.result;
+                resolve(request.result);
+            };
+            request.onerror = () => resolve(null);
+        });
+    }
+
+    async function loadAdventure() {
+        try {
+            await openAdventureDatabase();
+            if (adventureDatabase) {
+                const transaction = adventureDatabase.transaction("state", "readonly");
+                const request = transaction.objectStore("state").get(ADVENTURE_STORAGE_KEY);
+                request.onsuccess = () => {
+                    if (request.result && request.result.payload) {
+                        adventureState = normalizeAdventureState(request.result.payload);
+                    }
+                    renderAdventure();
+                };
+                request.onerror = () => {
+                    adventureState = { ...defaultAdventureState };
+                    renderAdventure();
+                };
+                return;
+            }
+        } catch (error) {
+            console.warn("Impossible de charger l’aventure Disney :", error);
+        }
+
+        try {
+            const saved = localStorage.getItem(ADVENTURE_STORAGE_KEY);
+            if (saved) {
+                adventureState = normalizeAdventureState(JSON.parse(saved));
+            }
+        } catch (error) {
+            console.warn("Impossible de charger la sauvegarde locale :", error);
+        }
+
+        renderAdventure();
+    }
+
+    function persistAdventure(immediate = false) {
+        const save = async () => {
+            try {
+                if (adventureDatabase) {
+                    const transaction = adventureDatabase.transaction("state", "readwrite");
+                    transaction.objectStore("state").put({ id: ADVENTURE_STORAGE_KEY, payload: adventureState });
+                    await new Promise((resolve, reject) => {
+                        transaction.oncomplete = resolve;
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } else {
+                    localStorage.setItem(ADVENTURE_STORAGE_KEY, JSON.stringify(adventureState));
+                }
+            } catch (error) {
+                console.warn("Impossible d’enregistrer l’aventure Disney :", error);
+            }
+        };
+
+        if (immediate) {
+            save();
+            return;
+        }
+
+        window.clearTimeout(adventureSaveTimer);
+        adventureSaveTimer = window.setTimeout(save, 350);
+    }
+
+    function getCurrentLocation() {
+        return locations.find(location => location.id === adventureState.currentLocation) || locations[0];
+    }
+
+    function renderAdventure() {
+        if (!adventureElements.section) return;
+
+        const location = getCurrentLocation();
+        const itemCount = adventureState.collectedItems.length;
+        const totalItems = 6;
+        const progress = Math.round((itemCount / totalItems) * 100);
+
+        adventureElements.steps.textContent = adventureState.steps;
+        adventureElements.items.textContent = `${itemCount} / ${totalItems}`;
+        adventureElements.location.textContent = location.short;
+        adventureElements.status.textContent = adventureState.completed ? "Terminé" : "En cours";
+        adventureElements.storyIcon.textContent = location.icon;
+        adventureElements.storyTitle.textContent = location.name;
+        adventureElements.storyText.textContent = location.story;
+        adventureElements.inventoryCount.textContent = itemCount;
+        adventureElements.objectiveFill.style.width = `${progress}%`;
+
+        renderAdventureMap();
+        renderAdventureActions(location);
+        renderAdventureInventory();
+
+        if (adventureState.completed) {
+            adventureElements.completeOverlay.hidden = false;
+        }
+    }
+
+    function renderAdventureMap() {
+        adventureElements.map.innerHTML = "";
+        locations.forEach(location => {
+            const visited = adventureState.visitedLocations.includes(location.id);
+            const current = adventureState.currentLocation === location.id;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `adventure-location${current ? " current" : ""}${visited ? " visited" : ""}`;
+            button.innerHTML = `<span class="adventure-location-icon">${location.icon}</span><strong>${location.name}</strong><small>${current ? "Lieu actuel" : visited ? "Exploré" : "À explorer"}</small>`;
+            button.addEventListener("click", () => {
+                adventureState.currentLocation = location.id;
+                adventureState.visitedLocations = Array.from(new Set([...adventureState.visitedLocations, location.id]));
+                adventureState.steps += 1;
+                renderAdventure();
+                persistAdventure();
+            });
+            adventureElements.map.appendChild(button);
+        });
+    }
+
+    function renderAdventureActions(location) {
+        adventureElements.actions.innerHTML = "";
+        location.actions.forEach(action => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "adventure-action";
+            button.innerHTML = `
+                <span class="adventure-action-icon">${action.icon}</span>
+                <span><strong>${action.title}</strong><small>${action.description}</small></span>
+                <span class="adventure-action-reward">+${action.reward} pts</span>
+            `;
+            button.addEventListener("click", () => performAdventureAction(action));
+            adventureElements.actions.appendChild(button);
+        });
+    }
+
+    function performAdventureAction(action) {
+        const location = getCurrentLocation();
+        if (!location.actions.some(candidate => candidate.id === action.id)) return;
+
+        adventureState.steps += 1;
+        if (action.item && !adventureState.collectedItems.includes(action.item)) {
+            adventureState.collectedItems.push(action.item);
+        }
+
+        adventureElements.event.hidden = false;
+        adventureElements.event.textContent = `Objet découvert : ${action.item}. ${action.description}`;
+        renderAdventure();
+        persistAdventure();
+
+        if (adventureState.collectedItems.length === 6) {
+            adventureState.completed = true;
+            adventureElements.completeOverlay.hidden = false;
+            persistAdventure(true);
+        }
+    }
+
+    function renderAdventureInventory() {
+        adventureElements.inventory.innerHTML = "";
+        if (adventureState.collectedItems.length === 0) {
+            adventureElements.inventory.innerHTML = '<div class="adventure-empty">Ton inventaire est vide.<br>Explore un lieu pour commencer.</div>';
+            return;
+        }
+
+        adventureState.collectedItems.forEach((item, index) => {
+            const object = document.createElement("div");
+            object.className = "adventure-item";
+            object.innerHTML = `<span>${["🔑", "🗺️", "🎵", "✨", "🌙", "🚞", "❄️", "🧭", "⛵", "🗼", "🐚"][index % 11]}</span><strong>${item}</strong>`;
+            adventureElements.inventory.appendChild(object);
+        });
+    }
+
+    function resetAdventure() {
+        adventureState = { ...defaultAdventureState };
+        adventureElements.completeOverlay.hidden = true;
+        adventureElements.event.hidden = true;
+        renderAdventure();
+        persistAdventure(true);
+    }
+
+    adventureElements.resetButton?.addEventListener("click", resetAdventure);
+    adventureElements.playAgainButton?.addEventListener("click", resetAdventure);
+    adventureElements.completeOverlay?.addEventListener("click", event => {
+        if (event.target === adventureElements.completeOverlay) {
+            adventureElements.completeOverlay.hidden = true;
+        }
+    });
+
+    loadAdventure();
+
+})();
+
+/* ==========================================
    MYHUB - CONTRÔLE DU VOLUME PAR LA MAIN
 ========================================== */
 
