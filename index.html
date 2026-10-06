@@ -7,6 +7,7 @@
     <title>MyHub</title>
 
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="disney-game.css">
 </head>
 
 <body>
@@ -54,14 +55,9 @@
                 <span>Agenda</span>
             </button>
 
-            <button class="nav-item" data-section="disneyQuestSection">
+            <button class="nav-item" data-section="disney2DSection">
                 <span>🏰</span>
-                <span>Disney Quest</span>
-            </button>
-
-            <button class="nav-item" data-section="disneyAdventureSection">
-                <span>🧭</span>
-                <span>Aventure Disney</span>
+                <span>Disney Quest 2D</span>
             </button>
 
         </nav>
@@ -571,156 +567,82 @@
     </div>
 </section>
 
-<section id="disneyQuestSection" class="page-section">
-    <div class="quest-hero">
-        <div class="quest-hero-copy">
-            <span class="quest-eyebrow">MYHUB / PARIS</span>
-            <h1>Disney Quest</h1>
-            <p>Parcours le parc, trouve les trésors et révèle les secrets de Disneyland Paris.</p>
-        </div>
-        <div class="quest-hero-badge" aria-hidden="true">🏰</div>
+<section id="disney2DSection" class="page-section game-page">
+    <div class="page-title">
+        <h1>Disney Quest 2D</h1>
+        <p>Explore le parc, trouve les six trésors et révèle le secret du royaume.</p>
     </div>
 
-    <div class="quest-stats" aria-label="Statistiques du jeu">
-        <div class="quest-stat">
-            <span>Étoiles</span>
-            <strong id="questStars">0</strong>
-        </div>
-        <div class="quest-stat">
-            <span>Level</span>
-            <strong id="questLevel">1</strong>
-        </div>
-        <div class="quest-stat">
-            <span>Palettes</span>
-            <strong id="questMissions">0 / 3</strong>
-        </div>
-        <div class="quest-stat quest-stat-progress">
-            <span>Avancement</span>
-            <div class="quest-progress-track"><span id="questProgressFill"></span></div>
-            <strong id="questProgressLabel">0%</strong>
-        </div>
-    </div>
-
-    <div class="quest-layout">
-        <section class="quest-board" aria-labelledby="questBoardTitle">
-            <div class="quest-board-header">
-                <div>
-                    <span class="quest-eyebrow">MISSION ACTUELLE</span>
-                    <h2 id="questBoardTitle">La grande aventure</h2>
+    <div class="game-shell">
+        <div class="game-stage-card">
+            <div class="game-stage-topbar">
+                <div class="game-stage-title">
+                    <span aria-hidden="true">🏰</span>
+                    <strong id="gameStageTitle">Le Parc des Rêves</strong>
                 </div>
-                <button id="questRestartButton" class="quest-secondary-button" type="button">Rejouer</button>
+                <div class="game-controls-hint">WASD / flèches · E / Espace : interagir</div>
             </div>
 
-            <div id="questMissionCard" class="quest-mission-card">
-                <div class="quest-mission-art" id="questMissionArt" aria-hidden="true">🗺️</div>
-                <div class="quest-mission-copy">
-                    <span id="questMissionType">ÉCHELLE</span>
-                    <h3 id="questMissionTitle">Chargement de la mission…</h3>
-                    <p id="questMissionDescription">Le parc ouvre soon.</p>
-                </div>
-                <div class="quest-mission-action">
-                    <button id="questActionButton" class="quest-primary-button" type="button">Commencer</button>
-                    <small id="questActionHint">Choisis une action</small>
-                </div>
+            <div class="game-canvas-wrap">
+                <canvas id="disneyGameCanvas" width="960" height="540" aria-label="Carte 2D du parc Disneyland"></canvas>
+                <div id="gameMessage" class="game-message hidden" role="status">Le parc est prêt.</div>
             </div>
 
-            <div class="quest-card-grid" id="questMissionList" aria-label="Missions du niveau"></div>
-        </section>
-
-        <aside class="quest-sidebar">
-            <section class="quest-panel quest-map-panel">
-                <div class="quest-panel-heading">
-                    <div>
-                        <span class="quest-eyebrow">CARTE DU PARC</span>
-                        <h2>Ton itinéraire</h2>
-                    </div>
-                    <span id="questMapIcon" aria-hidden="true">🗺️</span>
-                </div>
-                <div id="questMap" class="quest-map"></div>
-            </section>
-
-            <section class="quest-panel quest-save-panel">
-                <div class="quest-save-icon" aria-hidden="true">💾</div>
-                <div>
-                    <h2>Progression sauvegardée</h2>
-                    <p id="questSaveStatus">Vérification de la sauvegarde…</p>
-                </div>
-                <button id="questSaveButton" class="quest-save-button" type="button">Enregistrer</button>
-            </section>
-        </aside>
-    </div>
-
-    <div id="questCompleteOverlay" class="quest-overlay" hidden>
-        <div class="quest-complete-card" role="dialog" aria-modal="true" aria-labelledby="questCompleteTitle">
-            <div class="quest-confetti" aria-hidden="true">✦</div>
-            <span class="quest-eyebrow">Niveau atteint</span>
-            <h2 id="questCompleteTitle">Quelles magnifiques aventures !</h2>
-            <p id="questCompleteText">Ton expedition est en route.</p>
-            <div class="quest-complete-stars" id="questCompleteStars">★ ★ ★</div>
-            <button id="questNextButton" class="quest-primary-button" type="button">Continuer l’aventure</button>
+            <div class="game-mobile-controls" aria-label="Commandes tactiles">
+                <button data-direction="up" aria-label="Mover vers le haut">↑</button>
+                <button data-direction="left" aria-label="Mover à gauche">←</button>
+                <button data-direction="down" aria-label="Mover vers le bas">↓</button>
+                <button data-direction="right" aria-label="Mover à droite">→</button>
+            </div>
         </div>
-    </div>
-</section>
 
-<section id="disneyAdventureSection" class="page-section">
-    <div class="adventure-hero">
-        <div class="adventure-hero-copy">
-            <span class="quest-eyebrow">UNE AVENTURE DE PARCOURS</span>
-            <h1>Disney Adventure</h1>
-            <p>Explore les quatre mondes du parc, trouve les précieux objets et révèle le secret du royaume.</p>
-        </div>
-        <div class="adventure-hero-icon" aria-hidden="true">🧭</div>
-    </div>
-
-    <div class="adventure-stats">
-        <div class="adventure-stat"><span>Étapes</span><strong id="adventureSteps">0</strong></div>
-        <div class="adventure-stat"><span>Objets</span><strong id="adventureItems">0 / 6</strong></div>
-        <div class="adventure-stat"><span>Lieu</span><strong id="adventureLocation">Château</strong></div>
-        <div class="adventure-stat"><span>État</span><strong id="adventureStatus">Prêt</strong></div>
-    </div>
-
-    <div class="adventure-layout">
-        <section class="adventure-map-card">
-            <div class="adventure-card-heading">
-                <div><span class="quest-eyebrow">CARTE DE L’AVENTURE</span><h2>Choisis ton prochain lieu</h2></div>
-                <button id="adventureResetButton" class="quest-secondary-button" type="button">Nouvelle aventure</button>
+        <aside class="game-panel">
+            <div class="game-panel-heading">
+                <h2>Expédition</h2>
+                <span>Jeu local</span>
             </div>
-            <div id="adventureMap" class="adventure-map"></div>
-            <p class="adventure-map-help">Chaque lieu possède trois actions. Découvre les objets pour compléter le trésor.</p>
-        </section>
 
-        <section class="adventure-story-card">
-            <div class="adventure-story-topline">
-                <span id="adventureStoryIcon">🏰</span>
-                <div><span class="quest-eyebrow">LIEU ACTUEL</span><h2 id="adventureStoryTitle">Le Château de Disneyland</h2></div>
+            <div class="game-hud">
+                <div class="game-hud-row"><span>Avancement</span><strong id="gameProgressLabel">0%</strong></div>
+                <div class="game-hud-row"><span>Score</span><strong id="gameScore">0 pts</strong></div>
+                <div class="game-hud-row"><span>État</span><strong>En exploration</strong></div>
             </div>
-            <p id="adventureStoryText" class="adventure-story-text">Le parc est prêt. Choisis un lieu sur la carte pour commencer l’aventure.</p>
-            <div id="adventureActions" class="adventure-actions"></div>
-            <div id="adventureEvent" class="adventure-event" hidden></div>
-        </section>
 
-        <aside class="adventure-inventory-card">
-            <div class="adventure-card-heading">
-                <div><span class="quest-eyebrow">INVENTAIRE</span><h2>Objets découverts</h2></div>
-                <span id="adventureInventoryCount" class="adventure-count">0</span>
+            <div class="game-objective">
+                <span class="quest-eyebrow">OBJECTIF</span>
+                <h3 id="gameObjectiveText">Trouve clé du château</h3>
+                <p id="gameObjectiveDetail">6 objets restent dans le parc.</p>
+                <div class="game-progress"><span id="gameProgressFill"></span></div>
             </div>
-            <div id="adventureInventory" class="adventure-inventory"></div>
-            <div class="adventure-objective">
-                <span class="quest-eyebrow">OBJECTIF FINAL</span>
-                <h3>Récupère les six objets</h3>
-                <p>Chaque monde cache un trésor. Le dernier objet révèle le secret du parc.</p>
-                <div class="adventure-objective-track"><span id="adventureObjectiveFill"></span></div>
+
+            <div>
+                <div class="game-panel-heading"><h2>Objets</h2><span>Inventaire</span></div>
+                <div id="gameItemsList" class="game-items-list"></div>
+            </div>
+
+            <div>
+                <div class="game-panel-heading"><h2>Interactions</h2><span>À proximité</span></div>
+                <div class="game-actions">
+                    <button id="gameInteract" class="game-action" type="button">Interagir</button>
+                </div>
+            </div>
+
+            <div class="game-save-row">
+                <small id="gameSaveStatus">Sauvegarde prête</small>
+                <button id="gameSaveButton" class="game-save-button" type="button">Enregistrer</button>
+                <button id="gameResetButton" class="game-save-button" type="button">Réinitialiser</button>
             </div>
         </aside>
     </div>
 
-    <div id="adventureCompleteOverlay" class="quest-overlay" hidden>
-        <div class="adventure-complete-card" role="dialog" aria-modal="true" aria-labelledby="adventureCompleteTitle">
-            <span class="adventure-complete-icon" aria-hidden="true">✦</span>
+    <div id="gameCompleteOverlay" class="game-overlay" hidden>
+        <div class="game-complete-card" role="dialog" aria-modal="true" aria-labelledby="gameCompleteTitle">
+            <div class="game-complete-flag" aria-hidden="true">✦</div>
             <span class="quest-eyebrow">AVENTURE TERMINÉE</span>
-            <h2 id="adventureCompleteTitle">Le secret du parc est révélé !</h2>
-            <p>Tu as exploré tous les mondes et retrouvé les six objets. Disneyland Paris est définitivement en ta mémoire.</p>
-            <button id="adventurePlayAgainButton" class="quest-primary-button" type="button">Explorer à nouveau</button>
+            <h2 id="gameCompleteTitle">Le secret du parc est révélé !</h2>
+            <p>Tu as découvert tous les trésors et restored la magie de Disneyland Paris.</p>
+            <span id="gameResult" class="game-result">0 points</span>
+            <button id="gamePlayAgain" class="game-primary-button" type="button">Explorer à nouveau</button>
         </div>
     </div>
 </section>
@@ -1128,6 +1050,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
+<script src="disney-game.js"></script>
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
 </body>
