@@ -57,7 +57,7 @@
 
             <button class="nav-item" data-section="disney2DSection">
                 <span>🏰</span>
-                <span>Disney Quest 2D</span>
+                <span>Parade Rush</span>
             </button>
 
         </nav>
@@ -326,7 +326,7 @@
                     </a>
 
                     <a href="https://github.com/quentwax" class="shortcut">
-                        <span>💻</span>
+                        <span>⚙️</span>
                         <p>GitHub</p>
                     </a>
 
@@ -569,80 +569,80 @@
 
 <section id="disney2DSection" class="page-section game-page">
     <div class="page-title">
-        <h1>Disney Quest 2D</h1>
-        <p>Explore le parc, trouve les six trésors et révèle le secret du royaume.</p>
+        <h1>Parade Rush</h1>
+        <p>Collectionne les personnages, attrape les tickets et échappe aux gardiens toujours plus vite.</p>
     </div>
 
-    <div class="game-shell">
+    <div class="arcade-shell">
         <div class="game-stage-card">
             <div class="game-stage-topbar">
                 <div class="game-stage-title">
-                    <span aria-hidden="true">🏰</span>
-                    <strong id="gameStageTitle">Le Parc des Rêves</strong>
+                    <span aria-hidden="true">🎟</span>
+                    <strong>La parade des rêves · Disneyland Paris</strong>
                 </div>
-                <div class="game-controls-hint">WASD / flèches · E / Espace : interagir</div>
+                <div class="arcade-toolbar">
+                    <button id="arcadeSound" class="arcade-icon-button" type="button" aria-label="Son" aria-pressed="true" title="Activer ou couper le son"><span id="arcadeSoundIcon" aria-hidden="true">♪</span><span id="arcadeSoundLabel">Son</span></button>
+                    <button id="arcadePause" class="arcade-icon-button" type="button" aria-label="Mettre en pause">Pause</button>
+                </div>
             </div>
 
             <div class="game-canvas-wrap">
-                <canvas id="disneyGameCanvas" width="960" height="540" aria-label="Carte 2D du parc Disneyland"></canvas>
-                <div id="gameMessage" class="game-message hidden" role="status">Le parc est prêt.</div>
+                <canvas id="disneyGameCanvas" width="960" height="540" aria-label="Jeu d’arcade 2D Parade Rush à Disneyland Paris"></canvas>
+                <div id="arcadeMessage" class="arcade-toast" role="status" aria-live="polite"></div>
             </div>
 
-            <div class="game-mobile-controls" aria-label="Commandes tactiles">
-                <button data-direction="up" aria-label="Mover vers le haut">↑</button>
-                <button data-direction="left" aria-label="Mover à gauche">←</button>
-                <button data-direction="down" aria-label="Mover vers le bas">↓</button>
-                <button data-direction="right" aria-label="Mover à droite">→</button>
+            <div class="arcade-bottom-bar">
+                <div class="arcade-controls-copy"><strong>Déplacement</strong><span>WASD / flèches</span><strong>Dash</strong><span>Maj / bouton</span><strong>Pause</strong><span>P / Échap</span></div>
+                <div class="arcade-mobile-controls" aria-label="Commandes tactiles">
+                    <button data-direction="up" aria-label="Haut">↑</button>
+                    <button data-direction="left" aria-label="Gauche">←</button>
+                    <button data-direction="down" aria-label="Bas">↓</button>
+                    <button data-direction="right" aria-label="Droite">→</button>
+                    <button id="arcadeDash" class="arcade-dash" type="button" aria-label="Dash disponible">DASH</button>
+                </div>
             </div>
         </div>
 
-        <aside class="game-panel">
-            <div class="game-panel-heading">
-                <h2>Expédition</h2>
-                <span>Jeu local</span>
+        <aside class="arcade-panel">
+            <div class="arcade-scoreboard">
+                <div class="arcade-score-main"><span>TON SCORE</span><strong id="arcadeScore">00000</strong></div>
+                <div class="arcade-score-best"><span>RECORD</span><strong id="arcadeBest">00000</strong></div>
             </div>
 
-            <div class="game-hud">
-                <div class="game-hud-row"><span>Avancement</span><strong id="gameProgressLabel">0%</strong></div>
-                <div class="game-hud-row"><span>Score</span><strong id="gameScore">0 pts</strong></div>
-                <div class="game-hud-row"><span>État</span><strong>En exploration</strong></div>
+            <div class="arcade-round-info">
+                <div><span>MANCHE</span><strong id="arcadeRound">1</strong></div>
+                <div><span>TEMPS</span><strong id="arcadeTime">45s</strong></div>
+                <div><span>VIES</span><strong id="arcadeLives" class="arcade-lives">♥♥♥</strong></div>
             </div>
 
-            <div class="game-objective">
-                <span class="quest-eyebrow">OBJECTIF</span>
-                <h3 id="gameObjectiveText">Trouve clé du château</h3>
-                <p id="gameObjectiveDetail">6 objets restent dans le parc.</p>
-                <div class="game-progress"><span id="gameProgressFill"></span></div>
-            </div>
+            <section class="arcade-mission">
+                <div class="arcade-mission-heading"><span>OBJECTIF DE MANCHE</span><strong id="arcadeTickets">0 / 8</strong></div>
+                <div class="arcade-ticket-track"><span id="arcadeTicketTrackFill"></span></div>
+                <p>Ramasse 8 tickets sans te faire attraper. Chaque manche rend les gardiens plus rapides.</p>
+                <div class="arcade-combo-row"><span>Combo actuel</span><strong id="arcadeCombo">—</strong></div>
+            </section>
 
-            <div>
-                <div class="game-panel-heading"><h2>Objets</h2><span>Inventaire</span></div>
-                <div id="gameItemsList" class="game-items-list"></div>
-            </div>
+            <section class="arcade-collection">
+                <div class="arcade-collection-heading"><span>COLLECTION</span><strong id="arcadeCollectionCount">0 / 8</strong></div>
+                <div id="arcadeCollection" class="arcade-character-grid"></div>
+            </section>
 
-            <div>
-                <div class="game-panel-heading"><h2>Interactions</h2><span>À proximité</span></div>
-                <div class="game-actions">
-                    <button id="gameInteract" class="game-action" type="button">Interagir</button>
-                </div>
-            </div>
+            <div class="arcade-tip"><span aria-hidden="true">✦</span><p>Le dash traverse les situations serrées, mais il recharge. Chaque manche réussie révèle un personnage.</p></div>
 
-            <div class="game-save-row">
-                <small id="gameSaveStatus">Sauvegarde prête</small>
-                <button id="gameSaveButton" class="game-save-button" type="button">Enregistrer</button>
-                <button id="gameResetButton" class="game-save-button" type="button">Réinitialiser</button>
+            <div class="arcade-panel-footer">
+                <span>Ton record est sauvegardé sur cet appareil.</span>
+                <button id="arcadeRestart" class="arcade-restart" type="button">Nouvelle partie</button>
             </div>
         </aside>
     </div>
 
-    <div id="gameCompleteOverlay" class="game-overlay" hidden>
-        <div class="game-complete-card" role="dialog" aria-modal="true" aria-labelledby="gameCompleteTitle">
-            <div class="game-complete-flag" aria-hidden="true">✦</div>
-            <span class="quest-eyebrow">AVENTURE TERMINÉE</span>
-            <h2 id="gameCompleteTitle">Le secret du parc est révélé !</h2>
-            <p>Tu as découvert tous les trésors et restored la magie de Disneyland Paris.</p>
-            <span id="gameResult" class="game-result">0 points</span>
-            <button id="gamePlayAgain" class="game-primary-button" type="button">Explorer à nouveau</button>
+    <div id="arcadeOverlay" class="arcade-overlay" hidden>
+        <div class="arcade-overlay-card" role="dialog" aria-modal="true" aria-labelledby="arcadeOverlayTitle">
+            <span class="arcade-overlay-star" aria-hidden="true">✦</span>
+            <span id="arcadeOverlayEyebrow" class="arcade-eyebrow">DISNEYLAND PARIS · PARADE RUSH</span>
+            <h2 id="arcadeOverlayTitle">La parade va commencer !</h2>
+            <p id="arcadeOverlayText">Ramasse les tickets avant la fin du temps.</p>
+            <button id="arcadePrimary" class="arcade-primary" type="button">Jouer</button>
         </div>
     </div>
 </section>
@@ -1050,7 +1050,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
-<script src="disney-game.js"></script>
+<script src="disney-arcade.js"></script>
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
 </body>
