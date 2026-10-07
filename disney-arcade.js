@@ -1,8 +1,9 @@
 (() => {
     "use strict";
 
-    const SAVE_KEY = "myhub_disney_ticket_rush_v1";
-    const COLLECTION_KEY = "myhub_parade_rush_collection_v1";
+    const progressStore = window.MyHubDisneyProgress;
+    const CHARACTERS = progressStore.characters;
+    const PARADE_CHARACTERS = CHARACTERS.slice(0, 8);
     const W = 960;
     const H = 540;
     const ROUND_TIME = 45;
@@ -10,16 +11,6 @@
     const PLAYER_RADIUS = 13;
     const PLAYER_SPEED = 220;
     const TICKET_COLORS = ["#ffd45a", "#ff8c69", "#76d4bd", "#90baff"];
-    const CHARACTERS = [
-        { id: "mickey", name: "Mickey", icon: "🐭" },
-        { id: "minnie", name: "Minnie", icon: "🎀" },
-        { id: "donald", name: "Donald", icon: "🦆" },
-        { id: "daisy", name: "Daisy", icon: "🌼" },
-        { id: "goofy", name: "Dingo", icon: "⭐" },
-        { id: "stitch", name: "Stitch", icon: "🌺" },
-        { id: "remy", name: "Rémy", icon: "🧀" },
-        { id: "tinkerbell", name: "Clochette", icon: "✨" }
-    ];
     const canvas = document.getElementById("disneyGameCanvas");
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
@@ -27,6 +18,8 @@
     const ui = {
         score: document.getElementById("arcadeScore"),
         best: document.getElementById("arcadeBest"),
+        matchXp: document.getElementById("arcadeMatchXp"),
+        matchCapsules: document.getElementById("arcadeMatchCapsules"),
         round: document.getElementById("arcadeRound"),
         time: document.getElementById("arcadeTime"),
         lives: document.getElementById("arcadeLives"),
@@ -56,8 +49,9 @@
         { x: 758, y: 153, w: 78, h: 53, color: "#4b8c6b", type: "bush" }
     ];
 
-    let bestScore = readBestScore();
-    let collection = readCollection();
+    let sharedProgress = progressStore.read();
+    let bestScore = sharedProgress.arcadeBestScore;
+    let collection = sharedProgress.collection;
     let soundEnabled = true;
     let audioContext = null;
     let mode = "ready";
@@ -80,20 +74,11 @@
     let guards = [];
     let particles = [];
 
-    function readBestScore() {
-        try { return Math.max(0, Number(localStorage.getItem(SAVE_KEY)) || 0); }
-        catch { return 0; }
-    }
-
-    function readCollection() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(COLLECTION_KEY) || "[]");
-            return CHARACTERS.filter(character => saved.includes(character.id)).map(character => character.id);
-        } catch { return []; }
-    }
-
     function saveCollection() {
-        try { localStorage.setItem(COLLECTION_KEY, JSON.stringify(collection)); }
+        try {
+            sharedProgress = progressStore.update({ collection });
+            collection = sharedProgress.collection;
+        }
         catch { showMessage("La collection ne peut pas être enregistrée sur cet appareil."); }
         updateCollection();
     }
@@ -112,8 +97,10 @@
 
     function saveBestScore() {
         if (score <= bestScore) return;
-        bestScore = score;
-        try { localStorage.setItem(SAVE_KEY, String(bestScore)); }
+        try {
+            sharedProgress = progressStore.update({ arcadeBestScore: score });
+            bestScore = sharedProgress.arcadeBestScore;
+        }
         catch { showMessage("Impossible d’enregistrer le record sur cet appareil."); }
     }
 
@@ -155,6 +142,8 @@
     function updateHud() {
         ui.score.textContent = String(score).padStart(5, "0");
         ui.best.textContent = String(Math.max(bestScore, score)).padStart(5, "0");
+        ui.matchXp.textContent = String(sharedProgress.matchXp);
+        ui.matchCapsules.textContent = String(sharedProgress.matchCapsules);
         ui.round.textContent = String(round);
         ui.time.textContent = `${Math.ceil(Math.max(0, roundTime))}s`;
         ui.time.classList.toggle("urgent", mode === "playing" && roundTime <= 10);
@@ -268,7 +257,7 @@
 
     function finishRound() {
         score += Math.ceil(roundTime) * 20 + lives * 50;
-        const reward = CHARACTERS.find(character => !collection.includes(character.id));
+        const reward = PARADE_CHARACTERS.find(character => !collection.includes(character.id));
         if (reward) {
             collection.push(reward.id);
             saveCollection();
@@ -739,6 +728,16 @@
         if ("ResizeObserver" in window) new ResizeObserver(resizeCanvas).observe(canvas);
         requestAnimationFrame(frame);
     }
+
+    window.addEventListener(progressStore.eventName, event => {
+        sharedProgress = event.detail;
+        bestScore = sharedProgress.arcadeBestScore;
+        collection = sharedProgress.collection;
+        ui.best.textContent = String(bestScore).padStart(5, "0");
+        ui.matchXp.textContent = String(sharedProgress.matchXp);
+        ui.matchCapsules.textContent = String(sharedProgress.matchCapsules);
+        updateCollection();
+    });
 
     init();
 })();

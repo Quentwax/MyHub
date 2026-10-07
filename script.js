@@ -327,7 +327,7 @@ const saveDisneyTripDateButton = document.getElementById("saveDisneyTripDateButt
 const disneyGoogleAuthButton = document.getElementById("disneyGoogleAuthButton");
 const disneyGoogleSignOutButton = document.getElementById("disneyGoogleSignOutButton");
 const disneyAuthStatus = document.getElementById("disneyAuthStatus");
-const DISNEY_FIREBASE_CONFIG = {
+window.MYHUB_FIREBASE_CONFIG = {
     apiKey: "AIzaSyBb-2GlOsnUDzDXZ8-mgd6XIr8ny4ZkJoo",
     authDomain: "my-disneyland-paris.firebaseapp.com",
     databaseURL: "https://my-disneyland-paris-default-rtdb.europe-west1.firebasedatabase.app",
@@ -336,6 +336,7 @@ const DISNEY_FIREBASE_CONFIG = {
     messagingSenderId: "787833723893",
     appId: "1:787833723893:web:0cd3c3f0f01dd7e8c09ebc"
 };
+const DISNEY_FIREBASE_CONFIG = window.MYHUB_FIREBASE_CONFIG;
 let disneySourceDate = getDisneyTargetDate();
 let disneySyncMode = "local";
 
@@ -394,6 +395,7 @@ function saveDisneyTripDate() {
         disneySourceDate = toDateFromInputValue(selectedValue) || getDisneyTargetDate();
         disneySyncMode = "local";
         updateDisneyCountdown();
+        window.MyHubCloudSync?.update("disneyTripDate", selectedValue);
     } catch (error) {
         console.warn("Impossible d'enregistrer la date du séjour Disney :", error);
     }
@@ -673,7 +675,7 @@ attachDisneyFirebaseListener();
 
 
 /* ==========================================
-   STOCKAGE PARTAGÉ (LOCAL + CLOUD OPTIONNEL)
+   STOCKAGE PARTAGÉ (LOCAL + SYNCHRONISATION CLOUD)
 ========================================== */
 
 const SHARED_STORE_KEY = "myhub_shared_store_v1";
@@ -941,6 +943,7 @@ async function persistSharedState() {
 
     await writeDbState(state);
     await saveRemoteState();
+    window.MyHubCloudSync?.update("shared", state);
 }
 
 async function loadSharedState() {
@@ -1023,9 +1026,12 @@ function renderMemo() {
     memoInput.value = memoText;
 
     if (memoStatus) {
-        memoStatus.textContent = REMOTE_DB_URL
+        const accountConnected = Boolean(
+            window.firebase?.apps?.length && firebase.auth().currentUser
+        );
+        memoStatus.textContent = REMOTE_DB_URL || accountConnected
             ? "Sauvegarde locale + synchronisation cloud"
-            : "Sauvegarde locale";
+            : "Sauvegarde locale · connecte-toi pour synchroniser";
     }
 
 }
@@ -1065,7 +1071,110 @@ if (addTaskButton) {
     addTaskButton.addEventListener("click", addTask);
 }
 
-loadSharedState();
+window.MyHubSharedStateReady = loadSharedState();
+window.MyHubSharedStateReady.then(() => {
+    window.MyHubCloudSync?.register("shared", {
+        read: () => ({ tasks: taskList, memo: memoText }),
+        merge: (local, remote) => remote && typeof remote === "object"
+            ? {
+                tasks: Array.isArray(remote.tasks) ? remote.tasks : local.tasks,
+                memo: typeof remote.memo === "string" ? remote.memo : local.memo
+            }
+            : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            taskList = normalizeTaskList(remote?.tasks);
+            memoText = typeof remote?.memo === "string" ? remote.memo : "";
+            renderTasks();
+            renderMemo();
+            void writeDbState({ tasks: taskList, memo: memoText });
+        }
+    });
+    window.MyHubCloudSync?.register("disneyTripDate", {
+        read: () => localStorage.getItem(DISNEY_TRIP_STORAGE_KEY),
+        merge: (local, remote) => typeof remote === "string" ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (typeof remote !== "string" || !toDateFromInputValue(remote)) return;
+            localStorage.setItem(DISNEY_TRIP_STORAGE_KEY, remote);
+            applyDisneyDate(toDateFromInputValue(remote), "cloud");
+        }
+    });
+    window.MyHubCloudSync?.register("agenda", {
+        read: () => agendaItems,
+        merge: (local, remote) => Array.isArray(remote) ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!Array.isArray(remote)) return;
+            localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(remote));
+            loadAgendaItems();
+            renderAgendaCalendar();
+            renderAgendaUpcoming();
+        }
+    });
+    window.MyHubCloudSync?.register("jarvisSettings", {
+        read: () => jarvisVoiceSettings,
+        merge: (local, remote) => remote && typeof remote === "object" ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!remote || typeof remote !== "object") return;
+            jarvisVoiceSettings = {
+                ...defaultJarvisSettings,
+                ...remote,
+                volume: clampJarvisVolume(remote.volume ?? defaultJarvisSettings.volume)
+            };
+            localStorage.setItem(JARVIS_SETTINGS_KEY, JSON.stringify(jarvisVoiceSettings));
+            renderJarvisSettingsUi();
+        }
+    });
+    window.MyHubCloudSync?.register("jarvisMemory", {
+        read: () => jarvisLongTermMemory,
+        merge: (local, remote) => Array.isArray(remote) ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!Array.isArray(remote)) return;
+            jarvisLongTermMemory = remote
+                .filter(item => item && typeof item.text === "string" && item.date)
+                .slice(-30);
+            localStorage.setItem(JARVIS_MEMORY_KEY, JSON.stringify(jarvisLongTermMemory));
+            renderJarvisMemory();
+        }
+    });
+    window.MyHubCloudSync?.register("jarvisHistory", {
+        read: () => jarvisHistory,
+        merge: (local, remote) => Array.isArray(remote) ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!Array.isArray(remote)) return;
+            jarvisHistory = remote
+                .filter(message => message &&
+                    ["user", "model", "assistant"].includes(message.role) &&
+                    typeof message.text === "string")
+                .map(message => ({
+                    role: message.role === "assistant" ? "model" : message.role,
+                    text: message.text
+                }))
+                .slice(-30);
+            localStorage.setItem(JARVIS_HISTORY_KEY, JSON.stringify(jarvisHistory));
+        }
+    });
+    window.MyHubCloudSync?.register("spotifyRandomHistory", {
+        read: () => {
+            try {
+                return JSON.parse(localStorage.getItem(spotifyRandomHistoryKey) || "{}");
+            } catch (error) {
+                console.warn("Impossible de charger l’historique Spotify :", error);
+                return {};
+            }
+        },
+        merge: (local, remote) => remote && typeof remote === "object" ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!remote || typeof remote !== "object") return;
+            localStorage.setItem(spotifyRandomHistoryKey, JSON.stringify(remote));
+        }
+    });
+});
 
 /* ==========================================
    JARVIS
@@ -1137,6 +1246,7 @@ function loadJarvisSettings() {
 function saveJarvisSettings() {
     try {
         localStorage.setItem(JARVIS_SETTINGS_KEY, JSON.stringify(jarvisVoiceSettings));
+        window.MyHubCloudSync?.update("jarvisSettings", jarvisVoiceSettings);
     } catch (error) {
         console.warn("Impossible d'enregistrer les réglages de voix Jarvis :", error);
     }
@@ -1485,7 +1595,9 @@ function loadJarvisLongTermMemory() {
 }
 
 function saveJarvisLongTermMemory() {
-    localStorage.setItem(JARVIS_MEMORY_KEY, JSON.stringify(jarvisLongTermMemory.slice(-30)));
+    const savedMemory = jarvisLongTermMemory.slice(-30);
+    localStorage.setItem(JARVIS_MEMORY_KEY, JSON.stringify(savedMemory));
+    window.MyHubCloudSync?.update("jarvisMemory", savedMemory);
 }
 
 function rememberJarvisPreference(text) {
@@ -1535,6 +1647,8 @@ function clearJarvisMemory() {
     jarvisHistory = [];
     localStorage.removeItem(JARVIS_MEMORY_KEY);
     localStorage.removeItem(JARVIS_HISTORY_KEY);
+    window.MyHubCloudSync?.update("jarvisMemory", []);
+    window.MyHubCloudSync?.update("jarvisHistory", []);
     renderJarvisMemory();
 }
 
@@ -1582,6 +1696,7 @@ function loadAgendaItems() {
 
 function saveAgendaItems() {
     localStorage.setItem(AGENDA_STORAGE_KEY, JSON.stringify(agendaItems));
+    window.MyHubCloudSync?.update("agenda", agendaItems);
 }
 
 function requestAgendaNotificationPermission() {
@@ -2052,6 +2167,7 @@ function saveJarvisHistory() {
                 jarvisHistory.slice(-30)
             )
         );
+        window.MyHubCloudSync?.update("jarvisHistory", jarvisHistory.slice(-30));
 
     } catch (error) {
 
@@ -5255,6 +5371,7 @@ function saveSpotifyRandomHistory(theme, history) {
         const savedHistory = JSON.parse(localStorage.getItem(spotifyRandomHistoryKey) || "{}");
         savedHistory[theme] = [...history];
         localStorage.setItem(spotifyRandomHistoryKey, JSON.stringify(savedHistory));
+        window.MyHubCloudSync?.update("spotifyRandomHistory", savedHistory);
     } catch (error) {
         console.warn("Impossible de mémoriser l'historique Spotify :", error);
     }

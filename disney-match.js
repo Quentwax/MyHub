@@ -1,62 +1,11 @@
 (() => {
     "use strict";
 
-    const STORAGE_KEY = "myhub_disney_match_progress_v1";
+    const progressStore = window.MyHubDisneyProgress;
+    const CHARACTERS = progressStore.characters;
     const BOARD_SIZE = 8;
     const ROUND_SECONDS = 60;
     const XP_PER_LEVEL = 750;
-    const CHARACTERS = [
-        { id: "mickey", name: "Mickey", icon: "🐭" },
-        { id: "minnie", name: "Minnie", icon: "🎀" },
-        { id: "donald", name: "Donald", icon: "🦆" },
-        { id: "daisy", name: "Daisy", icon: "🌼" },
-        { id: "goofy", name: "Dingo", icon: "⭐" },
-        { id: "stitch", name: "Stitch", icon: "🌺" },
-        { id: "remy", name: "Rémy", icon: "🧀" },
-        { id: "tinkerbell", name: "Clochette", icon: "✨" },
-        { id: "simba", name: "Simba", icon: "🦁" },
-        { id: "olaf", name: "Olaf", icon: "⛄" },
-        { id: "pluto", name: "Pluto", icon: "🐕" },
-        { id: "chip", name: "Tic", icon: "🐿️" },
-        { id: "dale", name: "Tac", icon: "🌰" },
-        { id: "peter-pan", name: "Peter Pan", icon: "🧚" },
-        { id: "peter-pan-hook", name: "Capitaine Crochet", icon: "🏴‍☠️" },
-        { id: "alice", name: "Alice", icon: "🐇" },
-        { id: "cheshire-cat", name: "Chat du Cheshire", icon: "😺" },
-        { id: "winnie", name: "Winnie l’ourson", icon: "🍯" },
-        { id: "tigger", name: "Tigrou", icon: "🐯" },
-        { id: "bambi", name: "Bambi", icon: "🦌" },
-        { id: "dumbo", name: "Dumbo", icon: "🐘" },
-        { id: "cinderella", name: "Cendrillon", icon: "👠" },
-        { id: "belle", name: "Belle", icon: "🌹" },
-        { id: "ariel", name: "Ariel", icon: "🧜‍♀️" },
-        { id: "jasmine", name: "Jasmine", icon: "🪔" },
-        { id: "aurora", name: "Aurore", icon: "👑" },
-        { id: "mulan", name: "Mulan", icon: "🌸" },
-        { id: "rapunzel", name: "Raiponce", icon: "🌞" },
-        { id: "tiana", name: "Tiana", icon: "🐸" },
-        { id: "merida", name: "Mérida", icon: "🏹" },
-        { id: "moana", name: "Vaiana", icon: "🌊" },
-        { id: "elsa", name: "Elsa", icon: "❄️" },
-        { id: "anna", name: "Anna", icon: "⛄" },
-        { id: "woody", name: "Woody", icon: "🤠" },
-        { id: "buzz", name: "Buzz l’Éclair", icon: "🚀" },
-        { id: "jessie", name: "Jessie", icon: "🤠" },
-        { id: "sulley", name: "Sulli", icon: "👹" },
-        { id: "mike", name: "Bob Razowski", icon: "👁️" },
-        { id: "nemo", name: "Nemo", icon: "🐠" },
-        { id: "dory", name: "Dory", icon: "🐟" },
-        { id: "remy-friend", name: "Linguini", icon: "👨‍🍳" },
-        { id: "wall-e", name: "WALL·E", icon: "🤖" },
-        { id: "joy", name: "Joie", icon: "😊" },
-        { id: "lightning-mcqueen", name: "Flash McQueen", icon: "🏎️" },
-        { id: "timon", name: "Timon", icon: "🦦" },
-        { id: "pumbaa", name: "Pumbaa", icon: "🐗" },
-        { id: "baymax", name: "Baymax", icon: "🤍" },
-        { id: "maleficent", name: "Maléfique", icon: "🐉" },
-        { id: "ursula", name: "Ursula", icon: "🐙" },
-        { id: "scar", name: "Scar", icon: "🦁" }
-    ];
     const TILES = [
         { icon: "🏰", name: "château" },
         { icon: "🎠", name: "manège" },
@@ -76,6 +25,7 @@
         xpFill: document.getElementById("matchXpFill"),
         xpTrack: document.querySelector(".match-xp-track"),
         capsules: document.getElementById("matchCapsules"),
+        arcadeBest: document.getElementById("matchArcadeBest"),
         timer: document.getElementById("matchTimer"),
         sessionXp: document.getElementById("matchSessionXp"),
         start: document.getElementById("matchStart"),
@@ -108,23 +58,23 @@
 
     function saveProgress() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ xp, capsules, collection }));
+            const progress = progressStore.update({
+                matchXp: xp,
+                matchCapsules: capsules,
+                collection
+            });
+            xp = progress.matchXp;
+            capsules = progress.matchCapsules;
         } catch {
             showMessage("La progression n’a pas pu être enregistrée sur cet appareil.");
         }
     }
 
     function loadProgress() {
-        try {
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-            xp = Number.isSafeInteger(saved.xp) && saved.xp >= 0 ? saved.xp : 0;
-            capsules = Number.isSafeInteger(saved.capsules) && saved.capsules >= 0 ? saved.capsules : 0;
-            collection = Array.isArray(saved.collection)
-                ? CHARACTERS.filter(character => saved.collection.includes(character.id)).map(character => character.id)
-                : [];
-        } catch {
-            showMessage("La sauvegarde n’a pas pu être lue. Une nouvelle progression a été créée.");
-        }
+        const saved = progressStore.read();
+        xp = saved.matchXp;
+        capsules = saved.matchCapsules;
+        collection = saved.collection;
     }
 
     function renderProgress() {
@@ -135,6 +85,7 @@
         ui.xpTrack.setAttribute("aria-valuemax", String(XP_PER_LEVEL));
         ui.xpTrack.setAttribute("aria-valuenow", String(progress));
         ui.capsules.textContent = String(capsules);
+        ui.arcadeBest.textContent = String(progressStore.read().arcadeBestScore).padStart(5, "0");
         ui.gacha.disabled = capsules === 0;
     }
 
@@ -395,6 +346,8 @@
     ui.gacha.addEventListener("click", () => {
         if (capsules < 1) return;
         capsules -= 1;
+        const progress = progressStore.read();
+        progressStore.update({ matchCapsulesSpent: progress.matchCapsulesSpent + 1 });
         const character = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
         const alreadyCollected = collection.includes(character.id);
         if (!alreadyCollected) {
@@ -411,6 +364,15 @@
         renderCollection();
         renderProgress();
         saveProgress();
+    });
+
+    window.addEventListener(progressStore.eventName, event => {
+        const progress = event.detail;
+        xp = progress.matchXp;
+        capsules = progress.matchCapsules;
+        collection = progress.collection;
+        renderProgress();
+        renderCollection();
     });
 
     loadProgress();

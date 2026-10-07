@@ -642,6 +642,34 @@
     gap: 7px;
 }
 
+.arcade-linked-progress {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #e6e9e0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #fff;
+}
+
+.arcade-linked-progress div {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.arcade-linked-progress span {
+    color: #87918a;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.arcade-linked-progress strong {
+    color: #30463c;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
 .arcade-round-info > div {
     border: 1px solid #e6e9e0;
     border-radius: 10px;
@@ -703,7 +731,10 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 5px;
+    max-height: 190px;
+    overflow-y: auto;
     margin-top: 9px;
+    padding-right: 3px;
 }
 
 .arcade-character {

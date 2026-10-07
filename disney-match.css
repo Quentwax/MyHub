@@ -21,11 +21,30 @@
 
 .match-profile {
     display: grid;
-    grid-template-columns: 150px minmax(150px, 1fr) 150px;
+    grid-template-columns: 150px minmax(150px, 1fr) 110px 130px;
     align-items: center;
     gap: 20px;
     margin-bottom: 18px;
     padding: 16px 20px;
+}
+
+.match-arcade-record {
+    text-align: right;
+}
+
+.match-arcade-record small {
+    display: block;
+    margin-bottom: 3px;
+    color: #8b8496;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .06em;
+}
+
+.match-arcade-record strong {
+    color: var(--match-purple);
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
 }
 
 .match-level-badge,
@@ -422,6 +441,11 @@
 
     .match-capsule-count {
         justify-self: end;
+    }
+
+    .match-arcade-record {
+        grid-column: 1 / -1;
+        text-align: left;
     }
 
     .match-board-card {

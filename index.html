@@ -614,6 +614,10 @@
                 <div class="arcade-score-main"><span>TON SCORE</span><strong id="arcadeScore">00000</strong></div>
                 <div class="arcade-score-best"><span>RECORD</span><strong id="arcadeBest">00000</strong></div>
             </div>
+            <div class="arcade-linked-progress" aria-label="Progression partagée des Éclats de magie">
+                <div><span>ÉCLATS · XP</span><strong id="arcadeMatchXp">0</strong></div>
+                <div><span>CAPSULES</span><strong id="arcadeMatchCapsules">0</strong></div>
+            </div>
 
             <div class="arcade-round-info">
                 <div><span>MANCHE</span><strong id="arcadeRound">1</strong></div>
@@ -629,14 +633,14 @@
             </section>
 
             <section class="arcade-collection">
-                <div class="arcade-collection-heading"><span>COLLECTION</span><strong id="arcadeCollectionCount">0 / 8</strong></div>
+                <div class="arcade-collection-heading"><span>COLLECTION PARTAGÉE</span><strong id="arcadeCollectionCount">0 / 50</strong></div>
                 <div id="arcadeCollection" class="arcade-character-grid"></div>
             </section>
 
             <div class="arcade-tip"><span aria-hidden="true">✦</span><p>Le dash traverse les situations serrées, mais il recharge. Chaque manche réussie révèle un personnage.</p></div>
 
             <div class="arcade-panel-footer">
-                <span>Ton record est sauvegardé sur cet appareil.</span>
+                <span>Scores et personnages partagés avec Éclats de magie.</span>
                 <button id="arcadeRestart" class="arcade-restart" type="button">Nouvelle partie</button>
             </div>
         </aside>
@@ -659,10 +663,11 @@
         <p>Aligne les trésors du parc, gagne de l’XP et découvre les personnages de Disneyland Paris.</p>
     </div>
 
-    <div class="match-profile" aria-label="Progression générale">
+    <div class="match-profile" aria-label="Progression partagée entre les jeux Disney">
         <div class="match-level-badge"><span>⭐</span><div><small>NIVEAU</small><strong id="matchLevel">1</strong></div></div>
         <div class="match-xp-info"><div class="match-xp-label"><span>Progression XP</span><strong id="matchXpText">0 / 750 XP</strong></div><div class="match-xp-track" role="progressbar" aria-label="Progression vers le prochain niveau" aria-valuemin="0" aria-valuemax="750" aria-valuenow="0"><span id="matchXpFill"></span></div></div>
         <div class="match-capsule-count"><span aria-hidden="true">🧸</span><div><small>CAPSULES</small><strong id="matchCapsules">0</strong></div></div>
+        <div class="match-arcade-record"><small>RECORD PARADE RUSH</small><strong id="matchArcadeBest">00000</strong></div>
     </div>
 
     <div class="match-layout">
@@ -1083,7 +1088,8 @@
                 </div>
             </div>
 
-            <p id="disneyAuthStatus" class="setting-status">Non connecté</p>
+            <p class="setting-status">Utilise le même compte Google sur chaque appareil pour retrouver tes notes, ton agenda et ta progression Disney.</p>
+            <p id="disneyAuthStatus" class="setting-status">Connecte-toi avec Google pour synchroniser tes données entre appareils.</p>
         </div>
     </div>
 </section>
@@ -1103,6 +1109,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
+<script src="myhub-sync.js"></script>
+<script src="disney-progress.js"></script>
 <script src="disney-arcade.js"></script>
 <script src="disney-match.js"></script>
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
