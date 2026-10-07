@@ -4,6 +4,7 @@
     const STORAGE_KEY = "myhub_disney_progress_v1";
     const EVENT_NAME = "myhub:disney-progress";
     const XP_PER_LEVEL = 750;
+    const CHARACTER_IMAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
     const CHARACTERS = [
         { id: "mickey", name: "Mickey", icon: "🐭" },
         { id: "minnie", name: "Minnie", icon: "🎀" },
@@ -57,6 +58,8 @@
         { id: "scar", name: "Scar", icon: "🦁" }
     ];
     const CHARACTER_IDS = new Set(CHARACTERS.map(character => character.id));
+    let discoveryOverlay = null;
+    let discoveryQueue = Promise.resolve();
 
     function createDefaultProgress() {
         return { arcadeBestScore: 0, matchXp: 0, matchCapsules: 0, matchCapsulesSpent: 0, collection: [] };
@@ -144,6 +147,113 @@
         window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: progress }));
     }
 
+    function createPortrait(character, className) {
+        const portrait = document.createElement("span");
+        portrait.className = className;
+        portrait.setAttribute("aria-hidden", "true");
+
+        const fallback = document.createElement("span");
+        fallback.className = "disney-character-fallback";
+        fallback.textContent = character.icon;
+        portrait.appendChild(fallback);
+
+        const imageSource = CHARACTER_IMAGES[character.id];
+        if (typeof imageSource === "string" && imageSource.trim()) {
+            const image = document.createElement("img");
+            image.className = "disney-character-image";
+            image.alt = "";
+            image.loading = "lazy";
+            image.addEventListener("load", () => {
+                fallback.hidden = true;
+                portrait.classList.add("has-image");
+            }, { once: true });
+            image.addEventListener("error", () => image.remove(), { once: true });
+            image.src = imageSource;
+            portrait.appendChild(image);
+        }
+
+        return portrait;
+    }
+
+    function createDiscoveryOverlay() {
+        const overlay = document.createElement("div");
+        overlay.className = "discovery-overlay";
+        overlay.hidden = true;
+        overlay.innerHTML = `
+            <section class="discovery-card" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" aria-describedby="discoveryMessage">
+                <button class="discovery-close" type="button" aria-label="Fermer">×</button>
+                <span class="discovery-eyebrow">UNE NOUVELLE MERVEILLE !</span>
+                <div class="discovery-stage" aria-hidden="true">
+                    <div class="discovery-sparkles">✦ ✧ ✦</div>
+                    <div class="discovery-capsule">
+                        <span class="discovery-capsule-top"></span>
+                        <span class="discovery-capsule-bottom"></span>
+                        <span class="discovery-capsule-shine"></span>
+                    </div>
+                    <div class="discovery-portrait"></div>
+                </div>
+                <h2 id="discoveryTitle"></h2>
+                <p id="discoveryMessage"></p>
+                <button class="discovery-continue" type="button">Continuer</button>
+            </section>`;
+        document.body.appendChild(overlay);
+
+        return overlay;
+    }
+
+    function showDiscovery(character, alreadyCollected = false) {
+        discoveryQueue = discoveryQueue.then(() => new Promise(resolve => {
+            discoveryOverlay ||= createDiscoveryOverlay();
+            const overlay = discoveryOverlay;
+            const title = overlay.querySelector("#discoveryTitle");
+            const message = overlay.querySelector("#discoveryMessage");
+            const portrait = overlay.querySelector(".discovery-portrait");
+            const closeButton = overlay.querySelector(".discovery-close");
+            title.textContent = character.name;
+            message.textContent = alreadyCollected
+                ? "Ce personnage fait déjà partie de ta collection !"
+                : "Ce personnage rejoint ta collection !";
+            portrait.replaceChildren(createPortrait(character, "discovery-character-image"));
+            overlay.hidden = false;
+            overlay.classList.remove("is-revealed");
+            void overlay.offsetWidth;
+            overlay.classList.add("is-open");
+            closeButton.focus();
+
+            const reveal = () => overlay.classList.add("is-revealed");
+            const finish = () => {
+                overlay.hidden = true;
+                overlay.classList.remove("is-open", "is-revealed");
+                resolve();
+            };
+            const continueButton = overlay.querySelector(".discovery-continue");
+            const onContinue = () => {
+                continueButton.removeEventListener("click", onContinue);
+                overlay.querySelector(".discovery-close").removeEventListener("click", onContinue);
+                overlay.removeEventListener("click", onBackdrop);
+                overlay.removeEventListener("keydown", onEscape);
+                finish();
+            };
+            const onBackdrop = event => {
+                if (event.target === overlay) onContinue();
+            };
+            const onEscape = event => {
+                if (event.key === "Escape") onContinue();
+            };
+            continueButton.addEventListener("click", onContinue, { once: true });
+            overlay.querySelector(".discovery-close").addEventListener("click", onContinue, { once: true });
+            overlay.addEventListener("click", onBackdrop);
+            overlay.addEventListener("keydown", onEscape);
+
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                reveal();
+            } else {
+                window.setTimeout(reveal, 1050);
+            }
+        }));
+        return discoveryQueue;
+    }
+
     function update(changes) {
         const next = normalizeProgress({ ...read(), ...changes });
         writeLocal(next);
@@ -160,6 +270,8 @@
 
     window.MyHubDisneyProgress = {
         characters: CHARACTERS,
+        createPortrait,
+        showDiscovery,
         read,
         update,
         merge: mergeProgress,

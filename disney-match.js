@@ -94,15 +94,15 @@
         ui.collection.replaceChildren(...CHARACTERS.map(character => {
             const isCollected = collection.includes(character.id);
             const item = document.createElement("div");
-            const icon = document.createElement("span");
             const name = document.createElement("strong");
             item.className = `match-character${isCollected ? " collected" : ""}`;
             item.setAttribute("aria-label", isCollected ? `${character.name}, collectionné` : "Personnage à découvrir");
-            icon.className = "match-character-icon";
-            icon.setAttribute("aria-hidden", "true");
-            icon.textContent = isCollected ? character.icon : "?";
+            const portrait = progressStore.createPortrait(
+                isCollected ? character : { ...character, icon: "?" },
+                "disney-character-image match-character-icon"
+            );
             name.textContent = isCollected ? character.name : "À découvrir";
-            item.append(icon, name);
+            item.append(portrait, name);
             return item;
         }));
     }
@@ -350,6 +350,7 @@
         progressStore.update({ matchCapsulesSpent: progress.matchCapsulesSpent + 1 });
         const character = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
         const alreadyCollected = collection.includes(character.id);
+        void progressStore.showDiscovery(character, alreadyCollected);
         if (!alreadyCollected) {
             collection.push(character.id);
             ui.reveal.textContent = `${character.icon} ${character.name} rejoint ta collection !`;

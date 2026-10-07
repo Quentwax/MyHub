@@ -1,0 +1,334 @@
+.discovery-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    overflow-y: auto;
+    padding: 22px;
+    background: rgba(24, 22, 36, .76);
+    backdrop-filter: blur(8px);
+}
+
+.discovery-overlay[hidden] {
+    display: none;
+}
+
+.discovery-card {
+    position: relative;
+    display: flex;
+    width: min(430px, 100%);
+    min-height: 520px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 30px;
+    padding: 28px 24px 24px;
+    background:
+        radial-gradient(ellipse at 50% 38%, rgba(255, 244, 204, .95), transparent 50%),
+        linear-gradient(155deg, #fff9ed, #f7edff 65%, #e8f4ff);
+    box-shadow: 0 28px 100px rgba(0, 0, 0, .35);
+    text-align: center;
+}
+
+.discovery-close {
+    position: absolute;
+    top: 13px;
+    right: 15px;
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid rgba(76, 59, 93, .13);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .8);
+    color: #53445e;
+    cursor: pointer;
+    font: inherit;
+    font-size: 25px;
+}
+
+.discovery-eyebrow {
+    color: #8b6a9f;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .16em;
+}
+
+.discovery-stage {
+    position: relative;
+    display: grid;
+    width: min(300px, 75vw);
+    height: 300px;
+    flex: 0 0 auto;
+    place-items: center;
+    margin: 7px auto 4px;
+}
+
+.discovery-sparkles {
+    position: absolute;
+    z-index: 0;
+    color: #efbd52;
+    font-size: 38px;
+    letter-spacing: .45em;
+    opacity: 0;
+    transform: scale(.5) rotate(-15deg);
+}
+
+.discovery-capsule {
+    position: absolute;
+    z-index: 2;
+    width: 148px;
+    height: 205px;
+    filter: drop-shadow(0 17px 12px rgba(77, 52, 96, .2));
+    transform-origin: 50% 85%;
+}
+
+.discovery-capsule-top,
+.discovery-capsule-bottom {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 52%;
+    border: 5px solid rgba(255, 255, 255, .9);
+}
+
+.discovery-capsule-top {
+    top: 0;
+    border-radius: 80px 80px 20px 20px;
+    background: linear-gradient(115deg, #ff92a2 5%, #e95783 50%, #bc3c72 100%);
+}
+
+.discovery-capsule-bottom {
+    bottom: 0;
+    border-radius: 20px 20px 80px 80px;
+    background: linear-gradient(115deg, #fff3a4 5%, #ffd55d 52%, #f4aa43 100%);
+}
+
+.discovery-capsule-top::after,
+.discovery-capsule-bottom::after {
+    position: absolute;
+    right: -8px;
+    left: -8px;
+    height: 22px;
+    border: 4px solid rgba(255, 255, 255, .9);
+    border-radius: 999px;
+    background: #fbf7ff;
+    content: "";
+}
+
+.discovery-capsule-top::after {
+    bottom: -12px;
+}
+
+.discovery-capsule-bottom::after {
+    top: -12px;
+}
+
+.discovery-capsule-shine {
+    position: absolute;
+    top: 28px;
+    left: 24px;
+    width: 22px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .55);
+    transform: rotate(28deg);
+}
+
+.discovery-portrait {
+    position: absolute;
+    z-index: 3;
+    display: grid;
+    width: 184px;
+    height: 184px;
+    place-items: center;
+    border: 5px solid white;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #fff, #fbf3ff);
+    box-shadow: 0 15px 45px rgba(107, 75, 129, .2);
+    opacity: 0;
+    transform: translateY(45px) scale(.45);
+}
+
+.disney-character-image,
+.discovery-character-image {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    overflow: hidden;
+    border-radius: inherit;
+}
+
+.disney-character-image img,
+.discovery-character-image img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+
+.disney-character-image.has-image > img,
+.discovery-character-image.has-image > img {
+    opacity: 1;
+}
+
+.discovery-character-image .disney-character-fallback {
+    font-size: 82px;
+}
+
+.disney-character-fallback[hidden],
+.disney-character-image[hidden] {
+    display: none;
+}
+
+.discovery-card h2 {
+    margin: 5px 0 7px;
+    color: #3f3451;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 31px;
+}
+
+.discovery-card p {
+    min-height: 22px;
+    margin: 0 0 17px;
+    color: #766d81;
+    font-size: 14px;
+}
+
+.discovery-continue {
+    min-width: 150px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 20px;
+    background: linear-gradient(100deg, #8661ad, #ba70a8);
+    box-shadow: 0 7px 18px rgba(120, 81, 150, .24);
+    color: white;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+}
+
+.discovery-overlay.is-open .discovery-capsule {
+    animation: discovery-capsule-bounce .8s .12s cubic-bezier(.2, .8, .3, 1.2) both;
+}
+
+.discovery-overlay.is-revealed .discovery-capsule-top {
+    animation: discovery-capsule-top-open .7s cubic-bezier(.2, .8, .25, 1) forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-capsule-bottom {
+    animation: discovery-capsule-bottom-open .7s cubic-bezier(.2, .8, .25, 1) forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-capsule-shine {
+    animation: discovery-shine .5s ease-out forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-capsule {
+    animation: discovery-capsule-vanish .45s .55s ease-in forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-portrait {
+    animation: discovery-character-appear .8s .15s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-sparkles {
+    animation: discovery-sparkles .8s ease-out forwards;
+}
+
+.discovery-overlay.is-revealed .discovery-card h2,
+.discovery-overlay.is-revealed .discovery-card p,
+.discovery-overlay.is-revealed .discovery-continue {
+    animation: discovery-copy-appear .45s .3s ease-out both;
+}
+
+.arcade-character .disney-character-image {
+    width: 23px;
+    height: 23px;
+}
+
+.arcade-character .disney-character-fallback {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.match-character .disney-character-image {
+    width: 29px;
+    height: 29px;
+    flex: 0 0 29px;
+    border-radius: 8px;
+}
+
+.match-character .disney-character-fallback {
+    font-size: 17px;
+}
+
+@keyframes discovery-capsule-bounce {
+    0% { opacity: 0; transform: translateY(-50px) scale(.6) rotate(-12deg); }
+    65% { opacity: 1; transform: translateY(8px) scale(1.08) rotate(5deg); }
+    82% { transform: translateY(-5px) scale(.98) rotate(-2deg); }
+    100% { transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes discovery-capsule-vanish {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-10px) scale(.8); }
+}
+
+@keyframes discovery-capsule-top-open {
+    to { transform: translate(-28px, -87px) rotate(-24deg); }
+}
+
+@keyframes discovery-capsule-bottom-open {
+    to { transform: translate(24px, 91px) rotate(22deg); }
+}
+
+@keyframes discovery-shine {
+    to { opacity: 0; transform: translate(-55px, -115px) rotate(28deg) scale(1.5); }
+}
+
+@keyframes discovery-character-appear {
+    50% { opacity: 1; transform: translateY(-8px) scale(1.12); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes discovery-sparkles {
+    35% { opacity: 1; transform: scale(1.25) rotate(0); }
+    100% { opacity: 0; transform: scale(1.8) rotate(12deg); }
+}
+
+@keyframes discovery-copy-appear {
+    from { opacity: 0; transform: translateY(9px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .discovery-card {
+        min-height: 470px;
+        padding: 24px 18px 20px;
+    }
+
+    .discovery-stage {
+        height: 265px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .discovery-overlay *,
+    .discovery-overlay *::before,
+    .discovery-overlay *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+    }
+}

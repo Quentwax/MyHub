@@ -90,7 +90,13 @@
             const unlocked = collection.includes(character.id);
             item.className = `arcade-character${unlocked ? " collected" : ""}`;
             item.setAttribute("aria-label", unlocked ? `${character.name}, collectionné` : "Personnage à découvrir");
-            item.innerHTML = `<span aria-hidden="true">${unlocked ? character.icon : "?"}</span><strong>${unlocked ? character.name : "À découvrir"}</strong>`;
+            const portrait = progressStore.createPortrait(
+                unlocked ? character : { ...character, icon: "?" },
+                "disney-character-image"
+            );
+            const name = document.createElement("strong");
+            name.textContent = unlocked ? character.name : "À découvrir";
+            item.append(portrait, name);
             return item;
         }));
     }
@@ -261,6 +267,7 @@
         if (reward) {
             collection.push(reward.id);
             saveCollection();
+            void progressStore.showDiscovery(reward);
         } else {
             score += 500;
         }
