@@ -2287,6 +2287,12 @@ function getSectionFromName(pageName) {
         "DJ gestuel":
             "gestureDjSection",
 
+        "Parade Rush":
+            "disney2DSection",
+
+        "Éclats de magie":
+            "disneyMatchSection",
+
         "Dessin":
             "ludothequeSection",
 

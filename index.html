@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="disney-game.css">
+    <link rel="stylesheet" href="disney-match.css">
 </head>
 
 <body>
@@ -58,6 +59,11 @@
             <button class="nav-item" data-section="disney2DSection">
                 <span>🏰</span>
                 <span>Parade Rush</span>
+            </button>
+
+            <button class="nav-item" data-section="disneyMatchSection">
+                <span>✨</span>
+                <span>Éclats de magie</span>
             </button>
 
         </nav>
@@ -647,6 +653,53 @@
     </div>
 </section>
 
+<section id="disneyMatchSection" class="page-section disney-match-page">
+    <div class="page-title">
+        <h1>✨ Les Éclats de la magie</h1>
+        <p>Aligne les trésors du parc, gagne de l’XP et découvre les personnages de Disneyland Paris.</p>
+    </div>
+
+    <div class="match-profile" aria-label="Progression générale">
+        <div class="match-level-badge"><span>⭐</span><div><small>NIVEAU</small><strong id="matchLevel">1</strong></div></div>
+        <div class="match-xp-info"><div class="match-xp-label"><span>Progression XP</span><strong id="matchXpText">0 / 750 XP</strong></div><div class="match-xp-track" role="progressbar" aria-label="Progression vers le prochain niveau" aria-valuemin="0" aria-valuemax="750" aria-valuenow="0"><span id="matchXpFill"></span></div></div>
+        <div class="match-capsule-count"><span aria-hidden="true">🧸</span><div><small>CAPSULES</small><strong id="matchCapsules">0</strong></div></div>
+    </div>
+
+    <div class="match-layout">
+        <article class="match-board-card">
+            <header class="match-board-header">
+                <div><span class="match-eyebrow">DISNEYLAND PARIS · MATCH-3</span><h2>Le jardin enchanté</h2></div>
+                <div class="match-timer"><span aria-hidden="true">⏱</span><strong id="matchTimer">01:00</strong></div>
+            </header>
+            <div class="match-goal-row">
+                <p>Échange deux cases voisines pour aligner au moins 3 symboles.</p>
+                <strong><span id="matchSessionXp">0</span> XP gagnés</strong>
+            </div>
+            <div id="matchBoard" class="match-board" role="grid" aria-label="Grille de jeu Les Éclats de la magie"></div>
+            <div class="match-controls">
+                <button id="matchStart" class="match-primary-button" type="button">Lancer une partie · 1 min</button>
+                <button id="matchShuffle" class="match-secondary-button" type="button" disabled>Mélanger</button>
+            </div>
+            <p id="matchMessage" class="match-message" role="status" aria-live="polite">Prêt·e à jouer ? Chaque alignement te rapporte de l’XP.</p>
+        </article>
+
+        <aside class="match-side-panel">
+            <section class="match-gacha-card">
+                <span class="match-card-icon" aria-hidden="true">🎁</span>
+                <span class="match-eyebrow">LA BOUTIQUE AUX MERVEILLES</span>
+                <h2>Ouvre une capsule</h2>
+                <p>Chaque nouveau niveau t’offre une capsule à ouvrir et un personnage à collectionner.</p>
+                <button id="matchGacha" class="match-gacha-button" type="button" disabled>🧸 Ouvrir une capsule</button>
+                <div id="matchReveal" class="match-reveal" aria-live="polite">Ta prochaine surprise t’attend !</div>
+            </section>
+            <section class="match-collection-card">
+                <div class="match-collection-heading"><h2>Ma collection</h2><strong id="matchCollectionCount">0 / 50</strong></div>
+                <div id="matchCollection" class="match-collection-grid"></div>
+            </section>
+        </aside>
+    </div>
+</section>
+
 <section id="gestureDjSection" class="page-section">
     <header class="dj-header">
         <div>
@@ -1051,6 +1104,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script src="disney-arcade.js"></script>
+<script src="disney-match.js"></script>
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
 </body>
