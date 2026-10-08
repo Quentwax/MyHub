@@ -95,14 +95,22 @@
             const isCollected = collection.includes(character.id);
             const item = document.createElement("div");
             const name = document.createElement("strong");
-            item.className = `match-character${isCollected ? " collected" : ""}`;
-            item.setAttribute("aria-label", isCollected ? `${character.name}, collectionné` : "Personnage à découvrir");
+            const rarity = progressStore.rarities.find(item => item.id === character.rarity);
+            item.className = `match-character rarity-${character.rarity || "common"}${isCollected ? " collected" : ""}`;
+            item.setAttribute("aria-label", isCollected
+                ? `${character.name}, ${rarity?.name || "Commun"}, collectionné`
+                : `Personnage à découvrir, rareté ${rarity?.name || "Commun"}`);
             const portrait = progressStore.createPortrait(
                 isCollected ? character : { ...character, icon: "?" },
                 "disney-character-image match-character-icon"
             );
             name.textContent = isCollected ? character.name : "À découvrir";
-            item.append(portrait, name);
+            const details = document.createElement("span");
+            const rarityName = document.createElement("small");
+            details.className = "match-character-details";
+            rarityName.textContent = rarity?.name || "Commun";
+            details.append(name, rarityName);
+            item.append(portrait, details);
             return item;
         }));
     }
@@ -256,6 +264,17 @@
         showMessage("La grille a été mélangée. À toi de jouer !");
     }
 
+    function drawCharacter() {
+        const roll = Math.random() * 100;
+        let cumulativeChance = 0;
+        const rarity = progressStore.rarities.find(item => {
+            cumulativeChance += item.chance;
+            return roll < cumulativeChance;
+        }) || progressStore.rarities[progressStore.rarities.length - 1];
+        const eligibleCharacters = CHARACTERS.filter(character => character.rarity === rarity.id);
+        return eligibleCharacters[Math.floor(Math.random() * eligibleCharacters.length)];
+    }
+
     async function resolveMatches(gameTurn) {
         resolving = true;
         renderBoard();
@@ -348,23 +367,29 @@
         capsules -= 1;
         const progress = progressStore.read();
         progressStore.update({ matchCapsulesSpent: progress.matchCapsulesSpent + 1 });
-        const character = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+        const character = drawCharacter();
+        const rarity = progressStore.rarities.find(item => item.id === character.rarity);
         const alreadyCollected = collection.includes(character.id);
-        void progressStore.showDiscovery(character, alreadyCollected);
-        if (!alreadyCollected) {
-            collection.push(character.id);
-            ui.reveal.textContent = `${character.icon} ${character.name} rejoint ta collection !`;
-            showMessage(`${character.name} a rejoint ta collection !`);
-        } else {
-            ui.reveal.textContent = `${character.icon} ${character.name} · doublon : +25 XP`;
-            const levelsGained = addXp(25);
-            showMessage(levelsGained > 0
-                ? `Doublon converti en XP : niveau ${currentLevel()} atteint, capsule gagnée !`
-                : `Doublon converti en 25 XP. Merci, ${character.name} !`);
+        ui.reveal.textContent = "La capsule s’ouvre…";
+        showMessage("La capsule s’ouvre…");
+        if (alreadyCollected) {
+            const duplicateXp = rarity?.duplicateXp || 25;
+            addXp(duplicateXp);
         }
-        renderCollection();
         renderProgress();
-        saveProgress();
+        void progressStore.showDiscovery(character, alreadyCollected, () => {
+            if (alreadyCollected) return;
+            collection.push(character.id);
+            renderCollection();
+            saveProgress();
+        }).then(() => {
+            ui.reveal.textContent = alreadyCollected
+                ? `${character.icon} ${character.name} · ${rarity?.name || "Commun"} · doublon : +${rarity?.duplicateXp || 25} XP`
+                : `${character.icon} ${character.name} · ${rarity?.name || "Commun"} rejoint ta collection !`;
+            showMessage(alreadyCollected
+                ? `Doublon échangé contre ${rarity?.duplicateXp || 25} XP.`
+                : `${character.name} rejoint ta collection !`);
+        });
     });
 
     window.addEventListener(progressStore.eventName, event => {

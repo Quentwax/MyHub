@@ -50,6 +50,12 @@
     font-size: 25px;
 }
 
+.discovery-close:disabled,
+.discovery-continue:disabled {
+    cursor: default;
+    opacity: .55;
+}
+
 .discovery-eyebrow {
     color: #8b6a9f;
     font-size: 11px;
@@ -195,6 +201,7 @@
     color: #3f3451;
     font-family: Georgia, "Times New Roman", serif;
     font-size: 31px;
+    opacity: 0;
 }
 
 .discovery-card p {
@@ -202,6 +209,27 @@
     margin: 0 0 17px;
     color: #766d81;
     font-size: 14px;
+    opacity: 0;
+}
+
+.discovery-rarity {
+    min-height: 18px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    background: rgba(255, 255, 255, .8);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    opacity: 0;
+}
+
+.discovery-rarity[data-rarity="common"] { color: #74808a; }
+.discovery-rarity[data-rarity="rare"] { color: #3875b8; }
+.discovery-rarity[data-rarity="epic"] { color: #8755b2; }
+.discovery-rarity[data-rarity="legendary"] { color: #bd8428; }
+
+.discovery-rarity:not(:empty) {
+    margin-bottom: 5px;
 }
 
 .discovery-continue {
@@ -216,6 +244,7 @@
     cursor: pointer;
     font: inherit;
     font-weight: 800;
+    opacity: 0;
 }
 
 .discovery-overlay.is-open .discovery-capsule {
@@ -248,6 +277,7 @@
 
 .discovery-overlay.is-revealed .discovery-card h2,
 .discovery-overlay.is-revealed .discovery-card p,
+.discovery-overlay.is-revealed .discovery-rarity,
 .discovery-overlay.is-revealed .discovery-continue {
     animation: discovery-copy-appear .45s .3s ease-out both;
 }

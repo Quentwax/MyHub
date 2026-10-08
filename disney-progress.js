@@ -5,6 +5,27 @@
     const EVENT_NAME = "myhub:disney-progress";
     const XP_PER_LEVEL = 750;
     const CHARACTER_IMAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
+    const RARITIES = [
+        { id: "common", name: "Commun", chance: 55, duplicateXp: 25 },
+        { id: "rare", name: "Rare", chance: 27, duplicateXp: 50 },
+        { id: "epic", name: "Épique", chance: 14, duplicateXp: 100 },
+        { id: "legendary", name: "Légendaire", chance: 4, duplicateXp: 200 }
+    ];
+    const CHARACTER_RARITIES = {
+        common: [
+            "donald", "daisy", "goofy", "olaf", "pluto", "chip", "dale", "peter-pan",
+            "alice", "winnie", "tigger", "bambi", "dumbo", "jessie", "mike", "nemo",
+            "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley"
+        ],
+        rare: [
+            "mickey", "minnie", "stitch", "remy", "tinkerbell", "simba", "cheshire-cat",
+            "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna"
+        ],
+        epic: [
+            "peter-pan-hook", "belle", "jasmine", "aurora", "rapunzel", "tiana", "elsa", "baymax"
+        ],
+        legendary: ["maleficent", "ursula", "scar"]
+    };
     const CHARACTERS = [
         { id: "mickey", name: "Mickey", icon: "🐭" },
         { id: "minnie", name: "Minnie", icon: "🎀" },
@@ -57,6 +78,12 @@
         { id: "ursula", name: "Ursula", icon: "🐙" },
         { id: "scar", name: "Scar", icon: "🦁" }
     ];
+    for (const [rarity, characterIds] of Object.entries(CHARACTER_RARITIES)) {
+        for (const id of characterIds) {
+            const character = CHARACTERS.find(item => item.id === id);
+            if (character) character.rarity = rarity;
+        }
+    }
     const CHARACTER_IDS = new Set(CHARACTERS.map(character => character.id));
     let discoveryOverlay = null;
     let discoveryQueue = Promise.resolve();
@@ -180,7 +207,7 @@
         overlay.className = "discovery-overlay";
         overlay.hidden = true;
         overlay.innerHTML = `
-            <section class="discovery-card" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" aria-describedby="discoveryMessage">
+            <section class="discovery-card" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle" aria-describedby="discoveryMessage" tabindex="-1">
                 <button class="discovery-close" type="button" aria-label="Fermer">×</button>
                 <span class="discovery-eyebrow">UNE NOUVELLE MERVEILLE !</span>
                 <div class="discovery-stage" aria-hidden="true">
@@ -192,8 +219,9 @@
                     </div>
                     <div class="discovery-portrait"></div>
                 </div>
-                <h2 id="discoveryTitle"></h2>
-                <p id="discoveryMessage"></p>
+                <span class="discovery-rarity"></span>
+                <h2 id="discoveryTitle">Une surprise t’attend…</h2>
+                <p id="discoveryMessage">La capsule est en train de s’ouvrir.</p>
                 <button class="discovery-continue" type="button">Continuer</button>
             </section>`;
         document.body.appendChild(overlay);
@@ -201,33 +229,49 @@
         return overlay;
     }
 
-    function showDiscovery(character, alreadyCollected = false) {
+    function showDiscovery(character, alreadyCollected = false, onReveal = () => {}) {
         discoveryQueue = discoveryQueue.then(() => new Promise(resolve => {
             discoveryOverlay ||= createDiscoveryOverlay();
             const overlay = discoveryOverlay;
             const title = overlay.querySelector("#discoveryTitle");
             const message = overlay.querySelector("#discoveryMessage");
+            const rarity = overlay.querySelector(".discovery-rarity");
             const portrait = overlay.querySelector(".discovery-portrait");
             const closeButton = overlay.querySelector(".discovery-close");
-            title.textContent = character.name;
-            message.textContent = alreadyCollected
-                ? "Ce personnage fait déjà partie de ta collection !"
-                : "Ce personnage rejoint ta collection !";
+            const continueButton = overlay.querySelector(".discovery-continue");
+            title.textContent = "Une surprise t’attend…";
+            message.textContent = "La capsule est en train de s’ouvrir.";
+            rarity.textContent = "";
+            rarity.dataset.rarity = "";
+            closeButton.disabled = true;
+            continueButton.disabled = true;
             portrait.replaceChildren(createPortrait(character, "discovery-character-image"));
             overlay.hidden = false;
             overlay.classList.remove("is-revealed");
             void overlay.offsetWidth;
             overlay.classList.add("is-open");
-            closeButton.focus();
+            overlay.querySelector(".discovery-card").focus();
 
-            const reveal = () => overlay.classList.add("is-revealed");
+            const reveal = () => {
+                const characterRarity = RARITIES.find(item => item.id === character.rarity);
+                title.textContent = character.name;
+                message.textContent = alreadyCollected
+                    ? "Ce personnage fait déjà partie de ta collection !"
+                    : "Ce personnage rejoint ta collection !";
+                rarity.textContent = characterRarity?.name || "";
+                rarity.dataset.rarity = character.rarity || "";
+                onReveal();
+                closeButton.disabled = false;
+                continueButton.disabled = false;
+                overlay.classList.add("is-revealed");
+            };
             const finish = () => {
                 overlay.hidden = true;
                 overlay.classList.remove("is-open", "is-revealed");
                 resolve();
             };
-            const continueButton = overlay.querySelector(".discovery-continue");
             const onContinue = () => {
+                if (continueButton.disabled) return;
                 continueButton.removeEventListener("click", onContinue);
                 overlay.querySelector(".discovery-close").removeEventListener("click", onContinue);
                 overlay.removeEventListener("click", onBackdrop);
@@ -235,10 +279,10 @@
                 finish();
             };
             const onBackdrop = event => {
-                if (event.target === overlay) onContinue();
+                if (event.target === overlay && !continueButton.disabled) onContinue();
             };
             const onEscape = event => {
-                if (event.key === "Escape") onContinue();
+                if (event.key === "Escape" && !continueButton.disabled) onContinue();
             };
             continueButton.addEventListener("click", onContinue, { once: true });
             overlay.querySelector(".discovery-close").addEventListener("click", onContinue, { once: true });
@@ -270,6 +314,7 @@
 
     window.MyHubDisneyProgress = {
         characters: CHARACTERS,
+        rarities: RARITIES,
         createPortrait,
         showDiscovery,
         read,
