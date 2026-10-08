@@ -634,7 +634,7 @@
             </section>
 
             <section class="arcade-collection">
-                <div class="arcade-collection-heading"><span>COLLECTION PARTAGÉE</span><strong id="arcadeCollectionCount">0 / 50</strong></div>
+                <div class="arcade-collection-heading"><span>COLLECTION PARTAGÉE</span><strong id="arcadeCollectionCount">0 / 56</strong></div>
                 <div id="arcadeCollection" class="arcade-character-grid"></div>
             </section>
 
@@ -671,45 +671,62 @@
         <div class="match-arcade-record"><small>RECORD PARADE RUSH</small><strong id="matchArcadeBest">00000</strong></div>
     </div>
 
-    <div class="match-layout">
-        <article class="match-board-card">
-            <header class="match-board-header">
-                <div><span class="match-eyebrow">DISNEYLAND PARIS · MATCH-3</span><h2>Le jardin enchanté</h2></div>
-                <div class="match-timer"><span aria-hidden="true">⏱</span><strong id="matchTimer">01:00</strong></div>
-            </header>
-            <div class="match-goal-row">
-                <p>Échange deux cases voisines pour aligner au moins 3 symboles.</p>
-                <strong><span id="matchSessionXp">0</span> XP gagnés</strong>
-            </div>
-            <div id="matchBoard" class="match-board" role="grid" aria-label="Grille de jeu Les Éclats de la magie"></div>
-            <div class="match-controls">
-                <button id="matchStart" class="match-primary-button" type="button">Lancer une partie · 1 min</button>
-                <button id="matchShuffle" class="match-secondary-button" type="button" disabled>Mélanger</button>
-            </div>
-            <p id="matchMessage" class="match-message" role="status" aria-live="polite">Prêt·e à jouer ? Chaque alignement te rapporte de l’XP.</p>
-        </article>
+    <nav class="match-tabs" role="tablist" aria-label="Jeu et collection">
+        <button id="matchGameTab" class="match-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="matchGamePanel">🎮 Jouer</button>
+        <button id="matchCollectionTab" class="match-tab" type="button" role="tab" aria-selected="false" aria-controls="matchCollectionPanel">✨ Collection <span id="matchTabCollectionCount">0 / 56</span></button>
+    </nav>
 
-        <aside class="match-side-panel">
-            <section class="match-gacha-card">
-                <span class="match-card-icon" aria-hidden="true">🎁</span>
-                <span class="match-eyebrow">LA BOUTIQUE AUX MERVEILLES</span>
-                <h2>Ouvre une capsule</h2>
-                <p>Chaque nouveau niveau t’offre une capsule. Les personnages rares rapportent plus d’XP quand tu les as déjà.</p>
-                <button id="matchGacha" class="match-gacha-button" type="button" disabled>🧸 Ouvrir une capsule</button>
-                <div class="match-rarity-odds" aria-label="Probabilités de rareté : Commun 55 %, Rare 27 %, Épique 14 %, Légendaire 4 %">
-                    <span class="rarity-common">Commun <strong>55 %</strong></span>
-                    <span class="rarity-rare">Rare <strong>27 %</strong></span>
-                    <span class="rarity-epic">Épique <strong>14 %</strong></span>
-                    <span class="rarity-legendary">Légendaire <strong>4 %</strong></span>
+    <section id="matchGamePanel" class="match-tab-panel" role="tabpanel" aria-labelledby="matchGameTab">
+        <div class="match-layout">
+            <article class="match-board-card">
+                <header class="match-board-header">
+                    <div><span class="match-eyebrow">DISNEYLAND PARIS · MATCH-3</span><h2>Le jardin enchanté</h2></div>
+                    <div class="match-timer"><span aria-hidden="true">⏱</span><strong id="matchTimer">01:00</strong></div>
+                </header>
+                <div class="match-goal-row">
+                    <p>Glisse une case voisine ou clique sur deux cases pour aligner au moins 3 symboles. À 4 ou 5, crée un bonus !</p>
+                    <strong><span id="matchSessionXp">0</span> XP gagnés</strong>
                 </div>
-                <div id="matchReveal" class="match-reveal" aria-live="polite">Ta prochaine surprise t’attend !</div>
-            </section>
-            <section class="match-collection-card">
-                <div class="match-collection-heading"><h2>Ma collection</h2><strong id="matchCollectionCount">0 / 50</strong></div>
-                <div id="matchCollection" class="match-collection-grid"></div>
-            </section>
-        </aside>
-    </div>
+                <div id="matchBoard" class="match-board" role="grid" aria-label="Grille de jeu Les Éclats de la magie"></div>
+                <div class="match-controls">
+                    <button id="matchStart" class="match-primary-button" type="button">Lancer une partie · 1 min</button>
+                    <button id="matchShuffle" class="match-secondary-button" type="button" disabled>Mélanger</button>
+                </div>
+                <p id="matchMessage" class="match-message" role="status" aria-live="polite">Prêt·e à jouer ? Chaque alignement te rapporte de l’XP.</p>
+            </article>
+
+            <aside class="match-side-panel">
+                <section class="match-gacha-card">
+                    <span class="match-card-icon" aria-hidden="true">🎁</span>
+                    <span class="match-eyebrow">LA BOUTIQUE AUX MERVEILLES</span>
+                    <h2>Ouvre une capsule</h2>
+                    <p>Chaque nouveau niveau t’offre une capsule. Les personnages rares rapportent plus d’XP quand tu les as déjà.</p>
+                    <button id="matchGacha" class="match-gacha-button" type="button" disabled>🧸 Ouvrir une capsule</button>
+                    <div class="match-rarity-odds" aria-label="Probabilités de rareté : Commun 55 %, Rare 27 %, Épique 14 %, Légendaire 4 %">
+                        <span class="rarity-common">Commun <strong>55 %</strong></span>
+                        <span class="rarity-rare">Rare <strong>27 %</strong></span>
+                        <span class="rarity-epic">Épique <strong>14 %</strong></span>
+                        <span class="rarity-legendary">Légendaire <strong>4 %</strong></span>
+                    </div>
+                    <div id="matchReveal" class="match-reveal" aria-live="polite">Ta prochaine surprise t’attend !</div>
+                </section>
+            </aside>
+        </div>
+    </section>
+
+    <section id="matchCollectionPanel" class="match-tab-panel match-collection-panel" role="tabpanel" aria-labelledby="matchCollectionTab" hidden>
+        <header class="match-collection-header">
+            <div><span class="match-eyebrow">TON ALBUM DE COLLECTION</span><h2>Tous les personnages</h2><p>Explore les personnages déjà rencontrés et ceux qu’il te reste à découvrir.</p></div>
+            <strong id="matchCollectionCount">0 / 56 personnages</strong>
+        </header>
+        <div class="match-collection-filters" role="group" aria-label="Filtrer les personnages">
+            <button class="match-filter is-active" type="button" data-filter="all" aria-pressed="true">Tous</button>
+            <button class="match-filter" type="button" data-filter="collected" aria-pressed="false">Débloqués</button>
+            <button class="match-filter" type="button" data-filter="locked" aria-pressed="false">À découvrir</button>
+        </div>
+        <div id="matchCollection" class="match-collection-grid"></div>
+        <p class="match-image-note">Les portraits sont chargés depuis Wikipédia. Si une image n’est pas disponible, son icône s’affiche à la place.</p>
+    </section>
 </section>
 
 <section id="gestureDjSection" class="page-section">

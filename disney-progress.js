@@ -4,7 +4,8 @@
     const STORAGE_KEY = "myhub_disney_progress_v1";
     const EVENT_NAME = "myhub:disney-progress";
     const XP_PER_LEVEL = 750;
-    const CHARACTER_IMAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
+    const CHARACTER_PAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
+    const characterImageRequests = new Map();
     const RARITIES = [
         { id: "common", name: "Commun", chance: 55, duplicateXp: 25 },
         { id: "rare", name: "Rare", chance: 27, duplicateXp: 50 },
@@ -15,14 +16,15 @@
         common: [
             "donald", "daisy", "goofy", "olaf", "pluto", "chip", "dale", "peter-pan",
             "alice", "winnie", "tigger", "bambi", "dumbo", "jessie", "mike", "nemo",
-            "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley"
+            "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley", "luca"
         ],
         rare: [
             "mickey", "minnie", "stitch", "remy", "tinkerbell", "simba", "cheshire-cat",
-            "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna"
+            "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna", "maui", "koda"
         ],
         epic: [
-            "peter-pan-hook", "belle", "jasmine", "aurora", "rapunzel", "tiana", "elsa", "baymax"
+            "peter-pan-hook", "belle", "jasmine", "aurora", "rapunzel", "tiana", "elsa", "baymax",
+            "pocahontas", "mirabel", "miguel"
         ],
         legendary: ["maleficent", "ursula", "scar"]
     };
@@ -76,7 +78,13 @@
         { id: "baymax", name: "Baymax", icon: "🤍" },
         { id: "maleficent", name: "Maléfique", icon: "🐉" },
         { id: "ursula", name: "Ursula", icon: "🐙" },
-        { id: "scar", name: "Scar", icon: "🦁" }
+        { id: "scar", name: "Scar", icon: "🦁" },
+        { id: "maui", name: "Maui", icon: "🪝" },
+        { id: "pocahontas", name: "Pocahontas", icon: "🍂" },
+        { id: "mirabel", name: "Mirabel", icon: "🦋" },
+        { id: "miguel", name: "Miguel", icon: "🎸" },
+        { id: "luca", name: "Luca", icon: "🌊" },
+        { id: "koda", name: "Koda", icon: "🐻" }
     ];
     for (const [rarity, characterIds] of Object.entries(CHARACTER_RARITIES)) {
         for (const id of characterIds) {
@@ -174,7 +182,7 @@
         window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: progress }));
     }
 
-    function createPortrait(character, className) {
+    function createPortrait(character, className, includeImage = true) {
         const portrait = document.createElement("span");
         portrait.className = className;
         portrait.setAttribute("aria-hidden", "true");
@@ -184,8 +192,8 @@
         fallback.textContent = character.icon;
         portrait.appendChild(fallback);
 
-        const imageSource = CHARACTER_IMAGES[character.id];
-        if (typeof imageSource === "string" && imageSource.trim()) {
+        const pageTitle = includeImage ? CHARACTER_PAGES[character.id] : null;
+        if (typeof pageTitle === "string" && pageTitle.trim()) {
             const image = document.createElement("img");
             image.className = "disney-character-image";
             image.alt = "";
@@ -194,8 +202,42 @@
                 fallback.hidden = true;
                 portrait.classList.add("has-image");
             }, { once: true });
-            image.addEventListener("error", () => image.remove(), { once: true });
-            image.src = imageSource;
+            image.addEventListener("error", () => {
+                console.warn(`Le portrait Wikipédia de ${character.name} n’a pas pu être chargé.`);
+                image.remove();
+            }, { once: true });
+            const loadImage = () => {
+                if (!characterImageRequests.has(character.id)) {
+                    const request = fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(pageTitle)}&origin=*`)
+                        .then(response => {
+                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                            return response.json();
+                        })
+                        .then(data => {
+                            const page = Object.values(data.query?.pages || {})[0];
+                            if (!page?.thumbnail?.source) throw new Error("Aucun portrait disponible");
+                            return page.thumbnail.source;
+                        })
+                        .catch(error => {
+                            console.warn(`Le portrait Wikipédia de ${character.name} n’est pas disponible :`, error);
+                            return null;
+                        });
+                    characterImageRequests.set(character.id, request);
+                }
+                characterImageRequests.get(character.id).then(source => {
+                    if (source && image.isConnected) image.src = source;
+                });
+            };
+            if ("IntersectionObserver" in window) {
+                const observer = new IntersectionObserver(entries => {
+                    if (!entries.some(entry => entry.isIntersecting)) return;
+                    observer.disconnect();
+                    loadImage();
+                }, { rootMargin: "120px" });
+                observer.observe(portrait);
+            } else {
+                loadImage();
+            }
             portrait.appendChild(image);
         }
 
