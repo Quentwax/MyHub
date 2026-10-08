@@ -4,8 +4,7 @@
     const STORAGE_KEY = "myhub_disney_progress_v1";
     const EVENT_NAME = "myhub:disney-progress";
     const XP_PER_LEVEL = 750;
-    const CHARACTER_PAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
-    const characterImageRequests = new Map();
+    const CHARACTER_IMAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
     const RARITIES = [
         { id: "common", name: "Commun", chance: 55, duplicateXp: 25 },
         { id: "rare", name: "Rare", chance: 27, duplicateXp: 50 },
@@ -182,7 +181,7 @@
         window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: progress }));
     }
 
-    function createPortrait(character, className, includeImage = true) {
+    function createPortrait(character, className) {
         const portrait = document.createElement("span");
         portrait.className = className;
         portrait.setAttribute("aria-hidden", "true");
@@ -192,8 +191,8 @@
         fallback.textContent = character.icon;
         portrait.appendChild(fallback);
 
-        const pageTitle = includeImage ? CHARACTER_PAGES[character.id] : null;
-        if (typeof pageTitle === "string" && pageTitle.trim()) {
+        const imageSource = CHARACTER_IMAGES[character.id];
+        if (typeof imageSource === "string" && imageSource.trim()) {
             const image = document.createElement("img");
             image.className = "disney-character-image";
             image.alt = "";
@@ -203,41 +202,10 @@
                 portrait.classList.add("has-image");
             }, { once: true });
             image.addEventListener("error", () => {
-                console.warn(`Le portrait Wikipédia de ${character.name} n’a pas pu être chargé.`);
+                console.warn(`Le portrait de ${character.name} n’a pas pu être chargé.`);
                 image.remove();
             }, { once: true });
-            const loadImage = () => {
-                if (!characterImageRequests.has(character.id)) {
-                    const request = fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&piprop=thumbnail&pithumbsize=400&titles=${encodeURIComponent(pageTitle)}&origin=*`)
-                        .then(response => {
-                            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                            return response.json();
-                        })
-                        .then(data => {
-                            const page = Object.values(data.query?.pages || {})[0];
-                            if (!page?.thumbnail?.source) throw new Error("Aucun portrait disponible");
-                            return page.thumbnail.source;
-                        })
-                        .catch(error => {
-                            console.warn(`Le portrait Wikipédia de ${character.name} n’est pas disponible :`, error);
-                            return null;
-                        });
-                    characterImageRequests.set(character.id, request);
-                }
-                characterImageRequests.get(character.id).then(source => {
-                    if (source && image.isConnected) image.src = source;
-                });
-            };
-            if ("IntersectionObserver" in window) {
-                const observer = new IntersectionObserver(entries => {
-                    if (!entries.some(entry => entry.isIntersecting)) return;
-                    observer.disconnect();
-                    loadImage();
-                }, { rootMargin: "120px" });
-                observer.observe(portrait);
-            } else {
-                loadImage();
-            }
+            image.src = imageSource;
             portrait.appendChild(image);
         }
 

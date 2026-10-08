@@ -110,20 +110,20 @@
             const name = document.createElement("strong");
             const rarity = progressStore.rarities.find(item => item.id === character.rarity);
             item.className = `match-character rarity-${character.rarity || "common"}${isCollected ? " collected" : ""}`;
+            item.dataset.characterId = character.id;
             item.setAttribute("aria-label", isCollected
                 ? `${character.name}, ${rarity?.name || "Commun"}, collectionné`
-                : `Personnage à découvrir, rareté ${rarity?.name || "Commun"}`);
+                : `${character.name}, à découvrir, rareté ${rarity?.name || "Commun"}`);
             const portrait = progressStore.createPortrait(
-                isCollected ? character : { ...character, icon: "?" },
-                "disney-character-image match-character-icon",
-                isCollected
+                character,
+                "disney-character-image match-character-icon"
             );
             item.classList.toggle("locked", !isCollected);
-            name.textContent = isCollected ? character.name : "À découvrir";
+            name.textContent = character.name;
             const details = document.createElement("span");
             const rarityName = document.createElement("small");
             details.className = "match-character-details";
-            rarityName.textContent = rarity?.name || "Commun";
+            rarityName.textContent = `${isCollected ? "Débloqué" : "À découvrir"} · ${rarity?.name || "Commun"}`;
             details.append(name, rarityName);
             item.append(portrait, details);
             return item;
@@ -144,8 +144,12 @@
         return tile === null ? null : tile.type;
     }
 
+    function randomTileType() {
+        return Math.floor(Math.random() * TILES.length);
+    }
+
     function randomTile() {
-        return { type: Math.floor(Math.random() * TILES.length), power: null };
+        return { type: randomTileType(), power: null };
     }
 
     function findMatchRuns(cells) {
@@ -233,7 +237,7 @@
             for (let index = 0; index < cells.length; index += 1) {
                 let tile;
                 do {
-                    tile = randomTile();
+                    tile = randomTileType();
                 } while (
                     (index % BOARD_SIZE >= 2 && tileType(cells[index - 1]) === tile && tileType(cells[index - 2]) === tile) ||
                     (index >= BOARD_SIZE * 2 && tileType(cells[index - BOARD_SIZE]) === tile && tileType(cells[index - BOARD_SIZE * 2]) === tile)
@@ -242,20 +246,10 @@
             }
             if (hasValidMove(cells)) return cells;
         }
-        const fallback = Array.from({ length: BOARD_SIZE * BOARD_SIZE }, (_, index) => ({
-            type: (Math.floor(index / BOARD_SIZE) * 2 + index % BOARD_SIZE) % TILES.length,
-            power: null
-        }));
-        fallback[1].type = 2;
-        fallback[2].type = 2;
-        fallback[3].type = 1;
-        fallback[4].type = 2;
-        fallback[5].type = 4;
-        fallback[11].type = 2;
-        return fallback;
+        throw new Error("Impossible de générer une grille sans alignement avec un coup valide.");
     }
 
-    function renderBoard(matches = new Set()) {
+    function renderBoard(matches = new Set(), falling = new Set()) {
         boardElement.replaceChildren(...board.map((tile, index) => {
             const button = document.createElement("button");
             const tileInfo = TILES[tile.type];
@@ -268,7 +262,7 @@
                         ? "fusée, élimine sa colonne"
                         : "";
             button.type = "button";
-            button.className = `match-tile${selectedIndex === index ? " selected" : ""}${matches.has(index) ? " clearing" : ""}${tile.power ? ` match-power-${tile.power}` : ""}`;
+            button.className = `match-tile${selectedIndex === index ? " selected" : ""}${matches.has(index) ? " clearing" : ""}${falling.has(index) ? " falling" : ""}${tile.power ? ` match-power-${tile.power}` : ""}`;
             button.dataset.index = String(index);
             button.textContent = powerIcon;
             button.setAttribute("role", "gridcell");
@@ -343,6 +337,11 @@
         document.querySelectorAll(".match-tab-panel").forEach(panel => {
             panel.hidden = panel.id !== panelId;
         });
+        if (panelId === "matchCollectionPanel") {
+            ui.collection.querySelectorAll("img[loading='lazy']").forEach(image => {
+                image.loading = "eager";
+            });
+        }
     }
 
     function drawCharacter() {
@@ -416,22 +415,33 @@
                         : "";
             showMessage(`+${reward} XP${chain > 1 ? ` · combo ×${chain}` : ""}.${powerMessage}${levelMessage}`);
             renderBoard(removals);
-            await new Promise(resolve => setTimeout(resolve, 170));
+            await new Promise(resolve => setTimeout(resolve, 300));
             if (!playing || gameTurn !== turnId) return;
 
             for (const index of removals) board[index] = null;
+            const fallingTiles = new Set();
             for (let column = 0; column < BOARD_SIZE; column += 1) {
                 const remaining = [];
                 for (let row = BOARD_SIZE - 1; row >= 0; row -= 1) {
-                    const tile = board[row * BOARD_SIZE + column];
-                    if (tile !== null) remaining.push(tile);
+                    const index = row * BOARD_SIZE + column;
+                    const tile = board[index];
+                    if (tile !== null) remaining.push({ tile, sourceRow: row });
                 }
                 for (let row = BOARD_SIZE - 1; row >= 0; row -= 1) {
-                    board[row * BOARD_SIZE + column] = remaining[BOARD_SIZE - 1 - row] ?? randomTile();
+                    const destinationIndex = row * BOARD_SIZE + column;
+                    const tileIndex = BOARD_SIZE - 1 - row;
+                    const remainingTile = remaining[tileIndex];
+                    if (remainingTile) {
+                        board[destinationIndex] = remainingTile.tile;
+                        if (remainingTile.sourceRow !== row) fallingTiles.add(destinationIndex);
+                    } else {
+                        board[destinationIndex] = randomTile();
+                        fallingTiles.add(destinationIndex);
+                    }
                 }
             }
-            renderBoard();
-            await new Promise(resolve => setTimeout(resolve, 100));
+            renderBoard(new Set(), fallingTiles);
+            await new Promise(resolve => setTimeout(resolve, 330));
         }
         if (!playing || gameTurn !== turnId) return;
         resolving = false;
