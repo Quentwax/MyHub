@@ -31,7 +31,10 @@
         start: document.getElementById("matchStart"),
         shuffle: document.getElementById("matchShuffle"),
         gacha: document.getElementById("matchGacha"),
+        gachaCount: document.getElementById("matchGachaCount"),
+        dustExchange: document.getElementById("matchDustExchange"),
         reveal: document.getElementById("matchReveal"),
+        magicDust: document.getElementById("matchMagicDust"),
         collection: document.getElementById("matchCollection"),
         collectionCount: document.getElementById("matchCollectionCount"),
         tabCollectionCount: document.getElementById("matchTabCollectionCount")
@@ -39,7 +42,9 @@
 
     let xp = 0;
     let capsules = 0;
+    let magicDust = 0;
     let collection = [];
+    let openingCapsules = false;
     let board = [];
     let selectedIndex = null;
     let powerPlacementIndex = null;
@@ -70,6 +75,7 @@
             });
             xp = progress.matchXp;
             capsules = progress.matchCapsules;
+            magicDust = progress.matchMagicDust;
         } catch {
             showMessage("La progression n’a pas pu être enregistrée sur cet appareil.");
         }
@@ -79,6 +85,7 @@
         const saved = progressStore.read();
         xp = saved.matchXp;
         capsules = saved.matchCapsules;
+        magicDust = saved.matchMagicDust;
         collection = saved.collection;
     }
 
@@ -90,8 +97,21 @@
         ui.xpTrack.setAttribute("aria-valuemax", String(XP_PER_LEVEL));
         ui.xpTrack.setAttribute("aria-valuenow", String(progress));
         ui.capsules.textContent = String(capsules);
+        ui.magicDust.textContent = String(magicDust);
         ui.arcadeBest.textContent = String(progressStore.read().arcadeBestScore).padStart(5, "0");
-        ui.gacha.disabled = capsules === 0;
+        const requested = ui.gachaCount.value === "all"
+            ? Math.min(10, capsules)
+            : Number(ui.gachaCount.value);
+        const openCount = Math.min(requested, capsules);
+        ui.gacha.disabled = capsules === 0 || openingCapsules;
+        ui.gacha.textContent = capsules === 0
+            ? "Aucune capsule disponible"
+            : openCount > 1
+                ? `🧸 Ouvrir ${openCount} capsules`
+                : "🧸 Ouvrir 1 capsule";
+        ui.dustExchange.disabled = magicDust < 100 ||
+            collection.length >= CHARACTERS.length ||
+            openingCapsules;
     }
 
     function renderCollection() {
@@ -355,6 +375,47 @@
         return eligibleCharacters[Math.floor(Math.random() * eligibleCharacters.length)];
     }
 
+    function drawUncollectedCharacter() {
+        const eligibleByRarity = progressStore.rarities.map(rarity => ({
+            rarity,
+            characters: CHARACTERS.filter(character =>
+                character.rarity === rarity.id && !collection.includes(character.id)
+            )
+        })).filter(group => group.characters.length > 0);
+        const totalChance = eligibleByRarity.reduce((total, group) => total + group.rarity.chance, 0);
+        if (totalChance === 0) return null;
+
+        let roll = Math.random() * totalChance;
+        const selected = eligibleByRarity.find(group => {
+            roll -= group.rarity.chance;
+            return roll < 0;
+        }) || eligibleByRarity[eligibleByRarity.length - 1];
+        return selected.characters[Math.floor(Math.random() * selected.characters.length)];
+    }
+
+    function renderBatchResults(results, duplicateXp, dustEarned) {
+        const summary = document.createElement("p");
+        summary.textContent = `${results.length} capsules ouvertes · ${results.filter(result => !result.alreadyCollected).length} nouvelle(s) découverte(s) · +${duplicateXp} XP · +${dustEarned} poussières`;
+        const grid = document.createElement("div");
+        grid.className = "match-batch-results";
+        results.forEach(({ character, alreadyCollected, rarity }) => {
+            const item = document.createElement("div");
+            item.className = `match-batch-result rarity-${character.rarity || "common"}`;
+            const portrait = progressStore.createPortrait(character, "match-batch-portrait");
+            const details = document.createElement("span");
+            const name = document.createElement("strong");
+            const reward = document.createElement("small");
+            name.textContent = character.name;
+            reward.textContent = alreadyCollected
+                ? `Doublon · +${rarity?.duplicateXp || 25} XP · +${progressStore.magicDustPerDuplicate[character.rarity] || 10} poussières`
+                : `${rarity?.name || "Commun"} · Nouveau`;
+            details.append(name, reward);
+            item.append(portrait, details);
+            grid.appendChild(item);
+        });
+        ui.reveal.replaceChildren(summary, grid);
+    }
+
     async function resolveMatches(gameTurn, forcedPowers = new Set()) {
         resolving = true;
         renderBoard();
@@ -545,40 +606,112 @@
             renderCollection();
         });
     });
-    ui.gacha.addEventListener("click", () => {
-        if (capsules < 1) return;
-        capsules -= 1;
-        const progress = progressStore.read();
-        progressStore.update({ matchCapsulesSpent: progress.matchCapsulesSpent + 1 });
-        const character = drawCharacter();
-        const rarity = progressStore.rarities.find(item => item.id === character.rarity);
-        const alreadyCollected = collection.includes(character.id);
-        ui.reveal.textContent = "La capsule s’ouvre…";
-        showMessage("La capsule s’ouvre…");
-        if (alreadyCollected) {
-            const duplicateXp = rarity?.duplicateXp || 25;
-            addXp(duplicateXp);
-        }
+    ui.gachaCount.addEventListener("change", renderProgress);
+    ui.gacha.addEventListener("click", async () => {
+        if (openingCapsules || capsules < 1) return;
+        const requested = ui.gachaCount.value === "all"
+            ? Math.min(10, capsules)
+            : Number(ui.gachaCount.value);
+        const openCount = Math.min(Math.max(1, requested), capsules, 10);
+        if (!openCount) return;
+
+        openingCapsules = true;
         renderProgress();
-        void progressStore.showDiscovery(character, alreadyCollected, () => {
-            if (alreadyCollected) return;
-            collection.push(character.id);
+        const results = [];
+        const knownCharacters = new Set(collection);
+        let duplicateXp = 0;
+        let dustEarned = 0;
+
+        for (let index = 0; index < openCount; index += 1) {
+            const character = drawCharacter();
+            const rarity = progressStore.rarities.find(item => item.id === character.rarity);
+            const alreadyCollected = knownCharacters.has(character.id);
+            results.push({ character, rarity, alreadyCollected });
+            if (alreadyCollected) {
+                duplicateXp += rarity?.duplicateXp || 25;
+                dustEarned += progressStore.magicDustPerDuplicate[character.rarity] || 10;
+            } else {
+                knownCharacters.add(character.id);
+            }
+        }
+
+        try {
+            const progress = progressStore.read();
+            progressStore.update({ matchCapsulesSpent: progress.matchCapsulesSpent + openCount });
+            results.forEach(({ character, alreadyCollected }) => {
+                if (!alreadyCollected) collection.push(character.id);
+            });
+
+            if (duplicateXp > 0) addXp(duplicateXp);
+            else saveProgress();
+
+            if (dustEarned > 0) {
+                const latestProgress = progressStore.read();
+                progressStore.update({
+                    matchMagicDustEarned: latestProgress.matchMagicDustEarned + dustEarned
+                });
+            }
+
             renderCollection();
-            saveProgress();
-        }).then(() => {
-            ui.reveal.textContent = alreadyCollected
-                ? `${character.icon} ${character.name} · ${rarity?.name || "Commun"} · doublon : +${rarity?.duplicateXp || 25} XP`
-                : `${character.icon} ${character.name} · ${rarity?.name || "Commun"} rejoint ta collection !`;
-            showMessage(alreadyCollected
-                ? `Doublon échangé contre ${rarity?.duplicateXp || 25} XP.`
-                : `${character.name} rejoint ta collection !`);
-        });
+            renderProgress();
+
+            if (openCount === 1) {
+                const [{ character, rarity, alreadyCollected }] = results;
+                await progressStore.showDiscovery(character, alreadyCollected);
+                ui.reveal.textContent = alreadyCollected
+                    ? `${character.icon} ${character.name} · doublon : +${rarity?.duplicateXp || 25} XP et +${progressStore.magicDustPerDuplicate[character.rarity] || 10} poussières`
+                    : `${character.icon} ${character.name} · ${rarity?.name || "Commun"} rejoint ta collection !`;
+            } else {
+                renderBatchResults(results, duplicateXp, dustEarned);
+            }
+
+            const newCount = results.filter(result => !result.alreadyCollected).length;
+            showMessage(`${openCount} capsule(s) ouverte(s) · ${newCount} nouvelle(s) découverte(s) · +${duplicateXp} XP · +${dustEarned} poussières magiques.`);
+        } catch (error) {
+            console.error("Impossible d’ouvrir les capsules :", error);
+            showMessage("L’ouverture des capsules a échoué. Vérifie ta progression avant de réessayer.");
+        } finally {
+            openingCapsules = false;
+            renderProgress();
+        }
+    });
+
+    ui.dustExchange.addEventListener("click", async () => {
+        if (openingCapsules || magicDust < 100) return;
+        const character = drawUncollectedCharacter();
+        if (!character) {
+            showMessage("Tu as déjà collectionné tous les personnages !");
+            return;
+        }
+
+        openingCapsules = true;
+        renderProgress();
+        try {
+            const progress = progressStore.read();
+            progressStore.update({
+                matchMagicDustSpent: progress.matchMagicDustSpent + 100
+            });
+            await progressStore.showDiscovery(character, false, () => {
+                collection.push(character.id);
+                renderCollection();
+                saveProgress();
+            });
+            ui.reveal.textContent = `${character.icon} ${character.name} · personnage inédit obtenu contre 100 poussières magiques !`;
+            showMessage(`${character.name} rejoint ta collection grâce à la poussière magique !`);
+        } catch (error) {
+            console.error("Impossible d’échanger la poussière magique :", error);
+            showMessage("L’échange n’a pas pu être effectué. Réessaie.");
+        } finally {
+            openingCapsules = false;
+            renderProgress();
+        }
     });
 
     window.addEventListener(progressStore.eventName, event => {
         const progress = event.detail;
         xp = progress.matchXp;
         capsules = progress.matchCapsules;
+        magicDust = progress.matchMagicDust;
         collection = progress.collection;
         renderProgress();
         renderCollection();

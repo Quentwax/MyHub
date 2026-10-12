@@ -2384,6 +2384,10 @@ function showSection(sectionId) {
         }
 
     });
+
+    if (["settingsSection", "jarvisSection", "musicSection"].includes(sectionId)) {
+        document.querySelector(".settings-nav-group > .nav-item")?.classList.add("active");
+    }
 }
 
 
@@ -6365,6 +6369,12 @@ function initializeSpotifyPlayer(
                     "Connecté";
             }
 
+            const homeConnectButton = document.getElementById("homeSpotifyConnectButton");
+            if (homeConnectButton) homeConnectButton.hidden = true;
+
+            const homeSearchStatus = document.getElementById("homeSpotifySearchStatus");
+            if (homeSearchStatus) homeSearchStatus.textContent = "Spotify est prêt : cherche un titre et lance-le en un clic.";
+
             const djConnect = document.getElementById("gestureDjConnect");
             if (djConnect) djConnect.hidden = true;
 
@@ -7282,11 +7292,20 @@ if (gestureDjConnectButton) {
 }
 
 function renderGestureDjSearchResults(tracks) {
-    if (!gestureDjSearchResults) return;
+    renderSpotifySearchResults(
+        tracks,
+        gestureDjSearchResults,
+        gestureDjSearchStatus,
+        "gesture-dj"
+    );
+}
 
-    gestureDjSearchResults.replaceChildren();
+function renderSpotifySearchResults(tracks, resultsElement, statusElement, source) {
+    if (!resultsElement) return;
 
-    tracks.slice(0, 6).forEach(track => {
+    resultsElement.replaceChildren();
+
+    tracks.slice(0, 10).forEach(track => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "dj-result-item";
@@ -7314,57 +7333,101 @@ function renderGestureDjSearchResults(tracks) {
         button.append(image, copy, playMark);
         button.addEventListener("click", async () => {
             if (!spotifyDeviceId) {
-                if (gestureDjSearchStatus) {
-                    gestureDjSearchStatus.textContent = "Connecte Spotify et active le lecteur depuis l’accueil.";
-                }
+                if (statusElement) statusElement.textContent = "Active le lecteur Spotify depuis l’accueil pour lancer ce titre.";
+                document.getElementById("homeSpotifyConnectButton")?.removeAttribute("hidden");
                 return;
             }
 
-            if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = `Lancement de « ${track.name} »…`;
+            if (statusElement) statusElement.textContent = `Lancement de « ${track.name} »…`;
             const started = await startSpotifyTrack(track);
-            if (gestureDjSearchStatus) {
-                gestureDjSearchStatus.textContent = started
-                    ? `« ${track.name} » lancé · la suite se prépare en arrière-plan.`
+            if (statusElement) {
+                statusElement.textContent = started
+                    ? `« ${track.name} » lancé${source === "home" ? " !" : " · la suite se prépare en arrière-plan."}`
                     : "Spotify n’a pas pu lancer ce titre. Vérifie qu’un appareil Spotify est actif.";
             }
         });
 
-        gestureDjSearchResults.appendChild(button);
+        resultsElement.appendChild(button);
     });
 }
 
-gestureDjSearchForm?.addEventListener("submit", async event => {
-    event.preventDefault();
+function attachSpotifySearch({ form, input, button, status, results, source, connectButton }) {
+    form?.addEventListener("submit", async event => {
+        event.preventDefault();
 
-    const query = gestureDjSearchInput?.value.trim();
-    if (!query) return;
+        const query = input?.value.trim();
+        if (!query) return;
 
-    if (!spotifyAccessToken) {
-        if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "Connecte ton compte Spotify pour rechercher.";
-        gestureDjConnectButton?.removeAttribute("hidden");
-        return;
-    }
-
-    if (gestureDjSearchButton) gestureDjSearchButton.disabled = true;
-    if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "Recherche en cours…";
-
-    try {
-        const tracks = await searchSpotifyTracks(query, 10);
-        const rankedTracks = tracks.sort((first, second) =>
-            scoreSpotifyTrack(second, query) - scoreSpotifyTrack(first, query)
-        );
-
-        renderGestureDjSearchResults(rankedTracks);
-        if (gestureDjSearchStatus) {
-            gestureDjSearchStatus.textContent = rankedTracks.length
-                ? `${rankedTracks.length} résultat(s) · sélectionne un titre pour lancer la file.`
-                : "Aucun résultat. Essaie avec un titre ou un artiste différent.";
+        if (!spotifyAccessToken) {
+            if (status) status.textContent = "Connecte ton compte Spotify pour rechercher.";
+            if (source !== "home") connectButton?.removeAttribute("hidden");
+            return;
         }
-    } catch (error) {
-        console.warn("Recherche DJ Spotify impossible :", error);
-        if (gestureDjSearchStatus) gestureDjSearchStatus.textContent = "La recherche Spotify a échoué. Réessaie dans un instant.";
-    } finally {
-        if (gestureDjSearchButton) gestureDjSearchButton.disabled = false;
+
+        if (button) button.disabled = true;
+        if (status) status.textContent = "Recherche en cours…";
+
+        try {
+            const tracks = await searchSpotifyTracks(query, 10);
+            const rankedTracks = tracks.sort((first, second) =>
+                scoreSpotifyTrack(second, query) - scoreSpotifyTrack(first, query)
+            );
+
+            renderSpotifySearchResults(rankedTracks, results, status, source);
+            if (status) {
+                status.textContent = rankedTracks.length
+                    ? `${rankedTracks.length} résultat(s) · sélectionne un titre pour le lancer.`
+                    : "Aucun résultat. Essaie avec un titre ou un artiste différent.";
+            }
+        } catch (error) {
+            console.warn(`Recherche Spotify impossible (${source}) :`, error);
+            if (status) status.textContent = "La recherche Spotify a échoué. Réessaie dans un instant.";
+        } finally {
+            if (button) button.disabled = false;
+        }
+    });
+}
+
+attachSpotifySearch({
+    form: gestureDjSearchForm,
+    input: gestureDjSearchInput,
+    button: gestureDjSearchButton,
+    status: gestureDjSearchStatus,
+    results: gestureDjSearchResults,
+    source: "gesture-dj",
+    connectButton: gestureDjConnectButton
+});
+
+const homeSpotifySearchForm = document.getElementById("homeSpotifySearchForm");
+const homeSpotifySearchInput = document.getElementById("homeSpotifySearchInput");
+const homeSpotifySearchButton = document.getElementById("homeSpotifySearchButton");
+const homeSpotifySearchStatus = document.getElementById("homeSpotifySearchStatus");
+const homeSpotifySearchResults = document.getElementById("homeSpotifySearchResults");
+const homeSpotifyConnectButton = document.getElementById("homeSpotifyConnectButton");
+
+if (homeSpotifyConnectButton) {
+    homeSpotifyConnectButton.hidden = !spotifyAccessToken || Boolean(spotifyPlayer && spotifyDeviceId);
+    homeSpotifyConnectButton.textContent = spotifyAccessToken
+        ? "Activer le lecteur Spotify"
+        : "Connecter Spotify";
+}
+
+attachSpotifySearch({
+    form: homeSpotifySearchForm,
+    input: homeSpotifySearchInput,
+    button: homeSpotifySearchButton,
+    status: homeSpotifySearchStatus,
+    results: homeSpotifySearchResults,
+    source: "home",
+    connectButton: homeSpotifyConnectButton
+});
+
+homeSpotifyConnectButton?.addEventListener("click", () => {
+    if (spotifyAccessToken) {
+        window.initSpotifyPlayer?.();
+        if (homeSpotifySearchStatus) homeSpotifySearchStatus.textContent = "Connexion du lecteur Spotify…";
+    } else {
+        connectSpotify();
     }
 });
 
@@ -8088,6 +8151,19 @@ let handLostFrames = 0;
        DÉMARRAGE
     ===================================================== */
 
+    function updateGestureToggleButton({ active = false, busy = false } = {}) {
+        const label = active
+            ? "Désactiver le contrôle gestuel"
+            : "Activer le contrôle gestuel";
+
+        gestureToggleButton.disabled = busy;
+        gestureToggleButton.textContent = "✋";
+        gestureToggleButton.setAttribute("aria-label", busy ? "Activation du contrôle gestuel en cours" : label);
+        gestureToggleButton.setAttribute("aria-pressed", String(active));
+        gestureToggleButton.title = busy ? "Activation du contrôle gestuel en cours" : label;
+        gestureToggleButton.classList.toggle("active", active);
+    }
+
     async function startGestureControl() {
 
         if (gestureRunning) {
@@ -8098,8 +8174,7 @@ let handLostFrames = 0;
         }
 
 
-        gestureToggleButton.disabled =
-            true;
+        updateGestureToggleButton({ busy: true });
 
         if (studioGestureState) {
             studioGestureState.textContent = "Activation en cours";
@@ -8123,8 +8198,7 @@ let handLostFrames = 0;
 
             if (!camerasOK) {
 
-                gestureToggleButton.disabled =
-                    false;
+                updateGestureToggleButton();
 
                 if (studioGestureState) {
                     studioGestureState.textContent = "Caméra inactive";
@@ -8148,8 +8222,7 @@ let handLostFrames = 0;
 
             if (!loaded) {
 
-                gestureToggleButton.disabled =
-                    false;
+                updateGestureToggleButton();
 
                 if (studioGestureState) {
                     studioGestureState.textContent = "Caméra inactive";
@@ -8235,12 +8308,7 @@ let handLostFrames = 0;
                 true;
 
 
-            gestureToggleButton.disabled =
-                false;
-
-
-            gestureToggleButton.textContent =
-                "🛑 Désactiver le contrôle gestuel";
+            updateGestureToggleButton({ active: true });
 
             if (studioGestureToggle) {
                 studioGestureToggle.setAttribute("aria-pressed", "true");
@@ -8298,8 +8366,7 @@ let handLostFrames = 0;
             );
 
 
-            gestureToggleButton.disabled =
-                false;
+            updateGestureToggleButton();
 
 
             gestureStatus.textContent =
@@ -8379,8 +8446,7 @@ let handLostFrames = 0;
         );
 
 
-        gestureToggleButton.textContent =
-            "✋ Activer le contrôle gestuel";
+        updateGestureToggleButton();
 
         if (studioGestureToggle) {
             studioGestureToggle.setAttribute("aria-pressed", "false");

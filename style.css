@@ -119,6 +119,19 @@ body {
     margin-top: auto;
 }
 
+.settings-subnav {
+    display: grid;
+    gap: 2px;
+    margin: 2px 0 0 18px;
+    padding-left: 10px;
+    border-left: 1px solid #e4e7eb;
+}
+
+.settings-subnav .nav-item {
+    padding: 9px 10px;
+    font-size: 13px;
+}
+
 
 /* ==========================================
    MAIN
@@ -1684,6 +1697,38 @@ body {
 
 .spotify-progress input {
     flex: 1;
+}
+
+.spotify-home-search {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #ebedf0;
+}
+
+.jarvis-input-area .gesture-icon-toggle {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    padding: 0;
+    border-radius: 12px;
+    background: #e9edf2;
+    color: #20242a;
+    font-size: 17px;
+}
+
+.jarvis-input-area .gesture-icon-toggle:hover {
+    transform: scale(1.05);
+}
+
+.jarvis-input-area .gesture-icon-toggle.active {
+    background: #39836c;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(57, 131, 108, 0.14);
+}
+
+.jarvis-input-area .gesture-icon-toggle:disabled {
+    cursor: progress;
+    opacity: 0.65;
 }
 
 /* ==========================================
@@ -3730,4 +3775,3 @@ body {
     }
 
 }
-

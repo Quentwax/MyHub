@@ -4,6 +4,12 @@
     const STORAGE_KEY = "myhub_disney_progress_v1";
     const EVENT_NAME = "myhub:disney-progress";
     const XP_PER_LEVEL = 750;
+    const MAGIC_DUST_PER_DUPLICATE = {
+        common: 10,
+        rare: 20,
+        epic: 40,
+        legendary: 80
+    };
     const CHARACTER_IMAGES = window.MYHUB_DISNEY_CHARACTER_IMAGES || {};
     const RARITIES = [
         { id: "common", name: "Commun", chance: 55, duplicateXp: 25 },
@@ -15,15 +21,17 @@
         common: [
             "donald", "daisy", "goofy", "olaf", "pluto", "chip", "dale", "peter-pan",
             "alice", "winnie", "tigger", "bambi", "dumbo", "jessie", "mike", "nemo",
-            "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley", "luca"
+            "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley", "luca",
+            "sven", "pascal", "lumiere", "mrs-potts"
         ],
         rare: [
             "mickey", "minnie", "stitch", "remy", "tinkerbell", "simba", "cheshire-cat",
-            "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna", "maui", "koda"
+            "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna", "maui", "koda",
+            "mushu", "nick-wilde", "judy-hopps"
         ],
         epic: [
             "peter-pan-hook", "belle", "jasmine", "aurora", "rapunzel", "tiana", "elsa", "baymax",
-            "pocahontas", "mirabel", "miguel"
+            "pocahontas", "mirabel", "miguel", "asha"
         ],
         legendary: ["maleficent", "ursula", "scar"]
     };
@@ -83,7 +91,15 @@
         { id: "mirabel", name: "Mirabel", icon: "🦋" },
         { id: "miguel", name: "Miguel", icon: "🎸" },
         { id: "luca", name: "Luca", icon: "🌊" },
-        { id: "koda", name: "Koda", icon: "🐻" }
+        { id: "koda", name: "Koda", icon: "🐻" },
+        { id: "sven", name: "Sven", icon: "🦌" },
+        { id: "pascal", name: "Pascal", icon: "🦎" },
+        { id: "lumiere", name: "Lumière", icon: "🕯️" },
+        { id: "mrs-potts", name: "Madame Samovar", icon: "🫖" },
+        { id: "mushu", name: "Mushu", icon: "🐉" },
+        { id: "nick-wilde", name: "Nick Wilde", icon: "🦊" },
+        { id: "judy-hopps", name: "Judy Hopps", icon: "🐰" },
+        { id: "asha", name: "Asha", icon: "⭐" }
     ];
     for (const [rarity, characterIds] of Object.entries(CHARACTER_RARITIES)) {
         for (const id of characterIds) {
@@ -96,7 +112,16 @@
     let discoveryQueue = Promise.resolve();
 
     function createDefaultProgress() {
-        return { arcadeBestScore: 0, matchXp: 0, matchCapsules: 0, matchCapsulesSpent: 0, collection: [] };
+        return {
+            arcadeBestScore: 0,
+            matchXp: 0,
+            matchCapsules: 0,
+            matchCapsulesSpent: 0,
+            matchMagicDust: 0,
+            matchMagicDustEarned: 0,
+            matchMagicDustSpent: 0,
+            collection: []
+        };
     }
 
     function normalizeProgress(saved) {
@@ -106,6 +131,14 @@
         const matchCapsulesSpent = Number.isSafeInteger(progress.matchCapsulesSpent) && progress.matchCapsulesSpent >= 0
             ? progress.matchCapsulesSpent
             : Math.max(0, earnedCapsules - (Number.isSafeInteger(progress.matchCapsules) ? progress.matchCapsules : 0));
+        const matchMagicDustEarned = Number.isSafeInteger(progress.matchMagicDustEarned) && progress.matchMagicDustEarned >= 0
+            ? progress.matchMagicDustEarned
+            : Number.isSafeInteger(progress.matchMagicDust) && progress.matchMagicDust >= 0
+                ? progress.matchMagicDust
+                : 0;
+        const matchMagicDustSpent = Number.isSafeInteger(progress.matchMagicDustSpent) && progress.matchMagicDustSpent >= 0
+            ? progress.matchMagicDustSpent
+            : 0;
         return {
             arcadeBestScore: Number.isSafeInteger(progress.arcadeBestScore) && progress.arcadeBestScore >= 0
                 ? progress.arcadeBestScore
@@ -113,6 +146,9 @@
             matchXp,
             matchCapsulesSpent,
             matchCapsules: Math.max(0, earnedCapsules - matchCapsulesSpent),
+            matchMagicDustEarned,
+            matchMagicDustSpent,
+            matchMagicDust: Math.max(0, matchMagicDustEarned - matchMagicDustSpent),
             collection: Array.isArray(progress.collection)
                 ? [...new Set(progress.collection.filter(id => CHARACTER_IDS.has(id)))]
                 : []
@@ -128,6 +164,8 @@
             arcadeBestScore: Math.max(first.arcadeBestScore, second.arcadeBestScore),
             matchXp,
             matchCapsulesSpent,
+            matchMagicDustEarned: Math.max(first.matchMagicDustEarned, second.matchMagicDustEarned),
+            matchMagicDustSpent: Math.max(first.matchMagicDustSpent, second.matchMagicDustSpent),
             collection: [...first.collection, ...second.collection]
         });
     }
@@ -325,6 +363,7 @@
     window.MyHubDisneyProgress = {
         characters: CHARACTERS,
         rarities: RARITIES,
+        magicDustPerDuplicate: MAGIC_DUST_PER_DUPLICATE,
         createPortrait,
         showDiscovery,
         read,

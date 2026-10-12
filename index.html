@@ -33,11 +33,6 @@
             </button>
 
             <button class="nav-item">
-                <span>🤖</span>
-                <span>JARVIS</span>
-            </button>
-
-            <button class="nav-item">
                 <span>🎛️</span>
                 <span>DJ gestuel</span>
             </button>
@@ -45,11 +40,6 @@
             <button class="nav-item">
                 <span>🎨</span>
                 <span>Dessin</span>
-            </button>
-
-            <button class="nav-item">
-                <span>👋</span>
-                <span>Contrôle</span>
             </button>
 
             <button class="nav-item">
@@ -71,10 +61,22 @@
 
         <div class="sidebar-bottom">
 
-            <button class="nav-item">
-                <span>⚙️</span>
-                <span>Paramètres</span>
-            </button>
+            <div class="settings-nav-group">
+                <button class="nav-item">
+                    <span>⚙️</span>
+                    <span>Paramètres</span>
+                </button>
+                <div class="settings-subnav" aria-label="Réglages complémentaires">
+                    <button class="nav-item">
+                        <span>🤖</span>
+                        <span>JARVIS</span>
+                    </button>
+                    <button class="nav-item">
+                        <span>👋</span>
+                        <span>Contrôle</span>
+                    </button>
+                </div>
+            </div>
 
         </div>
 
@@ -145,6 +147,16 @@
             autocomplete="off"
         >
         <button
+            id="gestureToggleButton"
+            class="voice-toggle gesture-icon-toggle"
+            type="button"
+            aria-label="Activer le contrôle gestuel"
+            aria-pressed="false"
+            title="Activer le contrôle gestuel"
+        >
+            ✋
+        </button>
+        <button
             id="voiceToggleButton"
             class="voice-toggle"
             type="button"
@@ -159,7 +171,6 @@
         Micro inactif
     </div>
 </div>
-
 
 
             <!-- HORLOGE -->
@@ -362,7 +373,7 @@
         </span>
     </div>
 
-<div id="spotifyLogin" class="spotify-login" style="display: flex !important;">
+<div id="spotifyLogin" class="spotify-login">
 
     <div class="music-cover">♪</div>
 
@@ -446,7 +457,18 @@
 
     </div>
 
-</article>
+            <section class="spotify-home-search" aria-label="Rechercher un titre Spotify">
+                <form id="homeSpotifySearchForm" class="dj-search-form">
+                    <label class="visually-hidden" for="homeSpotifySearchInput">Rechercher un titre ou un artiste sur Spotify</label>
+                    <input id="homeSpotifySearchInput" type="search" placeholder="Un titre ou un artiste…" autocomplete="off">
+                    <button id="homeSpotifySearchButton" type="submit">Chercher</button>
+                </form>
+                <button id="homeSpotifyConnectButton" class="dj-connect-button" type="button" hidden>Activer le lecteur Spotify</button>
+                <div id="homeSpotifySearchStatus" class="dj-search-status" aria-live="polite">Cherche un titre et lance-le en un clic.</div>
+                <div id="homeSpotifySearchResults" class="dj-search-results" aria-live="polite"></div>
+            </section>
+
+            </article>
 
         </section>
 
@@ -668,6 +690,7 @@
         <div class="match-level-badge"><span>⭐</span><div><small>NIVEAU</small><strong id="matchLevel">1</strong></div></div>
         <div class="match-xp-info"><div class="match-xp-label"><span>Progression XP</span><strong id="matchXpText">0 / 750 XP</strong></div><div class="match-xp-track" role="progressbar" aria-label="Progression vers le prochain niveau" aria-valuemin="0" aria-valuemax="750" aria-valuenow="0"><span id="matchXpFill"></span></div></div>
         <div class="match-capsule-count"><span aria-hidden="true">🧸</span><div><small>CAPSULES</small><strong id="matchCapsules">0</strong></div></div>
+        <div class="match-dust-count"><span aria-hidden="true">✨</span><div><small>POUSSIÈRE MAGIQUE</small><strong id="matchMagicDust">0</strong></div></div>
         <div class="match-arcade-record"><small>RECORD PARADE RUSH</small><strong id="matchArcadeBest">00000</strong></div>
     </div>
 
@@ -700,8 +723,18 @@
                     <span class="match-card-icon" aria-hidden="true">🎁</span>
                     <span class="match-eyebrow">LA BOUTIQUE AUX MERVEILLES</span>
                     <h2>Ouvre une capsule</h2>
-                    <p>Chaque nouveau niveau t’offre une capsule. Les personnages rares rapportent plus d’XP quand tu les as déjà.</p>
-                    <button id="matchGacha" class="match-gacha-button" type="button" disabled>🧸 Ouvrir une capsule</button>
+                    <p>Chaque nouveau niveau t’offre une capsule. Les doublons rapportent de l’XP et de la poussière magique.</p>
+                    <div class="match-gacha-actions">
+                        <label class="visually-hidden" for="matchGachaCount">Nombre de capsules à ouvrir</label>
+                        <select id="matchGachaCount" class="match-gacha-count">
+                            <option value="1">1 capsule</option>
+                            <option value="5">5 capsules</option>
+                            <option value="10">10 capsules</option>
+                            <option value="all">Tout (max. 10)</option>
+                        </select>
+                        <button id="matchGacha" class="match-gacha-button" type="button" disabled>Ouvrir</button>
+                    </div>
+                    <button id="matchDustExchange" class="match-dust-exchange" type="button" disabled>✨ Personnage inédit · 100 poussières</button>
                     <div class="match-rarity-odds" aria-label="Probabilités de rareté : Commun 55 %, Rare 27 %, Épique 14 %, Légendaire 4 %">
                         <span class="rarity-common">Commun <strong>55 %</strong></span>
                         <span class="rarity-rare">Rare <strong>27 %</strong></span>
@@ -923,21 +956,6 @@
                     </option>
 
                 </select>
-
-            </div>
-
-
-            <!-- ACTIVATION -->
-
-            <div class="gesture-controls">
-
-                <button
-                    id="gestureToggleButton"
-                    class="gesture-toggle-button"
-                    type="button"
-                >
-                    ✋ Activer le contrôle gestuel
-                </button>
 
             </div>
 
