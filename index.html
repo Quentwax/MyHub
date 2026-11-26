@@ -32,6 +32,11 @@
                 <span>Accueil</span>
             </button>
 
+            <button class="nav-item" data-section="jarvisMusicSection">
+                <span>🎵</span>
+                <span>JARVIS Music</span>
+            </button>
+
             <button class="nav-item">
                 <span>🎛️</span>
                 <span>DJ gestuel</span>
@@ -882,6 +887,57 @@
 </section>
 
 
+<section id="jarvisMusicSection" class="page-section">
+    <div class="page-title">
+        <h1>🎵 JARVIS Music</h1>
+        <p>Ta bibliothèque musicale personnelle</p>
+    </div>
+
+    <article class="widget jarvis-music-widget">
+        <div class="music-library-header">
+            <div>
+                <span class="music-eyebrow">BIBLIOTHÈQUE PERSONNELLE</span>
+                <h2>Mes musiques</h2>
+                <p id="musicTrackCount">0 titre</p>
+            </div>
+            <button id="musicImportButton" class="music-import-button" type="button">＋ Ajouter des musiques</button>
+            <input id="musicFileInput" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus" multiple hidden>
+        </div>
+
+        <div class="music-now-playing">
+            <div id="musicNowCover" class="music-now-cover">♪</div>
+            <div class="music-now-details">
+                <span class="music-eyebrow">EN COURS DE LECTURE</span>
+                <strong id="musicNowTitle">Aucun morceau</strong>
+                <span id="musicNowArtist">Choisis une musique dans ta bibliothèque</span>
+            </div>
+        </div>
+
+        <div class="music-player-controls">
+            <div class="music-transport">
+                <button id="musicPreviousButton" class="music-player-button" type="button" aria-label="Morceau précédent">⏮</button>
+                <button id="musicPlayButton" class="music-player-button music-play-button" type="button" aria-label="Lecture ou pause">▶</button>
+                <button id="musicNextButton" class="music-player-button" type="button" aria-label="Morceau suivant">⏭</button>
+            </div>
+            <div class="music-timeline">
+                <span id="musicCurrentTime">0:00</span>
+                <input id="musicProgress" type="range" min="0" max="100" value="0" aria-label="Progression de la musique">
+                <span id="musicDuration">0:00</span>
+            </div>
+            <label class="music-volume-control" for="musicVolume">🔊 <input id="musicVolume" type="range" min="0" max="100" value="70" aria-label="Volume"></label>
+        </div>
+        <audio id="musicAudio" preload="metadata"></audio>
+
+        <div class="music-library-tools">
+            <h3>Ta bibliothèque</h3>
+            <input id="musicSearchInput" type="search" placeholder="Rechercher un titre…" autocomplete="off" aria-label="Rechercher dans la bibliothèque">
+        </div>
+        <div id="musicTrackList" class="music-track-list" aria-live="polite"></div>
+        <p id="musicLibraryStatus" class="music-library-status" role="status">Préparation de la bibliothèque…</p>
+        <p class="music-storage-note">Stockage privé sur ce navigateur · les fichiers ne sont pas envoyés sur Internet. Cette première version ne synchronise pas encore les musiques entre appareils.</p>
+    </article>
+</section>
+
 <section id="musicSection" class="page-section">
 
     <div class="page-title">
@@ -1199,6 +1255,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="script.js"></script>
 <script src="myhub-sync.js"></script>
+<script src="music-library.js"></script>
 <script src="disney-character-images.js"></script>
 <script src="disney-progress.js"></script>
 <script src="disney-arcade.js"></script>

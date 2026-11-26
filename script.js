@@ -2558,6 +2558,9 @@ function showSection(sectionId) {
 }
 
 
+window.showSection = showSection;
+
+
 function getSectionFromName(pageName) {
 
     const mapping = {
@@ -2585,6 +2588,9 @@ function getSectionFromName(pageName) {
 
         "Contrôle":
             "musicSection",
+
+        "JARVIS Music":
+            "jarvisMusicSection",
 
         "Agenda":
             "agendaSection",
