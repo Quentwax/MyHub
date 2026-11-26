@@ -1405,6 +1405,73 @@ body {
     gap: 8px;
 }
 
+.agenda-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -8px 0 12px;
+}
+
+.agenda-search {
+    flex: 1;
+}
+
+.agenda-search input {
+    width: 100%;
+    border: 1px solid #dfe3e7;
+    border-radius: 8px;
+    background: #f8f9fa;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 12px;
+}
+
+.agenda-view-switch {
+    display: flex;
+    border: 1px solid #dfe3e7;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.agenda-view-switch button {
+    border: 0;
+    background: #fff;
+    padding: 8px 10px;
+    color: #68717c;
+    cursor: pointer;
+}
+
+.agenda-view-switch button.is-active {
+    background: #eef0f2;
+    color: #20242a;
+    font-weight: 700;
+}
+
+.agenda-file-help {
+    color: #89919b;
+    font-size: 11px;
+}
+
+.agenda-period-badge,
+.agenda-teacher {
+    display: block;
+}
+
+.agenda-period-badge {
+    color: #89919b;
+    font-size: 10px;
+    margin-top: 3px;
+}
+
+.agenda-attachment-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
 .agenda-upcoming-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1567,6 +1634,115 @@ body {
     .agenda-form-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* ==========================================
+   NIGHT MODE
+========================================== */
+
+body.night-mode {
+    background: #101419;
+    color: #edf1f5;
+    color-scheme: dark;
+}
+
+body.night-mode .sidebar,
+body.night-mode .widget,
+body.night-mode .setting-card,
+body.night-mode .jarvis-memory-panel,
+body.night-mode .agenda-calendar-panel,
+body.night-mode .agenda-form-panel,
+body.night-mode .agenda-upcoming-panel,
+body.night-mode .match-profile,
+body.night-mode .match-board-card,
+body.night-mode .match-side-panel,
+body.night-mode .match-gacha-card,
+body.night-mode .match-character,
+body.night-mode .dj-player-panel,
+body.night-mode .dj-controls-panel,
+body.night-mode .drawing-toolbar,
+body.night-mode .drawing-canvas-wrap {
+    background: #171c22;
+    border-color: #2b333d;
+}
+
+body.night-mode .main,
+body.night-mode .week-day-column,
+body.night-mode .agenda-search input,
+body.night-mode .agenda-form input,
+body.night-mode .agenda-form select,
+body.night-mode .agenda-form textarea,
+body.night-mode .setting-row select,
+body.night-mode .setting-control-inline input,
+body.night-mode .memo-input,
+body.night-mode .jarvis-input-area input,
+body.night-mode .match-gacha-count,
+body.night-mode .dj-search-form input {
+    background: #11161b;
+    color: #edf1f5;
+    border-color: #303946;
+}
+
+body.night-mode .nav-item,
+body.night-mode .nav-item span,
+body.night-mode .date,
+body.night-mode .welcome-small,
+body.night-mode .memo-status,
+body.night-mode .setting-row label,
+body.night-mode .setting-control span,
+body.night-mode .agenda-empty,
+body.night-mode .agenda-item p,
+body.night-mode .agenda-item-meta,
+body.night-mode .week-day-header,
+body.night-mode .week-time-axis span,
+body.night-mode .match-eyebrow,
+body.night-mode .match-goal-row,
+body.night-mode .match-message,
+body.night-mode .match-character-details,
+body.night-mode .setting-status {
+    color: #aab4bf;
+}
+
+body.night-mode .nav-item:hover,
+body.night-mode .nav-item.active,
+body.night-mode .icon-button,
+body.night-mode .agenda-view-switch button,
+body.night-mode .match-tab,
+body.night-mode .match-filter,
+body.night-mode .ghost-button,
+body.night-mode .secondary-button {
+    background: #252d36;
+    color: #edf1f5;
+}
+
+body.night-mode .agenda-view-switch button.is-active,
+body.night-mode .match-tab.is-active,
+body.night-mode .match-filter.is-active {
+    background: #384452;
+}
+
+body.night-mode .week-day-column,
+body.night-mode .week-hour-line,
+body.night-mode .week-day-header,
+body.night-mode .agenda-item,
+body.night-mode .settings-subnav,
+body.night-mode .match-character,
+body.night-mode .match-xp-track,
+body.night-mode .memory-entry,
+body.night-mode .shortcut,
+body.night-mode .task {
+    border-color: #303946;
+}
+
+body.night-mode .week-day-column.today,
+body.night-mode .week-day-header.today,
+body.night-mode .agenda-item,
+body.night-mode .memory-entry,
+body.night-mode .shortcut,
+body.night-mode .task,
+body.night-mode .jarvis-message,
+body.night-mode .message {
+    background: #1d232b;
 }
 
 .page-placeholder p {
@@ -3342,6 +3518,21 @@ body {
 .dj-transport-controls button:hover {
     background: rgba(255,255,255,0.1);
     color: #f0ac65;
+}
+
+.dj-transport-controls #gestureDjNext {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: auto;
+    min-width: 88px;
+    padding: 0 10px;
+    font-size: 13px;
+}
+
+.dj-transport-controls #gestureDjNext span {
+    font-size: 11px;
 }
 
 .dj-transport-controls .dj-play-button {

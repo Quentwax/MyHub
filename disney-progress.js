@@ -20,18 +20,18 @@
     const CHARACTER_RARITIES = {
         common: [
             "donald", "daisy", "goofy", "olaf", "pluto", "chip", "dale", "peter-pan",
-            "alice", "winnie", "tigger", "bambi", "dumbo", "jessie", "mike", "nemo",
+            "alice", "antonio", "winnie", "tigger", "bambi", "dumbo", "jessie", "mike", "nemo",
             "dory", "remy-friend", "wall-e", "joy", "lightning-mcqueen", "timon", "pumbaa", "sulley", "luca",
             "sven", "pascal", "lumiere", "mrs-potts"
         ],
         rare: [
             "mickey", "minnie", "stitch", "remy", "tinkerbell", "simba", "cheshire-cat",
             "cinderella", "ariel", "woody", "buzz", "mulan", "merida", "moana", "anna", "maui", "koda",
-            "mushu", "nick-wilde", "judy-hopps"
+            "mushu", "nick-wilde", "judy-hopps", "jack-skellington", "r2-d2", "grogu"
         ],
         epic: [
             "peter-pan-hook", "belle", "jasmine", "aurora", "rapunzel", "tiana", "elsa", "baymax",
-            "pocahontas", "mirabel", "miguel", "asha"
+            "pocahontas", "mirabel", "miguel", "asha", "raya", "bruno"
         ],
         legendary: ["maleficent", "ursula", "scar"]
     };
@@ -99,7 +99,13 @@
         { id: "mushu", name: "Mushu", icon: "🐉" },
         { id: "nick-wilde", name: "Nick Wilde", icon: "🦊" },
         { id: "judy-hopps", name: "Judy Hopps", icon: "🐰" },
-        { id: "asha", name: "Asha", icon: "⭐" }
+        { id: "asha", name: "Asha", icon: "⭐" },
+        { id: "raya", name: "Raya", icon: "🐉" },
+        { id: "bruno", name: "Bruno Madrigal", icon: "🐀" },
+        { id: "antonio", name: "Antonio Madrigal", icon: "🦜" },
+        { id: "jack-skellington", name: "Jack Skellington", icon: "🎃" },
+        { id: "r2-d2", name: "R2-D2", icon: "🤖" },
+        { id: "grogu", name: "Grogu", icon: "⭐" }
     ];
     for (const [rarity, characterIds] of Object.entries(CHARACTER_RARITIES)) {
         for (const id of characterIds) {

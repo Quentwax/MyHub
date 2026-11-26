@@ -1127,6 +1127,17 @@ window.MyHubSharedStateReady.then(() => {
             renderJarvisSettingsUi();
         }
     });
+    window.MyHubCloudSync?.register("themeMode", {
+        read: () => loadThemeMode(),
+        merge: (local, remote) => ["auto", "light", "dark"].includes(remote) ? remote : local,
+        mergeUpdate: incoming => incoming,
+        apply: remote => {
+            if (!["auto", "light", "dark"].includes(remote)) return;
+            localStorage.setItem(THEME_MODE_STORAGE_KEY, remote);
+            themeMode = remote;
+            applyThemeMode(themeMode);
+        }
+    });
     window.MyHubCloudSync?.register("jarvisMemory", {
         read: () => jarvisLongTermMemory,
         merge: (local, remote) => Array.isArray(remote) ? remote : local,
@@ -1563,6 +1574,64 @@ if (jarvisVoicePreset) {
     jarvisVoicePreset.addEventListener("change", updateJarvisVoiceSettings);
 }
 
+const THEME_MODE_STORAGE_KEY = "myhub_theme_mode";
+const themeModeControl = document.getElementById("themeModeControl");
+const themeModeStatus = document.getElementById("themeModeStatus");
+
+function isNightTime() {
+    const hour = new Date().getHours();
+    return hour >= 20 || hour < 7;
+}
+
+function loadThemeMode() {
+    const saved = localStorage.getItem(THEME_MODE_STORAGE_KEY);
+    return ["auto", "light", "dark"].includes(saved) ? saved : "auto";
+}
+
+function applyThemeMode(mode, persist = false) {
+    const effectiveMode = mode === "auto"
+        ? (isNightTime() ? "dark" : "light")
+        : mode;
+
+    document.body.classList.toggle("night-mode", effectiveMode === "dark");
+    document.documentElement.dataset.theme = effectiveMode;
+
+    if (themeModeControl) {
+        themeModeControl.value = mode;
+    }
+
+    if (themeModeStatus) {
+        if (mode === "auto") {
+            themeModeStatus.textContent = effectiveMode === "dark"
+                ? "Automatique : mode sombre activé la nuit."
+                : "Automatique : mode clair activé en journée.";
+        } else {
+            themeModeStatus.textContent = mode === "dark"
+                ? "Mode sombre manuel activé."
+                : "Mode clair manuel activé.";
+        }
+    }
+
+    if (persist) {
+        localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
+        window.MyHubCloudSync?.update("themeMode", mode);
+    }
+}
+
+let themeMode = loadThemeMode();
+applyThemeMode(themeMode);
+
+themeModeControl?.addEventListener("change", event => {
+    themeMode = event.target.value;
+    applyThemeMode(themeMode, true);
+});
+
+window.setInterval(() => {
+    if (themeMode === "auto") {
+        applyThemeMode("auto");
+    }
+}, 60000);
+
 updateVoiceUi();
 
 
@@ -1655,6 +1724,8 @@ function clearJarvisMemory() {
 const AGENDA_STORAGE_KEY = "myhub_agenda_items";
 let agendaItems = [];
 let agendaDisplayedWeek = getAgendaWeekStart(new Date());
+let agendaViewMode = "week";
+let agendaSearchQuery = "";
 
 function getAgendaDateKey(date) {
     const year = date.getFullYear();
@@ -1685,7 +1756,10 @@ function loadAgendaItems() {
                 startTime: item.startTime || item.time || "",
                 endTime: item.endTime || "",
                 recurring: Boolean(item.recurring),
-                excludedDates: Array.isArray(item.excludedDates) ? item.excludedDates : []
+                excludedDates: Array.isArray(item.excludedDates) ? item.excludedDates : [],
+                teacher: String(item.teacher || ""),
+                period: item.period === "morning" || item.period === "afternoon" ? item.period : "",
+                attachment: item.attachment && typeof item.attachment === "object" ? item.attachment : null
             }))
             : [];
     } catch (error) {
@@ -1885,7 +1959,15 @@ function getAgendaOccurrencesForWeek(item) {
 }
 
 function getAgendaItemsForWeek() {
-    return agendaItems.flatMap(getAgendaOccurrencesForWeek);
+    const normalizedQuery = agendaSearchQuery.trim().toLocaleLowerCase("fr");
+    return agendaItems
+        .filter(item => !normalizedQuery || [
+            item.title,
+            item.teacher,
+            item.description,
+            item.period === "morning" ? "matin" : item.period === "afternoon" ? "après-midi" : ""
+        ].some(value => String(value || "").toLocaleLowerCase("fr").includes(normalizedQuery)))
+        .flatMap(getAgendaOccurrencesForWeek);
 }
 
 function renderAgendaCalendar() {
@@ -1897,18 +1979,35 @@ function renderAgendaCalendar() {
         return;
     }
 
-    const weekEnd = new Date(agendaDisplayedWeek);
-    weekEnd.setDate(weekEnd.getDate() + 4);
-    monthLabel.textContent = `${formatAgendaDate(getAgendaDateKey(agendaDisplayedWeek))} - ${formatAgendaDate(getAgendaDateKey(weekEnd))}`;
+    const dayCount = agendaViewMode === "day" ? 1 : 5;
+    if (agendaViewMode === "day") {
+        const today = new Date();
+        if (agendaDisplayedWeek.getDay() === 0 || agendaDisplayedWeek.getDay() === 6) {
+            agendaDisplayedWeek = getAgendaWeekStart(today);
+        }
+    }
+    const startDate = new Date(agendaDisplayedWeek);
+    const weekEnd = new Date(startDate);
+    weekEnd.setDate(weekEnd.getDate() + dayCount - 1);
+    monthLabel.textContent = dayCount === 1
+        ? formatAgendaDate(getAgendaDateKey(startDate))
+        : `${formatAgendaDate(getAgendaDateKey(startDate))} - ${formatAgendaDate(getAgendaDateKey(weekEnd))}`;
     weekHeader.replaceChildren();
     calendar.replaceChildren();
+    if (agendaViewMode === "day") {
+        weekHeader.style.gridTemplateColumns = "54px minmax(320px, 1fr)";
+        calendar.style.gridTemplateColumns = "54px minmax(320px, 1fr)";
+    } else {
+        weekHeader.style.removeProperty("grid-template-columns");
+        calendar.style.removeProperty("grid-template-columns");
+    }
     const today = new Date();
     const todayKey = getAgendaDateKey(today);
 
     const headerSpacer = document.createElement("span");
     weekHeader.appendChild(headerSpacer);
 
-    for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+    for (let dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
         const date = new Date(agendaDisplayedWeek);
         date.setDate(date.getDate() + dayIndex);
         const header = document.createElement("div");
@@ -1927,7 +2026,7 @@ function renderAgendaCalendar() {
     }
     calendar.appendChild(timeAxis);
 
-    for (let dayIndex = 0; dayIndex < 5; dayIndex += 1) {
+    for (let dayIndex = 0; dayIndex < dayCount; dayIndex += 1) {
         const date = new Date(agendaDisplayedWeek);
         date.setDate(date.getDate() + dayIndex);
         const dateKey = getAgendaDateKey(date);
@@ -1944,7 +2043,10 @@ function renderAgendaCalendar() {
     }
 
     getAgendaItemsForWeek().forEach(({ item, dateKey }) => {
-        const dateIndex = Math.round((getAgendaLocalDate(dateKey) - agendaDisplayedWeek) / 86400000);
+        let dateIndex = Math.round((getAgendaLocalDate(dateKey) - startDate) / 86400000);
+        if (agendaViewMode === "day") {
+            dateIndex = getAgendaDateKey(getAgendaLocalDate(dateKey)) === getAgendaDateKey(startDate) ? 0 : -1;
+        }
         const column = dayColumns[dateIndex];
         if (!column) {
             return;
@@ -1966,7 +2068,12 @@ function renderAgendaCalendar() {
         event.style.height = `${(visibleEnd - visibleStart) / 540 * 100}%`;
         event.innerHTML = `<strong></strong><span></span>`;
         event.querySelector("strong").textContent = item.title;
-        event.querySelector("span").textContent = `${item.startTime || ""}${item.endTime ? ` - ${item.endTime}` : ""}`;
+        event.querySelector("span").textContent = [
+            item.startTime ? `${item.startTime}${item.endTime ? ` - ${item.endTime}` : ""}` : "",
+            item.teacher,
+            item.period === "morning" ? "Matin" : item.period === "afternoon" ? "Après-midi" : ""
+        ].filter(Boolean).join(" · ");
+        event.title = [item.title, item.teacher ? `Professeur : ${item.teacher}` : "", item.description, item.attachment?.name ? `Pièce jointe : ${item.attachment.name}` : ""].filter(Boolean).join("\n");
         event.addEventListener("click", () => removeAgendaItem(item, dateKey));
         column.appendChild(event);
     });
@@ -1980,8 +2087,15 @@ function renderAgendaUpcoming() {
     }
 
     upcoming.replaceChildren();
+    const normalizedQuery = agendaSearchQuery.trim().toLocaleLowerCase("fr");
     const sortedItems = agendaItems
         .slice()
+        .filter(item => !normalizedQuery || [
+            item.title,
+            item.teacher,
+            item.description,
+            item.period === "morning" ? "matin" : item.period === "afternoon" ? "après-midi" : ""
+        ].some(value => String(value || "").toLocaleLowerCase("fr").includes(normalizedQuery)))
         .flatMap(item => item.recurring ? getUpcomingRecurringOccurrences(item) : [{ item, dateKey: item.date }])
         .sort((first, second) => `${first.dateKey}${first.item.startTime || ""}`.localeCompare(`${second.dateKey}${second.item.startTime || ""}`))
         .filter(entry => entry.dateKey >= getAgendaDateKey(new Date()))
@@ -1995,13 +2109,27 @@ function renderAgendaUpcoming() {
     sortedItems.forEach(({ item, dateKey }) => {
         const element = document.createElement("article");
         element.className = `agenda-item ${item.type}`;
-        element.innerHTML = `<div class="agenda-item-meta"></div><strong></strong><p></p><button class="agenda-item-delete" type="button" aria-label="Gérer la suppression">×</button>`;
+        element.innerHTML = `<div class="agenda-item-meta"></div><strong></strong><p></p><span class="agenda-teacher"></span><span class="agenda-period-badge"></span><button class="agenda-item-delete" type="button" aria-label="Gérer la suppression">×</button>`;
         element.querySelector(".agenda-item-meta").textContent = `${formatAgendaDate(dateKey)}${item.startTime ? ` à ${item.startTime}` : ""}${item.recurring ? " · chaque semaine" : ""}`;
         element.querySelector("strong").textContent = item.title;
         element.querySelector("p").textContent = item.description || (
             item.type === "homework" ? "Devoir à rendre" :
             item.type === "reminder" ? "Rappel" : "Cours"
         );
+        element.querySelector(".agenda-teacher").textContent = item.teacher ? `Professeur : ${item.teacher}` : "";
+        element.querySelector(".agenda-period-badge").textContent = item.period === "morning"
+            ? "Matin"
+            : item.period === "afternoon"
+                ? "Après-midi"
+                : "Jour entier";
+        if (item.attachment?.dataUrl) {
+            const link = document.createElement("a");
+            link.className = "agenda-attachment-link";
+            link.href = item.attachment.dataUrl;
+            link.download = item.attachment.name || "document";
+            link.textContent = `📎 ${item.attachment.name || "Document joint"}`;
+            element.appendChild(link);
+        }
         element.querySelector(".agenda-item-delete").addEventListener("click", () => removeAgendaItem(item, dateKey));
         upcoming.appendChild(element);
     });
@@ -2047,20 +2175,37 @@ function initializeAgenda() {
         dateInput.value = new Date().toISOString().slice(0, 10);
     }
 
-    form?.addEventListener("submit", event => {
+    form?.addEventListener("submit", async event => {
         event.preventDefault();
         const formData = new FormData(form);
+        const file = formData.get("attachment");
+        let attachment = null;
+        if (file instanceof File && file.size > 0) {
+            if (file.size > 4 * 1024 * 1024) {
+                window.alert("Le document est trop volumineux. Taille maximale : 4 Mo.");
+                return;
+            }
+            attachment = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result });
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+            });
+        }
         agendaItems.push({
             id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
             title: String(formData.get("title") || "").trim(),
             type: String(formData.get("type") || "course"),
+            teacher: String(formData.get("teacher") || "").trim(),
+            period: String(formData.get("period") || ""),
             date: String(formData.get("date") || ""),
             startTime: String(formData.get("startTime") || ""),
             endTime: String(formData.get("endTime") || ""),
             recurring: formData.get("recurring") === "on",
             recurrenceEnd: String(formData.get("recurrenceEnd") || ""),
             excludedDates: [],
-            description: String(formData.get("description") || "").trim()
+            description: String(formData.get("description") || "").trim(),
+            attachment
         });
         if (formData.get("type") === "reminder") {
             requestAgendaNotificationPermission();
@@ -2073,15 +2218,37 @@ function initializeAgenda() {
     });
 
     document.getElementById("agendaPreviousWeek")?.addEventListener("click", () => {
-        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() - 7);
+        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() - (agendaViewMode === "day" ? 1 : 7));
         renderAgendaCalendar();
     });
     document.getElementById("agendaNextWeek")?.addEventListener("click", () => {
-        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() + 7);
+        agendaDisplayedWeek.setDate(agendaDisplayedWeek.getDate() + (agendaViewMode === "day" ? 1 : 7));
         renderAgendaCalendar();
     });
     document.getElementById("agendaRecurring")?.addEventListener("change", event => {
         document.getElementById("agendaRecurrenceEndRow").hidden = !event.target.checked;
+    });
+    document.getElementById("agendaSearch")?.addEventListener("input", event => {
+        agendaSearchQuery = event.target.value;
+        renderAgendaCalendar();
+        renderAgendaUpcoming();
+    });
+    document.getElementById("agendaToday")?.addEventListener("click", () => {
+        agendaDisplayedWeek = getAgendaWeekStart(new Date());
+        renderAgendaCalendar();
+    });
+    document.getElementById("agendaWeekView")?.addEventListener("click", event => {
+        agendaViewMode = "week";
+        event.currentTarget.classList.add("is-active");
+        document.getElementById("agendaDayView")?.classList.remove("is-active");
+        renderAgendaCalendar();
+    });
+    document.getElementById("agendaDayView")?.addEventListener("click", event => {
+        agendaViewMode = "day";
+        agendaDisplayedWeek = new Date();
+        event.currentTarget.classList.add("is-active");
+        document.getElementById("agendaWeekView")?.classList.remove("is-active");
+        renderAgendaCalendar();
     });
     document.getElementById("agendaType")?.addEventListener("change", event => {
         const recurring = document.getElementById("agendaRecurring");
@@ -7629,6 +7796,10 @@ console.log(
 
     let lastTransportGestureTime = 0;
 
+    let transportGestureArmed = true;
+
+    let transportGestureReleaseSince = null;
+
 
     /* =====================================================
    CURSEUR - STABILISATION
@@ -7677,13 +7848,15 @@ let handLostFrames = 0;
 
     const POINTER_POSE_HOLD = 250;
 
-    const MUSIC_SWIPE_POSE_HOLD = 100;
+    const MUSIC_SWIPE_POSE_HOLD = 250;
 
     const MUSIC_SWIPE_DISTANCE = 0.075;
 
     const MUSIC_SWIPE_TIMEOUT = 1800;
 
-    const TRANSPORT_POSE_HOLD = 700;
+    const TRANSPORT_POSE_HOLD = 1200;
+
+    const TRANSPORT_RELEASE_HOLD = 400;
 
 
     /* =====================================================
@@ -7755,6 +7928,28 @@ let handLostFrames = 0;
             isFingerExtended(hand, 12, 10) &&
             isFingerExtended(hand, 16, 14) &&
             isFingerExtended(hand, 20, 18);
+    }
+
+    function updateTransportGestureRelease(now) {
+        if (transportGestureArmed) {
+            transportGesturePose = null;
+            transportGestureStartedAt = 0;
+            transportGestureConsumed = false;
+            transportGestureReleaseSince = null;
+            return;
+        }
+
+        if (transportGestureReleaseSince === null) {
+            transportGestureReleaseSince = now;
+        }
+
+        if (now - transportGestureReleaseSince >= TRANSPORT_RELEASE_HOLD) {
+            transportGestureArmed = true;
+            transportGesturePose = null;
+            transportGestureStartedAt = 0;
+            transportGestureConsumed = false;
+            transportGestureReleaseSince = null;
+        }
     }
 
     function drawDetectedHands(results) {
@@ -8327,7 +8522,7 @@ let handLostFrames = 0;
 
 
             gestureCameraStatus.textContent =
-                "Paume tenue 0,7 s : pause · pouce levé : lecture · deux doigts : pistes";
+                "✋ ou 👍 : maintiens 1,2 s · ✌️ : tiens, puis balaie pour changer de piste";
 
 
             virtualCursor.style.display =
@@ -8484,6 +8679,8 @@ let handLostFrames = 0;
         transportGesturePose = null;
         transportGestureStartedAt = 0;
         transportGestureConsumed = false;
+        transportGestureArmed = true;
+        transportGestureReleaseSince = null;
 
         if (typeof window.myHubVolumeGesture === "function") {
             window.myHubVolumeGesture(null);
@@ -8598,9 +8795,7 @@ let handLostFrames = 0;
     musicSwipeStartX = null;
     musicSwipeConsumed = false;
     musicSwipePoseSince = null;
-    transportGesturePose = null;
-    transportGestureStartedAt = 0;
-    transportGestureConsumed = false;
+    updateTransportGestureRelease(performance.now());
 
     if (typeof window.myHubVolumeGesture === "function") {
         window.myHubVolumeGesture(null);
@@ -8665,6 +8860,14 @@ if (transportPose) {
 
     const transportNow = performance.now();
 
+    transportGestureReleaseSince = null;
+
+    if (!transportGestureArmed) {
+        gestureStatus.textContent = "● Relâche la main pour réarmer";
+        drawDetectedHands(results);
+        return;
+    }
+
     if (transportGesturePose !== transportPose) {
         transportGesturePose = transportPose;
         transportGestureStartedAt = transportNow;
@@ -8674,6 +8877,7 @@ if (transportPose) {
         transportNow - transportGestureStartedAt >= TRANSPORT_POSE_HOLD
     ) {
         transportGestureConsumed = true;
+        transportGestureArmed = false;
 
         if (Date.now() - lastTransportGestureTime >= 1200) {
             lastTransportGestureTime = Date.now();
@@ -8696,17 +8900,15 @@ if (transportPose) {
 
     if (!transportGestureConsumed) {
         gestureStatus.textContent = transportPose === "pause"
-            ? "● Maintiens la paume pour mettre en pause"
-            : "● Maintiens le pouce levé pour lancer la lecture";
+            ? "● Maintiens la paume 1,2 s pour mettre en pause"
+            : "● Maintiens le pouce levé 1,2 s pour lancer la lecture";
     }
 
     drawDetectedHands(results);
     return;
 }
 
-transportGesturePose = null;
-transportGestureStartedAt = 0;
-transportGestureConsumed = false;
+updateTransportGestureRelease(performance.now());
 
 if (isTwoFingerSwipePose(hand)) {
     pointerPoseSince = null;
@@ -8723,13 +8925,17 @@ if (isTwoFingerSwipePose(hand)) {
 
     if (musicSwipePoseSince === null) {
         musicSwipePoseSince = swipeNow;
-        musicSwipeStartX = swipeX;
-        musicSwipeStartedAt = swipeNow;
+        musicSwipeStartX = null;
+        musicSwipeStartedAt = 0;
         musicSwipeConsumed = false;
     }
 
     if (swipeNow - musicSwipePoseSince < MUSIC_SWIPE_POSE_HOLD) {
-        gestureStatus.textContent = "● Pose reconnue — balaie à gauche ou à droite";
+        gestureStatus.textContent = "● Tiens ✌️ un instant pour armer le changement";
+    } else if (musicSwipeStartX === null) {
+        musicSwipeStartX = swipeX;
+        musicSwipeStartedAt = swipeNow;
+        gestureStatus.textContent = "● ✌️ prêt — balaie pour changer de piste";
     } else if (
         !musicSwipeConsumed &&
         swipeNow - musicSwipeStartedAt <= MUSIC_SWIPE_TIMEOUT &&

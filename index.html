@@ -504,6 +504,17 @@
                 <h2 id="agendaMonthLabel"></h2>
                 <button id="agendaNextWeek" class="icon-button" type="button" aria-label="Semaine suivante">›</button>
             </div>
+            <div class="agenda-tools">
+                <label class="agenda-search">
+                    <span class="visually-hidden">Rechercher dans l’agenda</span>
+                    <input id="agendaSearch" type="search" placeholder="Rechercher un cours, un prof, une note…">
+                </label>
+                <div class="agenda-view-switch" aria-label="Affichage de l’agenda">
+                    <button id="agendaWeekView" class="is-active" type="button">Semaine</button>
+                    <button id="agendaDayView" type="button">Jour</button>
+                </div>
+                <button id="agendaToday" class="ghost-button" type="button">Aujourd’hui</button>
+            </div>
             <div class="agenda-legend" aria-label="Légende">
                 <span class="agenda-legend-course">Cours</span>
                 <span class="agenda-legend-homework">Devoirs</span>
@@ -525,6 +536,21 @@
             <form id="agendaForm" class="agenda-form">
                 <label for="agendaTitle">Titre</label>
                 <input id="agendaTitle" name="title" type="text" placeholder="Ex. Mathématiques" required>
+
+                <div class="agenda-form-row">
+                    <div>
+                        <label for="agendaTeacher">Professeur</label>
+                        <input id="agendaTeacher" name="teacher" type="text" placeholder="Ex. Mme Dupont">
+                    </div>
+                    <div>
+                        <label for="agendaPeriod">Période</label>
+                        <select id="agendaPeriod" name="period">
+                            <option value="">Jour entier</option>
+                            <option value="morning">Matin</option>
+                            <option value="afternoon">Après-midi</option>
+                        </select>
+                    </div>
+                </div>
 
                 <label for="agendaType">Type</label>
                 <select id="agendaType" name="type">
@@ -565,8 +591,12 @@
                     </div>
                 </div>
 
-                <label for="agendaDescription">Notes</label>
-                <textarea id="agendaDescription" name="description" rows="3" placeholder="Salle, consignes, détails..."></textarea>
+                <label for="agendaDescription">Résumé du cours</label>
+                <textarea id="agendaDescription" name="description" rows="4" placeholder="Sujet, notions vues, exercices, devoirs…"></textarea>
+
+                <label for="agendaAttachment">Document joint</label>
+                <input id="agendaAttachment" name="attachment" type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg">
+                <small class="agenda-file-help">PDF, Word, texte ou image · 4 Mo maximum</small>
                 <button class="primary-button" type="submit">Ajouter à l'agenda</button>
             </form>
         </div>
@@ -656,7 +686,7 @@
             </section>
 
             <section class="arcade-collection">
-                <div class="arcade-collection-heading"><span>COLLECTION PARTAGÉE</span><strong id="arcadeCollectionCount">0 / 56</strong></div>
+                <div class="arcade-collection-heading"><span>COLLECTION PARTAGÉE</span><strong id="arcadeCollectionCount">0 / 70</strong></div>
                 <div id="arcadeCollection" class="arcade-character-grid"></div>
             </section>
 
@@ -696,7 +726,7 @@
 
     <nav class="match-tabs" role="tablist" aria-label="Jeu et collection">
         <button id="matchGameTab" class="match-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="matchGamePanel">🎮 Jouer</button>
-        <button id="matchCollectionTab" class="match-tab" type="button" role="tab" aria-selected="false" aria-controls="matchCollectionPanel">✨ Collection <span id="matchTabCollectionCount">0 / 56</span></button>
+        <button id="matchCollectionTab" class="match-tab" type="button" role="tab" aria-selected="false" aria-controls="matchCollectionPanel">✨ Collection <span id="matchTabCollectionCount">0 / 70</span></button>
     </nav>
 
     <section id="matchGamePanel" class="match-tab-panel" role="tabpanel" aria-labelledby="matchGameTab">
@@ -750,7 +780,7 @@
     <section id="matchCollectionPanel" class="match-tab-panel match-collection-panel" role="tabpanel" aria-labelledby="matchCollectionTab" hidden>
         <header class="match-collection-header">
             <div><span class="match-eyebrow">TON ALBUM DE COLLECTION</span><h2>Tous les personnages</h2><p>Explore les personnages déjà rencontrés et ceux qu’il te reste à découvrir.</p></div>
-            <strong id="matchCollectionCount">0 / 56 personnages</strong>
+            <strong id="matchCollectionCount">0 / 70 personnages</strong>
         </header>
         <div class="match-collection-filters" role="group" aria-label="Filtrer les personnages">
             <button class="match-filter is-active" type="button" data-filter="all" aria-pressed="true">Tous</button>
@@ -793,7 +823,7 @@
             <div class="dj-transport-controls">
                 <button id="gestureDjPrevious" type="button" title="Morceau précédent" aria-label="Morceau précédent">⏮</button>
                 <button id="gestureDjPlay" class="dj-play-button" type="button" title="Lecture / pause" aria-label="Lecture">▶</button>
-                <button id="gestureDjNext" type="button" title="Morceau suivant" aria-label="Morceau suivant">⏭</button>
+                <button id="gestureDjNext" type="button" title="Passer au morceau suivant" aria-label="Passer au morceau suivant">⏭ <span>Passer</span></button>
             </div>
         </section>
 
@@ -816,9 +846,9 @@
     <section class="dj-gesture-guide" aria-label="Commandes gestuelles">
         <div class="dj-guide-heading"><span class="dj-eyebrow">MAINS LIBRES</span><span>Gestes reconnus</span></div>
         <div class="dj-gesture-cards">
-            <article class="dj-gesture-card"><span class="dj-gesture-icon">✋</span><div><strong>Pause</strong><small>Garde la paume ouverte 0,7 s</small></div></article>
-            <article class="dj-gesture-card"><span class="dj-gesture-icon">👍</span><div><strong>Lecture</strong><small>Pouce levé</small></div></article>
-            <article class="dj-gesture-card"><span class="dj-gesture-icon">✌️</span><div><strong>Changer de titre</strong><small>Deux doigts : droite suivant, gauche précédent</small></div></article>
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">✋</span><div><strong>Pause</strong><small>Maintiens la paume ouverte 1,2 s</small></div></article>
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">👍</span><div><strong>Lecture</strong><small>Maintiens le pouce levé 1,2 s</small></div></article>
+            <article class="dj-gesture-card"><span class="dj-gesture-icon">✌️</span><div><strong>Changer de titre</strong><small>Tiens ✌️, puis balaie : → suivant · ← précédent</small></div></article>
             <button class="dj-gesture-card dj-settings-card" type="button" data-open-section="musicSection"><span class="dj-gesture-icon">⚙</span><div><strong>Réglages caméra</strong><small>Choisir une caméra</small></div><span class="dj-card-arrow" aria-hidden="true">↗</span></button>
         </div>
     </section>
@@ -1090,6 +1120,23 @@
     </div>
 
     <div class="settings-panel">
+        <div class="setting-card">
+            <h2>Affichage</h2>
+
+            <div class="setting-row">
+                <label for="themeModeControl">Thème</label>
+                <select id="themeModeControl" aria-describedby="themeModeStatus">
+                    <option value="auto">Automatique</option>
+                    <option value="light">Mode clair</option>
+                    <option value="dark">Mode sombre</option>
+                </select>
+            </div>
+
+            <p id="themeModeStatus" class="setting-status" aria-live="polite">
+                Le thème automatique utilise le mode sombre la nuit.
+            </p>
+        </div>
+
         <div class="setting-card">
             <h2>Voix de Jarvis</h2>
 
