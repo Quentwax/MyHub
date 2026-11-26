@@ -62,5 +62,11 @@ window.MYHUB_DISNEY_CHARACTER_IMAGES = {
     mushu: "https://static.wikia.nocookie.net/disney/images/1/17/Profile_-_Mushu.jpeg/revision/latest/scale-to-width-down/500?cb=20190425004614",
     "nick-wilde": "https://static.wikia.nocookie.net/disney/images/5/50/Profile_-_Nick_Wilde.jpeg/revision/latest/scale-to-width-down/334?cb=20260427193945",
     "judy-hopps": "https://static.wikia.nocookie.net/disney/images/d/da/Profile_-_Judy_Hopps.jpeg/revision/latest/scale-to-width-down/375?cb=20260427193834",
-    asha: "https://static.wikia.nocookie.net/disney/images/4/40/Profile_-_Asha.jpg/revision/latest/scale-to-width-down/309?cb=20250618205835"
+    asha: "https://static.wikia.nocookie.net/disney/images/4/40/Profile_-_Asha.jpg/revision/latest/scale-to-width-down/309?cb=20250618205835",
+    raya: "https://static.wikia.nocookie.net/disney/images/1/1e/Profile_-_Raya.png",
+    bruno: "https://static.wikia.nocookie.net/disney/images/6/65/Profile_-_Bruno_Madrigal.png",
+    antonio: "https://static.wikia.nocookie.net/disney/images/2/27/Profile_-_Antonio_Madrigal.png",
+    "jack-skellington": "https://static.wikia.nocookie.net/disney/images/1/11/Jack_Skellington.png",
+    "r2-d2": "https://static.wikia.nocookie.net/disney/images/4/4f/R2-D2.png",
+    grogu: "https://static.wikia.nocookie.net/disney/images/c/cd/Grogu.png"
 };
